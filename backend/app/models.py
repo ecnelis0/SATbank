@@ -1,0 +1,162 @@
+"""Database model: a mistake, and the fixed review ladder attached to it."""
+
+from __future__ import annotations
+
+import uuid
+from datetime import UTC, datetime
+from enum import StrEnum
+
+from sqlalchemy import JSON, DateTime, ForeignKey, Index, Integer, String, Text, TypeDecorator
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+
+
+def utcnow() -> datetime:
+    return datetime.now(UTC)
+
+
+def new_id() -> str:
+    return uuid.uuid4().hex
+
+
+class UtcDateTime(TypeDecorator):
+    """A timestamp that is UTC-aware on both sides of the database.
+
+    SQLite has no timezone storage, so a plain ``DateTime(timezone=True)`` column
+    silently reads back naive - which blows up the moment it meets a freshly
+    constructed aware datetime, and serialises to JSON with no offset for the
+    frontend to trust. This normalises on the way in and re-attaches UTC on the
+    way out, so SQLite and Postgres behave the same.
+    """
+
+    impl = DateTime(timezone=True)
+    cache_ok = True
+
+    def process_bind_param(self, value: datetime | None, dialect) -> datetime | None:
+        if value is None:
+            return None
+        if value.tzinfo is None:
+            raise ValueError("Refusing to store a naive datetime; pass an aware one")
+        return value.astimezone(UTC)
+
+    def process_result_value(self, value: datetime | None, dialect) -> datetime | None:
+        if value is None:
+            return None
+        return value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
+
+
+class Base(DeclarativeBase):
+    pass
+
+
+class Section(StrEnum):
+    reading_writing = "reading_writing"
+    math = "math"
+
+
+class AnalysisStatus(StrEnum):
+    pending = "pending"
+    ready = "ready"
+    failed = "failed"
+
+
+class ErrorType(StrEnum):
+    """The 'why did I get this wrong' slots. The AI must pick exactly one.
+
+    Kept as a closed vocabulary so the bank can be grouped and counted; a free-text
+    label per mistake would make the slot view useless.
+    """
+
+    careless_arithmetic = "careless_arithmetic"
+    misread_question = "misread_question"
+    concept_gap = "concept_gap"
+    formula_error = "formula_error"
+    algebra_slip = "algebra_slip"
+    unit_or_conversion = "unit_or_conversion"
+    trap_answer = "trap_answer"
+    evidence_misread = "evidence_misread"
+    vocabulary_gap = "vocabulary_gap"
+    grammar_rule_gap = "grammar_rule_gap"
+    time_pressure_guess = "time_pressure_guess"
+    other = "other"
+
+
+class Difficulty(StrEnum):
+    easy = "easy"
+    medium = "medium"
+    hard = "hard"
+
+
+class ReviewOutcome(StrEnum):
+    correct = "correct"
+    wrong = "wrong"
+    skipped = "skipped"
+    # Not a student action: the rung was retired because a miss restarted the ladder.
+    superseded = "superseded"
+
+
+class Mistake(Base):
+    """One question the student got wrong, plus the AI's analysis of why."""
+
+    __tablename__ = "mistakes"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=new_id)
+    user_id: Mapped[str] = mapped_column(String(64), index=True)
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime(), default=utcnow)
+
+    # What the student logged.
+    source: Mapped[str | None] = mapped_column(String(200))
+    section: Mapped[str] = mapped_column(String(32))
+    question_text: Mapped[str] = mapped_column(Text)
+    choices: Mapped[list | None] = mapped_column(JSON)
+    your_answer: Mapped[str] = mapped_column(Text)
+    correct_answer: Mapped[str] = mapped_column(Text)
+    student_note: Mapped[str | None] = mapped_column(Text)
+
+    # What the AI produced.
+    analysis_status: Mapped[str] = mapped_column(
+        String(16), default=AnalysisStatus.pending, index=True
+    )
+    analysis_error: Mapped[str | None] = mapped_column(Text)
+    analyzed_at: Mapped[datetime | None] = mapped_column(UtcDateTime())
+    analyzed_by: Mapped[str | None] = mapped_column(String(64))
+
+    error_type: Mapped[str | None] = mapped_column(String(32), index=True)
+    topic: Mapped[str | None] = mapped_column(String(120), index=True)
+    difficulty: Mapped[str | None] = mapped_column(String(16))
+    why_wrong: Mapped[str | None] = mapped_column(Text)
+    correct_reasoning: Mapped[str | None] = mapped_column(Text)
+    takeaway: Mapped[str | None] = mapped_column(Text)
+    trap: Mapped[str | None] = mapped_column(Text)
+    tags: Mapped[list | None] = mapped_column(JSON)
+
+    reviews: Mapped[list[ReviewEvent]] = relationship(
+        back_populates="mistake",
+        cascade="all, delete-orphan",
+        order_by="ReviewEvent.due_at",
+    )
+
+
+class ReviewEvent(Base):
+    """One rung of the ladder: this mistake comes back at this time."""
+
+    __tablename__ = "review_events"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=new_id)
+    mistake_id: Mapped[str] = mapped_column(
+        ForeignKey("mistakes.id", ondelete="CASCADE"), index=True
+    )
+    # Which pass over the ladder this belongs to. A missed review restarts the ladder,
+    # so cycle 0 is the original run, cycle 1 the one armed by the first miss, etc.
+    cycle: Mapped[int] = mapped_column(Integer, default=0)
+    step_index: Mapped[int] = mapped_column(Integer)
+    interval_label: Mapped[str] = mapped_column(String(8))
+
+    due_at: Mapped[datetime] = mapped_column(UtcDateTime(), index=True)
+    completed_at: Mapped[datetime | None] = mapped_column(UtcDateTime())
+    outcome: Mapped[str | None] = mapped_column(String(16))
+
+    mistake: Mapped[Mistake] = relationship(back_populates="reviews")
+
+
+# The due-queue reads open events ordered by due date; this is its covering index.
+Index("ix_review_events_open", ReviewEvent.completed_at, ReviewEvent.due_at)
