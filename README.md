@@ -18,6 +18,28 @@ and the ladder restarts from the top.
 Screens: a dashboard of slots ("why you're losing points"), a log form, the bank with
 filters, a question detail page with the analysis and its ladder, and a review session.
 
+## The side panel
+
+A rail on every page, opened with **Ask the bank** in the nav, with two tabs.
+
+**Ask** takes a question in your own words:
+
+> give me all the questions logged in the past 3 months that are very important and from
+> the reading category
+
+The model does not answer from a recollection of your bank. It turns the sentence into a
+structured filter, the database runs it, and only then does the model get to speak — about
+rows that exist. So a count is a count and a list is the real list. The panel prints the
+filter it used ("Searched: very important, Reading & Writing, logged since 2026-06-09"), so
+a misread sentence looks like a misread sentence rather than an empty bank. Each hit links
+straight to the question.
+
+If the model fails to interpret, you get the whole bank rather than nothing. If it fails to
+summarise, you still get the rows — the prose is the disposable half.
+
+**Categories** lists the whole bank grouped by urgency, section, error slot and topic, with
+live counts; each row filters the bank.
+
 ## How urgent is it
 
 Every question carries one of three levels, most urgent first:

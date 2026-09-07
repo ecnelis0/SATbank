@@ -26,8 +26,12 @@ a fixed 1h / 24h / 72h / 1w / 1mo ladder. See `README.md` for how to run it.
 
 - `backend/app/review.py` — the ladder, and `URGENCY_RANK`, the case expression that
   orders the due queue. The one file to read first.
-- `backend/app/analysis/` — the analyzer contract, the offline stub, the Claude adapter.
-  Adding a provider is one new file plus a line in `__init__.py`.
+- `backend/app/analysis/` — the analyzer contract (`analyze`, `interpret`, `summarise`),
+  the offline stub, the Claude adapter. Adding a provider is one new file plus a line in
+  `__init__.py`.
+- `backend/app/query.py` — `BankQuery`, the structured filter the assistant produces.
+  **The model writes the filter; the database writes the answer.** Never hand the model
+  the bank and ask it to count - it will approximate, and the student cannot tell.
 - `backend/app/services.py` — runs the analyzer and writes its verdict. Never raises on
   an analyzer failure: the mistake is logged and on the ladder regardless.
 - `backend/app/routers/mistakes.py` — `POST /mistakes?analyze=false` logs without asking
@@ -43,6 +47,9 @@ a fixed 1h / 24h / 72h / 1w / 1mo ladder. See `README.md` for how to run it.
 - The AI writes the analysis, and the student can overwrite any of it. Anything they
   write is credited to them (`analyzed_by = "you"`), marked with `analysis_edited_at`,
   and guarded against a careless re-run. The app itself still authors no explanations.
+- **The side rail is fixed-position, mounted only when open, with no clip-path and no
+  transform on a clipped child** - the two ways a panel here has previously been laid
+  out, opaque, and still unpainted. If you restyle it, hit-test its centre afterwards.
 - **A shared query helper must not carry an `.order_by()`.** SQLAlchemy *appends*
   ordering, so a caller adding its own key silently gets it second. `_open_for_user`
   returns unordered; each endpoint orders itself.

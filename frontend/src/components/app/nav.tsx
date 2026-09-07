@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { SidePanelToggle } from "@/components/app/side-panel";
 import { api, keys } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -57,6 +58,10 @@ export function Nav() {
             </Link>
           );
         })}
+
+        <div className="ml-auto">
+          <SidePanelToggle />
+        </div>
       </nav>
     </header>
   );

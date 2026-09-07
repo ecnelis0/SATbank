@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 
+import { Assistant } from "@/components/app/assistant";
 import { Nav } from "@/components/app/nav";
+import { MainArea, SidePanelProvider } from "@/components/app/side-panel";
 import { Providers } from "@/components/providers";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -20,8 +22,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <Providers>
-          <Nav />
-          <main className="mx-auto max-w-5xl px-4 py-8">{children}</main>
+          <SidePanelProvider>
+            <Nav />
+            <MainArea>{children}</MainArea>
+            <Assistant />
+          </SidePanelProvider>
           <Toaster position="top-center" />
         </Providers>
       </body>

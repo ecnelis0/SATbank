@@ -116,6 +116,31 @@ export type MistakeEdit = Partial<
   >
 >;
 
+export type BankSort = "newest" | "oldest" | "most_urgent";
+
+/** Mirrors `backend/app/query.py`. The assistant's reading of your sentence. */
+export interface BankQuery {
+  urgency: Urgency[];
+  error_type: ErrorType[];
+  section: Section[];
+  topics: string[];
+  text: string | null;
+  logged_after: string | null;
+  logged_before: string | null;
+  only_due: boolean;
+  sort: BankSort;
+  limit: number;
+}
+
+export interface Answer {
+  question: string;
+  answer: string;
+  filter_description: string;
+  query: BankQuery;
+  mistakes: Mistake[];
+  error: string | null;
+}
+
 export interface MistakeDraft {
   section: Section;
   question_text: string;

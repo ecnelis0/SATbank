@@ -6,11 +6,15 @@ The app never hand-authors that text; it only stores and organises what comes ba
 
 from __future__ import annotations
 
-from typing import Protocol
+from datetime import date
+from typing import TYPE_CHECKING, Protocol
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from ..models import Difficulty, ErrorType, Urgency
+
+if TYPE_CHECKING:
+    from ..query import BankQuery
 
 
 class MistakeInput(BaseModel):
@@ -73,3 +77,15 @@ class Analyzer(Protocol):
     name: str
 
     async def analyze(self, mistake: MistakeInput) -> MistakeAnalysis: ...
+
+    async def interpret(self, question: str, today: date) -> BankQuery:
+        """Turn a question about the bank into a filter the database can run.
+
+        `today` is passed in rather than read from the clock so "the past 3 months"
+        resolves to real dates the model can write down.
+        """
+        ...
+
+    async def summarise(self, question: str, digest: str) -> str:
+        """Answer in a sentence or two, using only the rows it is given."""
+        ...

@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from .config import get_settings
 from .db import create_all
 from .review import LADDER_LABELS
-from .routers import mistakes, reviews, stats
+from .routers import ask, mistakes, reviews, stats
 
 
 @asynccontextmanager
@@ -33,6 +33,7 @@ app.add_middleware(
 app.include_router(mistakes.router)
 app.include_router(reviews.router)
 app.include_router(stats.router)
+app.include_router(ask.router)
 
 
 @app.get("/health", tags=["meta"])

@@ -7,7 +7,11 @@ canned; it is not meant to teach anyone anything.
 
 from __future__ import annotations
 
-from ..models import Difficulty, ErrorType, Urgency
+import re
+from datetime import date, timedelta
+
+from ..models import Difficulty, ErrorType, Section, Urgency
+from ..query import BankQuery
 from .base import MistakeAnalysis, MistakeInput
 
 _MATH_HINTS = {
@@ -86,3 +90,89 @@ class StubAnalyzer:
             trap=f"{mistake.your_answer!r} is the answer you reach if you stop one step early.",
             tags=[topic.replace(" ", "-"), mistake.section],
         )
+
+    async def interpret(self, question: str, today: date) -> BankQuery:
+        return _interpret(question, today)
+
+    async def summarise(self, question: str, digest: str) -> str:
+        first = digest.splitlines()[0]
+        return f"{first} (Offline assistant: set AI_PROVIDER=claude for a real answer.)"
+
+
+# --- Asking the bank, offline -------------------------------------------------
+#
+# Keyword matching, not understanding. It covers the phrasings the app's own copy
+# uses so the assistant is demonstrable without a key; anything subtler needs a
+# real provider.
+
+_URGENCY_WORDS = (
+    ("fundamental", Urgency.fundamental),
+    ("very important", Urgency.very_important),
+    ("important", Urgency.important),
+)
+
+_SECTION_WORDS = (
+    ("reading", Section.reading_writing),
+    ("writing", Section.reading_writing),
+    ("verbal", Section.reading_writing),
+    ("english", Section.reading_writing),
+    ("math", Section.math),
+)
+
+_UNITS = {
+    "day": 1,
+    "week": 7,
+    "month": 30,
+    "year": 365,
+}
+
+_NUMBER_WORDS = {
+    "a": 1,
+    "an": 1,
+    "one": 1,
+    "two": 2,
+    "three": 3,
+    "four": 4,
+    "five": 5,
+    "six": 6,
+    "nine": 9,
+    "twelve": 12,
+}
+
+
+def _since(text: str, today: date) -> date | None:
+    """'in the past 3 months' / 'last two weeks' -> an absolute date."""
+    # The count is optional: "the past year" means one of them.
+    match = re.search(r"(?:past|last|previous|within)\s+(?:(\w+)\s+)?(day|week|month|year)s?", text)
+    if not match:
+        return None
+    raw, unit = match.groups()
+    count = 1 if raw is None else (int(raw) if raw.isdigit() else _NUMBER_WORDS.get(raw))
+    return None if count is None else today - timedelta(days=count * _UNITS[unit])
+
+
+def _interpret(question: str, today: date) -> BankQuery:
+    text = question.lower()
+
+    urgency = []
+    for word, level in _URGENCY_WORDS:
+        if word in text:
+            urgency.append(level)
+            # "very important" contains "important"; the longer phrase wins.
+            break
+
+    sections = {level for word, level in _SECTION_WORDS if word in text}
+
+    error_types = [member for member in ErrorType if member.value.replace("_", " ") in text]
+
+    topics = [topic for topic in (*_MATH_HINTS.values(), *_VERBAL_HINTS.values()) if topic in text]
+
+    return BankQuery(
+        urgency=urgency,
+        section=sorted(sections),
+        error_type=error_types,
+        topics=topics,
+        logged_after=_since(text, today),
+        only_due=("due" in text or "review now" in text),
+        sort="most_urgent" if "urgent" in text else "newest",
+    )

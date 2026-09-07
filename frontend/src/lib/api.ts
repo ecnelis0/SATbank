@@ -1,4 +1,5 @@
 import type {
+  Answer,
   DueReview,
   ErrorType,
   Mistake,
@@ -99,6 +100,10 @@ export const api = {
     }),
 
   stats: () => request<Stats>("/stats"),
+
+  /** Ask a question about the bank. The model writes the filter; the rows are real. */
+  ask: (question: string) =>
+    request<Answer>("/ask", { method: "POST", body: JSON.stringify({ question }) }),
 };
 
 /** Query keys, in one place so mutations can invalidate precisely. */
