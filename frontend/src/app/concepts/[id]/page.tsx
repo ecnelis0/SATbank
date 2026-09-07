@@ -7,6 +7,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { ConceptForm } from "@/components/app/concept-form";
+import { ConceptImages } from "@/components/app/concept-images";
 import { Empty } from "@/components/app/empty";
 import { MistakeCard } from "@/components/app/mistake-card";
 import { Badge } from "@/components/ui/badge";
@@ -92,6 +93,12 @@ export default function ConceptPage() {
               )}
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent>
+          <ConceptImages concept={concept} editable />
         </CardContent>
       </Card>
 

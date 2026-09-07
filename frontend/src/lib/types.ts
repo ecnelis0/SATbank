@@ -49,6 +49,7 @@ export interface Concept extends ConceptSummary {
   body: string | null;
   section: Section | null;
   question_count: number;
+  images: MistakeImage[];
 }
 
 export interface ConceptDetail extends Concept {

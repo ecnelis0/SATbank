@@ -128,6 +128,7 @@ class ConceptRead(BaseModel):
     body: str | None
     section: Section | None
     question_count: int = 0
+    images: list[ImageRead] = []
 
 
 class ConceptDetail(ConceptRead):
@@ -240,4 +241,5 @@ class Stats(BaseModel):
     topics: list[TopicCount]
 
 
+ConceptRead.model_rebuild()
 ConceptDetail.model_rebuild()

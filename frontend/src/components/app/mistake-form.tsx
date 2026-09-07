@@ -7,6 +7,7 @@ import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 
+import { PendingImages, usePendingImages } from "@/components/app/pending-images";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -45,6 +46,7 @@ function FieldError({ message }: { message?: string }) {
 export function MistakeForm() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const pictures = usePendingImages();
 
   const {
     control,
@@ -62,13 +64,35 @@ export function MistakeForm() {
   const section = useWatch({ control, name: "section" });
 
   const log = useMutation({
-    mutationFn: ({ draft, analyze }: { draft: MistakeDraft; analyze: boolean }) =>
-      api.logMistake(draft, analyze),
-    onSuccess: (mistake) => {
+    mutationFn: async ({ draft, analyze }: { draft: MistakeDraft; analyze: boolean }) => {
+      const mistake = await api.logMistake(draft, analyze);
+
+      // Pictures go up after the question exists, one at a time so their order is
+      // the order they were dropped. A failure here must not cost the question:
+      // it is already saved and already on the ladder, so report and carry on.
+      let failed = 0;
+      for (const picture of pictures.images) {
+        try {
+          await api.uploadImage(mistake.id, picture.file);
+        } catch {
+          failed += 1;
+        }
+      }
+      return { mistake, failed };
+    },
+    onSuccess: ({ mistake, failed }) => {
       queryClient.invalidateQueries({ queryKey: ["mistakes"] });
       queryClient.invalidateQueries({ queryKey: keys.stats() });
       queryClient.invalidateQueries({ queryKey: ["reviews"] });
-      toast.success("Logged. First review in an hour.");
+      pictures.clear();
+      if (failed > 0) {
+        toast.error(
+          `Logged, but ${failed} picture${failed === 1 ? "" : "s"} would not upload. ` +
+            "Add them again from the question.",
+        );
+      } else {
+        toast.success("Logged. First review in an hour.");
+      }
       router.push(`/bank/${mistake.id}`);
     },
     onError: (error: Error) => toast.error(error.message),
@@ -161,6 +185,21 @@ export function MistakeForm() {
       </div>
 
       <div>
+        <Label htmlFor="pictures">Pictures</Label>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          Optional. A screenshot of the question, or a photo of your working.
+        </p>
+        <div id="pictures" className="mt-1.5">
+          <PendingImages
+            images={pictures.images}
+            onAdd={pictures.add}
+            onRemove={pictures.remove}
+            disabled={log.isPending}
+          />
+        </div>
+      </div>
+
+      <div>
         <Label htmlFor="student_note">What happened?</Label>
         <Textarea
           id="student_note"
@@ -173,7 +212,11 @@ export function MistakeForm() {
 
       <div className="flex flex-wrap items-center gap-3">
         <Button type="submit" disabled={log.isPending}>
-          {log.isPending ? "Logging…" : "Log it and ask the AI"}
+          {log.isPending
+            ? pictures.images.length > 0
+              ? "Logging and uploading…"
+              : "Logging…"
+            : "Log it and ask the AI"}
         </Button>
         <Button
           type="button"

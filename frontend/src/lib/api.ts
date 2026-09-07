@@ -135,6 +135,31 @@ export const api = {
   deleteImage: (mistakeId: string, imageId: string) =>
     request<Mistake>(`/mistakes/${mistakeId}/images/${imageId}`, { method: "DELETE" }),
 
+  uploadConceptImage: async (conceptId: string, file: File) => {
+    const body = new FormData();
+    body.append("file", file);
+    const response = await fetch(`${API_URL}/concepts/${conceptId}/images`, {
+      method: "POST",
+      body,
+    });
+    if (!response.ok) {
+      const detail = await response
+        .json()
+        .then((parsed) => parsed?.detail)
+        .catch(() => null);
+      throw new ApiError(
+        typeof detail === "string" ? detail : response.statusText,
+        response.status,
+      );
+    }
+    return (await response.json()) as ConceptDetail;
+  },
+
+  deleteConceptImage: (conceptId: string, imageId: string) =>
+    request<ConceptDetail>(`/concepts/${conceptId}/images/${imageId}`, {
+      method: "DELETE",
+    }),
+
   listConcepts: () => request<Concept[]>("/concepts"),
 
   getConcept: (id: string) => request<ConceptDetail>(`/concepts/${id}`),

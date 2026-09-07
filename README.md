@@ -29,11 +29,18 @@ A concept's page lists everything filed under it, and the rail filters the bank 
 concept alongside every other facet. Deleting a concept removes only the tags; the
 questions are untouched.
 
-## Pictures
+## Pictures and diagrams
 
-Every question takes pictures — a screenshot of the question, a photo of your working.
-Click one to open it full-size, then zoom (buttons, scroll wheel, or pinch), pan, and
-step between pictures with the arrow keys.
+**Drag a picture straight onto the log form** while you are writing the question — it
+previews there, and uploads once the question is saved. Concepts take diagrams the same
+way, both while writing one and afterwards on its page. Drag-and-drop, click-to-browse
+and multi-select all work in the same zone.
+
+Click any picture to open it full-size, then zoom (buttons, scroll wheel, or pinch),
+pan, and step between pictures with the arrow keys.
+
+A failed upload never costs you the thing it was attached to: the question or concept is
+saved first, and a picture that will not upload is reported so you can add it again.
 
 Uploads are validated by **decoding the bytes**, not by trusting the declared type or
 the filename: a shell script named `.png` is refused, and the stored filename is

@@ -150,6 +150,11 @@ class Concept(Base):
         back_populates="concepts",
         order_by="Mistake.created_at.desc()",
     )
+    images: Mapped[list[ConceptImage]] = relationship(
+        back_populates="concept",
+        cascade="all, delete-orphan",
+        order_by="ConceptImage.position, ConceptImage.created_at",
+    )
 
 
 class Mistake(Base):
@@ -206,6 +211,38 @@ class Mistake(Base):
         back_populates="mistakes",
         order_by="Concept.title",
     )
+
+
+class ConceptImage(Base):
+    """A diagram or photo illustrating a concept.
+
+    Same rules as `MistakeImage`: the filename is generated, the type comes from
+    decoding the bytes. Two tables rather than one polymorphic one - a foreign key
+    that means different things depending on a discriminator column is how orphaned
+    rows and cascade mistakes get in.
+    """
+
+    __tablename__ = "concept_images"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=new_id)
+    concept_id: Mapped[str] = mapped_column(
+        ForeignKey("concepts.id", ondelete="CASCADE"), index=True
+    )
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime(), default=utcnow)
+
+    filename: Mapped[str] = mapped_column(String(80))
+    content_type: Mapped[str] = mapped_column(String(64))
+    byte_size: Mapped[int] = mapped_column(Integer)
+    width: Mapped[int | None] = mapped_column(Integer)
+    height: Mapped[int | None] = mapped_column(Integer)
+    caption: Mapped[str | None] = mapped_column(String(200))
+    position: Mapped[int] = mapped_column(Integer, default=0)
+
+    concept: Mapped[Concept] = relationship(back_populates="images")
+
+    @property
+    def url(self) -> str:
+        return f"/uploads/{self.filename}"
 
 
 class MistakeImage(Base):
@@ -278,6 +315,11 @@ def blank_collections(mistake: Mistake) -> Mistake:
     mistake.concepts = []
     mistake.images = []
     return mistake
+
+
+def concept_options() -> tuple:
+    """Everything a concept serialises, eager-loaded. See `mistake_options`."""
+    return (selectinload(Concept.mistakes), selectinload(Concept.images))
 
 
 def mistake_options() -> tuple:

@@ -2,6 +2,12 @@
 
 from __future__ import annotations
 
+import io
+from pathlib import Path
+
+import pytest
+from PIL import Image
+
 from tests.conftest import MATH_MISTAKE, VERBAL_MISTAKE
 
 CONCEPT = {
@@ -223,3 +229,105 @@ async def test_stats_counts_the_questions_under_each_concept(client):
 
     assert {"key": CONCEPT["title"], "count": 1} in stats["by_concept"]
     assert {"key": empty["title"], "count": 0} in stats["by_concept"]
+
+
+# --- pictures on a concept -----------------------------------------------------
+
+
+@pytest.fixture
+def uploads(tmp_path, monkeypatch):
+    from app import config
+    from app.analysis import get_analyzer
+
+    directory = tmp_path / "uploads"
+    monkeypatch.setenv("UPLOAD_ROOT", str(directory))
+    config.get_settings.cache_clear()
+    get_analyzer.cache_clear()
+    yield directory
+    config.get_settings.cache_clear()
+    get_analyzer.cache_clear()
+
+
+def _png(size=(50, 40)) -> bytes:
+    buffer = io.BytesIO()
+    Image.new("RGB", size, "green").save(buffer, "PNG")
+    return buffer.getvalue()
+
+
+async def test_a_diagram_can_be_attached_to_a_concept(client, uploads):
+    concept = await _concept(client)
+
+    response = await client.post(
+        f"/concepts/{concept['id']}/images",
+        files={"file": ("diagram.png", _png(), "image/png")},
+    )
+
+    assert response.status_code == 201, response.text
+    body = response.json()
+    assert len(body["images"]) == 1
+    assert body["images"][0]["url"].startswith("/uploads/")
+    assert (body["images"][0]["width"], body["images"][0]["height"]) == (50, 40)
+    assert (uploads / Path(body["images"][0]["url"]).name).exists()
+
+
+async def test_a_concepts_diagrams_come_back_with_it_everywhere(client, uploads):
+    concept = await _concept(client)
+    await client.post(
+        f"/concepts/{concept['id']}/images",
+        files={"file": ("diagram.png", _png(), "image/png")},
+    )
+
+    assert len((await client.get(f"/concepts/{concept['id']}")).json()["images"]) == 1
+    assert len((await client.get("/concepts")).json()[0]["images"]) == 1
+
+
+async def test_a_concept_diagram_that_is_not_an_image_is_refused(client, uploads):
+    concept = await _concept(client)
+
+    response = await client.post(
+        f"/concepts/{concept['id']}/images",
+        files={"file": ("evil.png", b"#!/bin/sh\n", "image/png")},
+    )
+
+    assert response.status_code == 422
+    assert "not an image" in response.json()["detail"]
+
+
+async def test_a_concept_diagram_can_be_deleted(client, uploads):
+    concept = await _concept(client)
+    image = (
+        await client.post(
+            f"/concepts/{concept['id']}/images",
+            files={"file": ("diagram.png", _png(), "image/png")},
+        )
+    ).json()["images"][0]
+    path = uploads / Path(image["url"]).name
+
+    after = await client.delete(f"/concepts/{concept['id']}/images/{image['id']}")
+
+    assert after.json()["images"] == []
+    assert not path.exists()
+
+
+async def test_deleting_a_concept_takes_its_diagrams_with_it(client, uploads):
+    concept = await _concept(client)
+    await client.post(
+        f"/concepts/{concept['id']}/images",
+        files={"file": ("diagram.png", _png(), "image/png")},
+    )
+
+    assert (await client.delete(f"/concepts/{concept['id']}")).status_code == 204
+    assert (await client.get(f"/concepts/{concept['id']}")).status_code == 404
+
+
+async def test_you_cannot_attach_a_diagram_to_someone_elses_concept(client, uploads):
+    concept = await _concept(client)
+
+    response = await client.post(
+        f"/concepts/{concept['id']}/images",
+        files={"file": ("diagram.png", _png(), "image/png")},
+        headers={"X-User-Id": "someone-else"},
+    )
+
+    assert response.status_code == 404
+    assert not uploads.exists() or list(uploads.iterdir()) == []

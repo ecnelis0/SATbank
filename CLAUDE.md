@@ -55,6 +55,10 @@ moment an unrelated spec logged a fundamental math question.
 
 ## Two traps this codebase keeps setting
 
+- **`toBeVisible()` on an `<img>` says nothing about whether it loaded.** Visibility
+  lands before the bytes do, so assert the decode with `expect.poll(... img.complete &&
+  img.naturalWidth > 0)` rather than reading it once.
+
 - **A new row's collections must be initialised, not left to lazy-load.** Returning a
   freshly created `Mistake` or `Concept` and letting Pydantic read `.images` /
   `.concepts` raises `MissingGreenlet` at response time, not at the line that forgot.

@@ -21,6 +21,7 @@ const CONCEPTS: Concept[] = [
     created_at: new Date().toISOString(),
     updated_at: null,
     question_count: 2,
+    images: [],
   },
   {
     id: "c2",
@@ -30,6 +31,7 @@ const CONCEPTS: Concept[] = [
     created_at: new Date().toISOString(),
     updated_at: null,
     question_count: 0,
+    images: [],
   },
 ];
 

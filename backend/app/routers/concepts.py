@@ -2,12 +2,25 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from typing import Annotated
+
+from fastapi import APIRouter, File, HTTPException, UploadFile
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
+from ..config import get_settings
 from ..deps import SessionDep, UserDep
-from ..models import Concept, Mistake, concept_mistakes, mistake_options, utcnow
+from ..images import MAX_BYTES, ImageRejected, store
+from ..images import delete as delete_file
+from ..models import (
+    Concept,
+    ConceptImage,
+    Mistake,
+    concept_mistakes,
+    concept_options,
+    mistake_options,
+    utcnow,
+)
 from ..schemas import ConceptCreate, ConceptDetail, ConceptRead, ConceptUpdate
 
 router = APIRouter(prefix="/concepts", tags=["concepts"])
@@ -16,9 +29,12 @@ router = APIRouter(prefix="/concepts", tags=["concepts"])
 async def _load(session, user_id: str, concept_id: str, *, with_mistakes: bool = False):
     stmt = select(Concept).where(Concept.id == concept_id, Concept.user_id == user_id)
     if with_mistakes:
-        stmt = stmt.options(selectinload(Concept.mistakes).options(*mistake_options()))
+        stmt = stmt.options(
+            selectinload(Concept.mistakes).options(*mistake_options()),
+            selectinload(Concept.images),
+        )
     else:
-        stmt = stmt.options(selectinload(Concept.mistakes))
+        stmt = stmt.options(*concept_options())
 
     concept = await session.scalar(stmt)
     if concept is None:
@@ -35,6 +51,7 @@ def _read(concept: Concept) -> ConceptRead:
         body=concept.body,
         section=concept.section,
         question_count=len(concept.mistakes),
+        images=concept.images,
     )
 
 
@@ -43,7 +60,9 @@ async def create_concept(body: ConceptCreate, session: SessionDep, user_id: User
     concept = Concept(user_id=user_id, **body.model_dump())
     # Same reason as a new question's concepts: a brand-new concept has no questions,
     # and `_read` counting them must not become a lazy load after the commit.
+    # Both collections, for the same reason `blank_collections` exists for questions.
     concept.mistakes = []
+    concept.images = []
     session.add(concept)
     await session.commit()
     return _read(concept)
@@ -62,7 +81,10 @@ async def list_concepts(session: SessionDep, user_id: UserDep) -> list[ConceptRe
         ).all()
     )
     concepts = await session.scalars(
-        select(Concept).where(Concept.user_id == user_id).order_by(Concept.title)
+        select(Concept)
+        .where(Concept.user_id == user_id)
+        .options(selectinload(Concept.images))
+        .order_by(Concept.title)
     )
     reads = [
         ConceptRead(
@@ -73,6 +95,7 @@ async def list_concepts(session: SessionDep, user_id: UserDep) -> list[ConceptRe
             body=concept.body,
             section=concept.section,
             question_count=counts.get(concept.id, 0),
+            images=concept.images,
         )
         for concept in concepts
     ]
@@ -142,4 +165,59 @@ async def untag_question(
         await session.commit()
         concept = await _load(session, user_id, concept_id, with_mistakes=True)
 
+    return ConceptDetail(**_read(concept).model_dump(), mistakes=concept.mistakes)
+
+
+# --- pictures -----------------------------------------------------------------
+
+
+@router.post("/{concept_id}/images", response_model=ConceptDetail, status_code=201)
+async def upload_concept_image(
+    concept_id: str,
+    session: SessionDep,
+    user_id: UserDep,
+    file: Annotated[UploadFile, File()],
+) -> ConceptDetail:
+    """Attach a diagram to a concept. Ownership is checked before anything is written."""
+    concept = await _load(session, user_id, concept_id, with_mistakes=True)
+
+    data = await file.read(MAX_BYTES + 1)
+    try:
+        stored = store(data, get_settings().upload_root)
+    except ImageRejected as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    concept.images.append(
+        ConceptImage(
+            concept_id=concept.id,
+            filename=stored.filename,
+            content_type=stored.content_type,
+            byte_size=stored.size,
+            width=stored.width,
+            height=stored.height,
+            position=len(concept.images),
+        )
+    )
+    await session.commit()
+
+    concept = await _load(session, user_id, concept_id, with_mistakes=True)
+    return ConceptDetail(**_read(concept).model_dump(), mistakes=concept.mistakes)
+
+
+@router.delete("/{concept_id}/images/{image_id}", response_model=ConceptDetail)
+async def delete_concept_image(
+    concept_id: str, image_id: str, session: SessionDep, user_id: UserDep
+) -> ConceptDetail:
+    concept = await _load(session, user_id, concept_id, with_mistakes=True)
+
+    image = next((found for found in concept.images if found.id == image_id), None)
+    if image is None:
+        raise HTTPException(status_code=404, detail="No such image")
+
+    filename = image.filename
+    concept.images.remove(image)
+    await session.commit()
+    delete_file(filename, get_settings().upload_root)
+
+    concept = await _load(session, user_id, concept_id, with_mistakes=True)
     return ConceptDetail(**_read(concept).model_dump(), mistakes=concept.mistakes)

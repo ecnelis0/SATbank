@@ -5,6 +5,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { SelectField } from "@/components/app/fields";
+import { PendingImages, usePendingImages } from "@/components/app/pending-images";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,15 +32,36 @@ export function ConceptForm({
   const [title, setTitle] = useState(concept?.title ?? "");
   const [body, setBody] = useState(concept?.body ?? "");
   const [section, setSection] = useState<Section | "none">(concept?.section ?? "none");
+  // Only when writing a new one: an existing concept uploads straight to its own page.
+  const diagrams = usePendingImages();
 
   const save = useMutation({
-    mutationFn: () => {
+    mutationFn: async () => {
       const draft = {
         title: title.trim(),
         body: body.trim() || null,
         section: section === "none" ? null : section,
       };
-      return concept ? api.updateConcept(concept.id, draft) : api.createConcept(draft);
+      if (concept) return api.updateConcept(concept.id, draft);
+
+      const created = await api.createConcept(draft);
+      // Diagrams go up after the concept exists, one at a time so their order is the
+      // order they were dropped. A failed upload must not lose the concept itself.
+      let failed = 0;
+      for (const diagram of diagrams.images) {
+        try {
+          await api.uploadConceptImage(created.id, diagram.file);
+        } catch {
+          failed += 1;
+        }
+      }
+      if (failed > 0) {
+        toast.error(
+          `Concept saved, but ${failed} diagram${failed === 1 ? "" : "s"} would not ` +
+            "upload. Add them again from the concept.",
+        );
+      }
+      return created;
     },
     onSuccess: (saved) => {
       queryClient.invalidateQueries({ queryKey: keys.concepts() });
@@ -49,6 +71,7 @@ export function ConceptForm({
         setTitle("");
         setBody("");
         setSection("none");
+        diagrams.clear();
       }
       toast.success(concept ? "Saved." : "Concept added.");
       onDone?.(saved);
@@ -86,6 +109,23 @@ export function ConceptForm({
           onChange={(event) => setBody(event.target.value)}
         />
       </div>
+
+      {!concept && (
+        <div>
+          <Label htmlFor="concept-diagrams">Diagrams</Label>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Optional. A figure, a worked example, a photo of the rule.
+          </p>
+          <div id="concept-diagrams" className="mt-1.5">
+            <PendingImages
+              images={diagrams.images}
+              onAdd={diagrams.add}
+              onRemove={diagrams.remove}
+              disabled={save.isPending}
+            />
+          </div>
+        </div>
+      )}
 
       <SelectField
         label="Section"

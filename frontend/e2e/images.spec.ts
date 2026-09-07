@@ -22,11 +22,17 @@ test("a picture can be attached to a question and zoomed", async ({ page }) => {
   const thumbnail = page.getByRole("img", { name: "Picture 1 of the question" });
   await expect(thumbnail).toBeVisible({ timeout: 15_000 });
 
-  // It is really painted, not merely in the DOM: a decoded image has a natural size.
-  const painted = await thumbnail.evaluate(
-    (img: HTMLImageElement) => img.complete && img.naturalWidth > 0,
-  );
-  expect(painted).toBe(true);
+  // Really painted, not merely in the DOM: a decoded image has a natural size.
+  // Polled, because visibility lands before the bytes do.
+  await expect
+    .poll(
+      () =>
+        thumbnail.evaluate(
+          (img: HTMLImageElement) => img.complete && img.naturalWidth > 0,
+        ),
+      { timeout: 15_000 },
+    )
+    .toBe(true);
 
   // Zoom: click the thumbnail with a real pointer and check the full-size view opens.
   await page.getByRole("button", { name: "Open picture 1 full size" }).click();
