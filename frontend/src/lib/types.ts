@@ -129,6 +129,7 @@ export interface TopicCount {
 export interface Stats {
   total_mistakes: number;
   due_now: number;
+  untagged_questions: number;
   reviews_completed: number;
   by_error_type: SlotCount[];
   by_urgency: SlotCount[];
@@ -174,6 +175,7 @@ export interface BankQuery {
   logged_after: string | null;
   logged_before: string | null;
   only_due: boolean;
+  has_concept: boolean | null;
   sort: BankSort;
   limit: number;
 }

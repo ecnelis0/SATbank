@@ -175,12 +175,36 @@ export function Categories() {
           {concepts.map((concept) => (
             <Item
               key={concept.id}
-              label={concept.title}
+              label={
+                <span className="flex items-center gap-1.5">
+                  <span className="truncate">{concept.title}</span>
+                  {/* A concept with nothing tagged filters to an empty bank. Saying
+                      so here is cheaper than letting them find out by clicking. */}
+                  {concept.question_count === 0 && (
+                    <span className="shrink-0 text-[10px] text-muted-foreground">
+                      nothing tagged
+                    </span>
+                  )}
+                </span>
+              }
               count={concept.question_count}
               selected={has(facets, "concept_ids", concept.id)}
               onToggle={() => setFacets(toggle(facets, "concept_ids", concept.id))}
             />
           ))}
+          {data.untagged_questions > 0 && (
+            <Item
+              label={<span className="text-muted-foreground">No concept yet</span>}
+              count={data.untagged_questions}
+              selected={facets.hasConcept === false}
+              onToggle={() =>
+                setFacets({
+                  ...facets,
+                  hasConcept: facets.hasConcept === false ? null : false,
+                })
+              }
+            />
+          )}
         </Group>
       )}
 

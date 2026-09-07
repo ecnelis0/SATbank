@@ -10,9 +10,33 @@ import { renderWithQuery } from "@/test/render";
 const push = vi.fn();
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
 
+const CONCEPTS = [
+  {
+    id: "c1",
+    title: "Circumference gives the radius",
+    body: null,
+    section: "math" as const,
+    created_at: new Date().toISOString(),
+    updated_at: null,
+    question_count: 2,
+    images: [],
+  },
+  {
+    id: "c2",
+    title: "inverse trig",
+    body: null,
+    section: null,
+    created_at: new Date().toISOString(),
+    updated_at: null,
+    question_count: 0,
+    images: [],
+  },
+];
+
 const STATS: Stats = {
   total_mistakes: 6,
   due_now: 1,
+  untagged_questions: 2,
   reviews_completed: 0,
   by_error_type: [
     { key: "concept_gap", count: 3 },
@@ -36,6 +60,7 @@ const STATS: Stats = {
 
 async function open() {
   vi.spyOn(api, "stats").mockResolvedValue(STATS);
+  vi.spyOn(api, "listConcepts").mockResolvedValue(CONCEPTS);
   const user = userEvent.setup();
   renderWithQuery(<Categories />);
   await screen.findByText("How urgent");
@@ -136,5 +161,46 @@ describe("Categories", () => {
     await user.click(screen.getByRole("button", { name: "Expand Math" }));
     const topic = screen.getByRole("checkbox", { name: /math fundamentals/ });
     expect(within(topic).getByText("3")).toBeInTheDocument();
+  });
+});
+
+
+describe("Categories concepts", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    push.mockClear();
+  });
+
+  it("warns that a concept has nothing tagged, rather than letting you find out by clicking", async () => {
+    await open();
+
+    const empty = await screen.findByRole("checkbox", { name: /inverse trig/ });
+    expect(within(empty).getByText("nothing tagged")).toBeInTheDocument();
+
+    // The one that does have questions is not marked.
+    const full = screen.getByRole("checkbox", { name: /Circumference gives the radius/ });
+    expect(within(full).queryByText("nothing tagged")).not.toBeInTheDocument();
+  });
+
+  it("offers the questions filed under no concept at all", async () => {
+    const user = await open();
+
+    await user.click(await screen.findByRole("checkbox", { name: /No concept yet/ }));
+    await user.click(screen.getByRole("button", { name: "Show 1 filter" }));
+
+    const url = new URL(push.mock.calls[0][0], "http://x");
+    expect(url.searchParams.get("tagged")).toBe("0");
+  });
+
+  it("filters by a concept id, not by its title", async () => {
+    const user = await open();
+
+    await user.click(
+      await screen.findByRole("checkbox", { name: /Circumference gives the radius/ }),
+    );
+    await user.click(screen.getByRole("button", { name: "Show 1 filter" }));
+
+    const url = new URL(push.mock.calls[0][0], "http://x");
+    expect(url.searchParams.getAll("concept")).toEqual(["c1"]);
   });
 });

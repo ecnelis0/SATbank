@@ -25,6 +25,11 @@ the question you got wrong. Its own tab: write one down in your own words, then 
 questions onto it after the fact** from the question's page. Tagging is many-to-many —
 a question can sit under several concepts, and a concept collects many questions.
 
+A concept with nothing tagged is marked **"nothing tagged"** in the rail, and filtering
+by it says which concept is empty rather than showing a bare "nothing matches". The rail
+also offers **"No concept yet"** — every question filed under nothing — and the dashboard
+says how many those are, so the gap is visible instead of something you find by scrolling.
+
 Tag from either end: from a question's page, or from the concept's own page — there is
 a search-and-pick list at the bottom of every concept, and what you tag appears
 underneath it immediately. Every question in the bank shows the concepts it belongs to

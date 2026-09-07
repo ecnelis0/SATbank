@@ -93,6 +93,11 @@ class BankQuery(BaseModel):
         default=None, description="Only questions logged on or before this date."
     )
     only_due: bool = Field(default=False, description="Only questions with a review due right now.")
+    has_concept: bool | None = Field(
+        default=None,
+        description="True for questions filed under some concept, False for the ones "
+        "filed under none. Leave unset for both.",
+    )
     sort: Sort = "newest"
     limit: int = Field(default=25, ge=1, le=100)
 
@@ -126,6 +131,9 @@ def build_statement(user_id: str, query: BankQuery):
         stmt = stmt.where(
             Mistake.created_at <= datetime.combine(query.logged_before, time.max, tzinfo=UTC)
         )
+    if query.has_concept is not None:
+        tagged = Mistake.concepts.any()
+        stmt = stmt.where(tagged if query.has_concept else ~tagged)
     if query.only_due:
         stmt = stmt.where(
             Mistake.reviews.any(
@@ -180,6 +188,10 @@ def describe(query: BankQuery) -> str:
         parts.append(f"logged since {query.logged_after}")
     elif query.logged_before:
         parts.append(f"logged before {query.logged_before}")
+    if query.has_concept is True:
+        parts.append("filed under a concept")
+    elif query.has_concept is False:
+        parts.append("not filed under any concept")
     if query.only_due:
         parts.append("due for review now")
 

@@ -61,6 +61,11 @@ async def stats(session: SessionDep, user_id: UserDep) -> Stats:
             ReviewEvent.due_at <= utcnow(),
         )
     )
+    untagged = await session.scalar(
+        select(func.count())
+        .select_from(Mistake)
+        .where(Mistake.user_id == user_id, ~Mistake.concepts.any())
+    )
     completed = await session.scalar(
         select(func.count())
         .select_from(ReviewEvent)
@@ -74,6 +79,7 @@ async def stats(session: SessionDep, user_id: UserDep) -> Stats:
     return Stats(
         total_mistakes=total or 0,
         due_now=due or 0,
+        untagged_questions=untagged or 0,
         reviews_completed=completed or 0,
         by_error_type=await _grouped(session, user_id, Mistake.error_type),
         by_urgency=await _grouped(session, user_id, Mistake.urgency),

@@ -73,6 +73,29 @@ function BankList() {
 
   const filtering = !isEmpty(facets);
 
+  // A concept with nothing tagged returns an empty bank, which is correct and reads
+  // exactly like a broken filter. Say which concept, and offer the way out.
+  const onlyEmptyConcept =
+    facets.concept_ids.length === 1 &&
+    facets.urgency.length === 0 &&
+    facets.section.length === 0 &&
+    facets.error_type.length === 0 &&
+    facets.topics.length === 0 &&
+    facets.hasConcept === null &&
+    !facets.text.trim();
+
+  const emptyTitle = onlyEmptyConcept
+    ? `Nothing is tagged with \u201c${conceptTitle(facets.concept_ids[0])}\u201d yet.`
+    : filtering
+      ? "Nothing matches all of those."
+      : "Nothing here.";
+
+  const emptyBody = onlyEmptyConcept
+    ? "The concept exists \u2014 no question has been filed under it. Open it and tag some, or tag from a question\u2019s own page."
+    : filtering
+      ? "The filters narrow each other, so a question has to satisfy every one. Drop one and see."
+      : "No question in the bank yet.";
+
   return (
     <div className="space-y-6">
       <div>
@@ -99,6 +122,12 @@ function BankList() {
               onRemove={() => apply(toggle(facets, "concept_ids", value))}
             />
           ))}
+          {facets.hasConcept !== null && (
+            <Pill
+              label={facets.hasConcept ? "Filed under a concept" : "No concept yet"}
+              onRemove={() => apply({ ...facets, hasConcept: null })}
+            />
+          )}
           {facets.urgency.map((value) => (
             <Pill
               key={value}
@@ -151,13 +180,13 @@ function BankList() {
         </>
       ) : (
         <Empty
-          title={filtering ? "Nothing matches all of those." : "Nothing here."}
-          body={
-            filtering
-              ? "The filters narrow each other, so a question has to satisfy every one. Drop one and see."
-              : "No question in the bank yet."
+          title={emptyTitle}
+          body={emptyBody}
+          action={
+            onlyEmptyConcept
+              ? { href: `/concepts/${facets.concept_ids[0]}`, label: "Tag questions with it" }
+              : { href: "/log", label: "Log a miss" }
           }
-          action={{ href: "/log", label: "Log a miss" }}
         />
       )}
     </div>

@@ -1,6 +1,8 @@
 import Link from "next/link";
 
-import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+
+import { Button, buttonVariants } from "@/components/ui/button";
 
 export function Empty({
   title,
@@ -19,9 +21,9 @@ export function Empty({
       <p className="font-medium">{title}</p>
       <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">{body}</p>
       {action && (
-        <Button render={<Link href={action.href} />} nativeButton={false} className="mt-5">
+        <Link href={action.href} className={cn(buttonVariants(), "mt-5")}>
           {action.label}
-        </Button>
+        </Link>
       )}
       {onAction && (
         <Button className="mt-5" onClick={onAction.onClick}>

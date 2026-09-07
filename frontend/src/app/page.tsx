@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Empty } from "@/components/app/empty";
 import { MistakeCard } from "@/components/app/mistake-card";
 import { UrgencyBadge } from "@/components/app/urgency-badge";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api, keys } from "@/lib/api";
@@ -57,13 +57,13 @@ export default function DashboardPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button render={<Link href="/log" />} nativeButton={false} variant="secondary">
+          <Link href="/log" className={buttonVariants({ variant: "secondary" })}>
             Log a miss
-          </Button>
+          </Link>
           {data.due_now > 0 && (
-            <Button render={<Link href="/review" />} nativeButton={false}>
+            <Link href="/review" className={buttonVariants()}>
               Review {data.due_now}
-            </Button>
+            </Link>
           )}
         </div>
       </div>
@@ -82,6 +82,20 @@ export default function DashboardPage() {
         />
       ) : (
         <>
+          {data.untagged_questions > 0 && (
+            <Link
+              href="/bank?tagged=0"
+              className="flex items-center justify-between gap-3 rounded-lg border border-dashed px-4 py-3 transition-colors hover:bg-muted/50"
+            >
+              <span className="text-sm">
+                <span className="font-medium">{data.untagged_questions}</span> question
+                {data.untagged_questions === 1 ? " is" : "s are"} not filed under any
+                concept
+              </span>
+              <span className="shrink-0 text-xs text-muted-foreground">Tag them →</span>
+            </Link>
+          )}
+
           <section>
             <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
               What to fix first

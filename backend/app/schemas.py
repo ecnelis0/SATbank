@@ -233,6 +233,9 @@ class TopicCount(BaseModel):
 class Stats(BaseModel):
     total_mistakes: int
     due_now: int
+    # How many questions carry no concept at all - the number that makes the gap in
+    # the bank visible instead of something you notice by scrolling.
+    untagged_questions: int
     reviews_completed: int
     by_error_type: list[SlotCount]
     by_urgency: list[SlotCount]

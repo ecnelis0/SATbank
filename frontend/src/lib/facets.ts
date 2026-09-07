@@ -3,6 +3,8 @@ import type { BankQuery, ErrorType, Section, Urgency } from "./types";
 /** The facets the bank can be sliced by. Each holds a list: OR inside, AND across. */
 export interface Facets {
   concept_ids: string[];
+  /** true = only questions with a concept, false = only those without. */
+  hasConcept: boolean | null;
   urgency: Urgency[];
   section: Section[];
   error_type: ErrorType[];
@@ -12,6 +14,7 @@ export interface Facets {
 
 export const NO_FACETS: Facets = {
   concept_ids: [],
+  hasConcept: null,
   urgency: [],
   section: [],
   error_type: [],
@@ -21,6 +24,7 @@ export const NO_FACETS: Facets = {
 
 export function isEmpty(facets: Facets): boolean {
   return (
+    facets.hasConcept === null &&
     facets.concept_ids.length === 0 &&
     facets.urgency.length === 0 &&
     facets.section.length === 0 &&
@@ -32,6 +36,7 @@ export function isEmpty(facets: Facets): boolean {
 
 export function countSelected(facets: Facets): number {
   return (
+    (facets.hasConcept === null ? 0 : 1) +
     facets.concept_ids.length +
     facets.urgency.length +
     facets.section.length +
@@ -64,6 +69,7 @@ export function has(facets: Facets, key: keyof Facets, value: string): boolean {
 export function toSearchParams(facets: Facets): URLSearchParams {
   const params = new URLSearchParams();
   for (const value of facets.concept_ids) params.append("concept", value);
+  if (facets.hasConcept !== null) params.set("tagged", facets.hasConcept ? "1" : "0");
   for (const value of facets.urgency) params.append("urgency", value);
   for (const value of facets.section) params.append("section", value);
   for (const value of facets.error_type) params.append("error_type", value);
@@ -75,6 +81,7 @@ export function toSearchParams(facets: Facets): URLSearchParams {
 export function fromSearchParams(params: URLSearchParams | ReadonlyURLSearchParamsLike): Facets {
   return {
     concept_ids: params.getAll("concept"),
+    hasConcept: params.get("tagged") === null ? null : params.get("tagged") === "1",
     urgency: params.getAll("urgency") as Urgency[],
     section: params.getAll("section") as Section[],
     error_type: params.getAll("error_type") as ErrorType[],
@@ -92,6 +99,7 @@ interface ReadonlyURLSearchParamsLike {
 export function toQuery(facets: Facets): Partial<BankQuery> {
   return {
     concept_ids: facets.concept_ids,
+    has_concept: facets.hasConcept,
     urgency: facets.urgency,
     section: facets.section,
     error_type: facets.error_type,

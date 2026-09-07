@@ -69,6 +69,12 @@ moment an unrelated spec logged a fundamental math question.
   `.concepts` raises `MissingGreenlet` at response time, not at the line that forgot.
   `blank_collections()` and `mistake_options()` sit next to each other in `models.py`
   for that reason - a new relationship goes in both.
+- **A control that navigates is a link, not a button.** Base UI's
+  `<Button render={<Link/>}>` keeps `role="button"`, which tells a screen reader the
+  wrong thing about what will happen. Style the `Link` with `buttonVariants()` instead.
+- **An empty result caused by correct filtering still needs explaining.** A concept with
+  nothing tagged filters to an empty bank, which is right and reads as broken. Name the
+  cause and offer the way out.
 - **Duplicate accessible names are bugs.** The concepts page had a header button and an
   empty-state button both called "Write a concept", and the empty one linked to the page
   it was already on. It surfaced as a Playwright strict-mode violation; the fix was the

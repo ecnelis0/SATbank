@@ -19,6 +19,7 @@ export function TagQuestions({ concept }: { concept: ConceptDetail }) {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [untaggedOnly, setUntaggedOnly] = useState(true);
 
   const { data: candidates, isPending } = useQuery({
     queryKey: keys.mistakes({ q: search.trim() || undefined }),
@@ -39,7 +40,33 @@ export function TagQuestions({ concept }: { concept: ConceptDetail }) {
   });
 
   const already = new Set(concept.mistakes.map((mistake) => mistake.id));
-  const available = (candidates ?? []).filter((mistake) => !already.has(mistake.id));
+
+  // Rank by overlap with the concept, so the questions it is probably about are the
+  // ones you see first rather than whatever was logged most recently.
+  const words = concept.title
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((word) => word.length > 3);
+
+  const relevance = (mistake: (typeof candidates extends undefined ? never : NonNullable<typeof candidates>)[number]) => {
+    const haystack = [
+      mistake.question_text,
+      mistake.topic ?? "",
+      (mistake.tags ?? []).join(" "),
+    ]
+      .join(" ")
+      .toLowerCase();
+    let score = words.filter((word) => haystack.includes(word)).length * 2;
+    if (concept.section && mistake.section === concept.section) score += 1;
+    return score;
+  };
+
+  const available = (candidates ?? [])
+    .filter((mistake) => !already.has(mistake.id))
+    .filter((mistake) => !untaggedOnly || mistake.concepts.length === 0)
+    .map((mistake) => ({ mistake, score: relevance(mistake) }))
+    .sort((a, b) => b.score - a.score)
+    .map((entry) => entry.mistake);
 
   return (
     <div className="space-y-3">
@@ -59,6 +86,15 @@ export function TagQuestions({ concept }: { concept: ConceptDetail }) {
             placeholder="Search your questions…"
             aria-label="Search your questions"
           />
+
+          <label className="flex items-center gap-2 px-1 text-xs text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={untaggedOnly}
+              onChange={(event) => setUntaggedOnly(event.target.checked)}
+            />
+            Only questions with no concept yet
+          </label>
 
           {isPending ? (
             <p className="px-1 py-2 text-sm text-muted-foreground">Loading…</p>

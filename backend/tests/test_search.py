@@ -134,3 +134,55 @@ async def test_search_rejects_a_facet_value_that_is_not_in_the_vocabulary(client
     response = await client.post("/mistakes/search", json={"urgency": ["kind of urgent"]})
 
     assert response.status_code == 422
+
+
+# --- finding the questions that carry no concept -------------------------------
+
+
+async def test_untagged_questions_can_be_singled_out(client):
+    """The gap the side rail cannot show: questions filed under nothing."""
+    tagged = await _log(client, MATH_MISTAKE)
+    untagged = await _log(client, VERBAL_MISTAKE)
+    concept = (await client.post("/concepts", json={"title": "A concept"})).json()
+    await client.post(f"/concepts/{concept['id']}/questions/{tagged}")
+
+    without = (await client.post("/mistakes/search", json={"has_concept": False})).json()
+    with_one = (await client.post("/mistakes/search", json={"has_concept": True})).json()
+
+    assert [m["id"] for m in without] == [untagged]
+    assert [m["id"] for m in with_one] == [tagged]
+
+
+async def test_leaving_has_concept_unset_returns_both(client):
+    tagged = await _log(client, MATH_MISTAKE)
+    await _log(client, VERBAL_MISTAKE)
+    concept = (await client.post("/concepts", json={"title": "A concept"})).json()
+    await client.post(f"/concepts/{concept['id']}/questions/{tagged}")
+
+    assert len((await client.post("/mistakes/search", json={})).json()) == 2
+
+
+async def test_stats_counts_the_questions_with_no_concept(client):
+    tagged = await _log(client, MATH_MISTAKE)
+    await _log(client, VERBAL_MISTAKE)
+    await _log(client, VERBAL_MISTAKE)
+    concept = (await client.post("/concepts", json={"title": "A concept"})).json()
+    await client.post(f"/concepts/{concept['id']}/questions/{tagged}")
+
+    stats = (await client.get("/stats")).json()
+
+    assert stats["total_mistakes"] == 3
+    assert stats["untagged_questions"] == 2
+
+
+async def test_a_concept_with_nothing_tagged_is_reported_as_such(client):
+    """The bug: clicking an empty concept looked like the filter was broken."""
+    await _log(client, MATH_MISTAKE)
+    empty = (await client.post("/concepts", json={"title": "inverse trig"})).json()
+
+    found = (await client.post("/mistakes/search", json={"concept_ids": [empty["id"]]})).json()
+
+    assert found == []
+    assert empty["question_count"] == 0
+    # And the concept itself is still there to be seen and tagged into.
+    assert (await client.get(f"/concepts/{empty['id']}")).status_code == 200
