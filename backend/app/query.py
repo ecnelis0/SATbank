@@ -13,9 +13,17 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
-from .models import ErrorType, Mistake, ReviewEvent, Section, Urgency, utcnow
+from .models import (
+    Concept,
+    ErrorType,
+    Mistake,
+    ReviewEvent,
+    Section,
+    Urgency,
+    mistake_options,
+    utcnow,
+)
 from .review import URGENCY_RANK
 
 Sort = Literal["newest", "oldest", "most_urgent"]
@@ -31,6 +39,11 @@ class BankQuery(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+    concept_ids: list[str] = Field(
+        default_factory=list,
+        description="Concept ids to filter by. Not something a student says out loud, "
+        "so the assistant normally leaves this empty; the category rail sets it.",
+    )
     urgency: list[Urgency] = Field(default_factory=list)
     error_type: list[ErrorType] = Field(default_factory=list)
     section: list[Section] = Field(default_factory=list)
@@ -55,8 +68,10 @@ class BankQuery(BaseModel):
 
 
 def build_statement(user_id: str, query: BankQuery):
-    stmt = select(Mistake).where(Mistake.user_id == user_id).options(selectinload(Mistake.reviews))
+    stmt = select(Mistake).where(Mistake.user_id == user_id).options(*mistake_options())
 
+    if query.concept_ids:
+        stmt = stmt.where(Mistake.concepts.any(Concept.id.in_(query.concept_ids)))
     if query.urgency:
         stmt = stmt.where(Mistake.urgency.in_([u.value for u in query.urgency]))
     if query.error_type:
@@ -103,6 +118,9 @@ async def run_query(session: AsyncSession, user_id: str, query: BankQuery) -> li
 def describe(query: BankQuery) -> str:
     """A plain-English readback of the filter, so the student can see what was searched."""
     parts: list[str] = []
+    if query.concept_ids:
+        count = len(query.concept_ids)
+        parts.append(f"under {count} concept{'' if count == 1 else 's'}")
     if query.urgency:
         parts.append(" or ".join(u.value.replace("_", " ") for u in query.urgency))
     if query.section:

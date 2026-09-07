@@ -56,6 +56,15 @@ function BankList() {
     router.replace(query ? `/bank?${query}` : "/bank");
   };
 
+  // Only to label the concept pills: an id in the URL means nothing to read.
+  const { data: concepts } = useQuery({
+    queryKey: keys.concepts(),
+    queryFn: api.listConcepts,
+    enabled: selected.concept_ids.length > 0,
+  });
+  const conceptTitle = (id: string) =>
+    concepts?.find((concept) => concept.id === id)?.title ?? "concept";
+
   const query = toQuery(facets);
   const { data, isPending } = useQuery({
     queryKey: keys.search(query),
@@ -83,6 +92,13 @@ function BankList() {
 
       {filtering && (
         <div className="flex flex-wrap items-center gap-1.5">
+          {facets.concept_ids.map((value) => (
+            <Pill
+              key={value}
+              label={conceptTitle(value)}
+              onRemove={() => apply(toggle(facets, "concept_ids", value))}
+            />
+          ))}
           {facets.urgency.map((value) => (
             <Pill
               key={value}

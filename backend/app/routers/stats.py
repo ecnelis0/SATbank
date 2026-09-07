@@ -6,7 +6,7 @@ from fastapi import APIRouter
 from sqlalchemy import func, select
 
 from ..deps import SessionDep, UserDep
-from ..models import Mistake, ReviewEvent, ReviewOutcome, utcnow
+from ..models import Concept, Mistake, ReviewEvent, ReviewOutcome, concept_mistakes, utcnow
 from ..schemas import SlotCount, Stats, TopicCount
 
 router = APIRouter(prefix="/stats", tags=["stats"])
@@ -31,6 +31,19 @@ async def _topics(session, user_id: str) -> list[TopicCount]:
         .order_by(Mistake.section, func.count().desc(), Mistake.topic)
     )
     return [TopicCount(section=section, topic=topic, count=count) for section, topic, count in rows]
+
+
+async def _concepts(session, user_id: str) -> list[SlotCount]:
+    """Concept titles with how many questions are filed under each."""
+    rows = await session.execute(
+        select(Concept.title, func.count(concept_mistakes.c.mistake_id))
+        .select_from(Concept)
+        .outerjoin(concept_mistakes, Concept.id == concept_mistakes.c.concept_id)
+        .where(Concept.user_id == user_id)
+        .group_by(Concept.id, Concept.title)
+        .order_by(func.count(concept_mistakes.c.mistake_id).desc(), Concept.title)
+    )
+    return [SlotCount(key=title, count=count) for title, count in rows]
 
 
 @router.get("", response_model=Stats)
@@ -64,6 +77,7 @@ async def stats(session: SessionDep, user_id: UserDep) -> Stats:
         reviews_completed=completed or 0,
         by_error_type=await _grouped(session, user_id, Mistake.error_type),
         by_urgency=await _grouped(session, user_id, Mistake.urgency),
+        by_concept=await _concepts(session, user_id),
         by_section=await _grouped(session, user_id, Mistake.section),
         topics=await _topics(session, user_id),
     )

@@ -12,6 +12,7 @@ const LINKS = [
   { href: "/", label: "Dashboard" },
   { href: "/log", label: "Log a miss" },
   { href: "/bank", label: "The bank" },
+  { href: "/concepts", label: "Concepts" },
   { href: "/review", label: "Review" },
 ];
 

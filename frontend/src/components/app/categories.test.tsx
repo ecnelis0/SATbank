@@ -18,6 +18,7 @@ const STATS: Stats = {
     { key: "concept_gap", count: 3 },
     { key: "careless_arithmetic", count: 2 },
   ],
+  by_concept: [{ key: "Circumference gives the radius", count: 2 }],
   by_urgency: [
     { key: "fundamental", count: 1 },
     { key: "very_important", count: 3 },

@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from ..deps import SessionDep, UserDep
-from ..models import Mistake, ReviewEvent, ReviewOutcome, utcnow
+from ..models import Mistake, ReviewEvent, ReviewOutcome, mistake_options, utcnow
 from ..review import URGENCY_RANK, restart_ladder
 from ..schemas import DueReview, ReviewComplete, ReviewCompleteResult
 
@@ -19,7 +19,7 @@ def _open_for_user(user_id: str):
         select(ReviewEvent)
         .join(Mistake)
         .where(Mistake.user_id == user_id, ReviewEvent.completed_at.is_(None))
-        .options(selectinload(ReviewEvent.mistake).selectinload(Mistake.reviews))
+        .options(selectinload(ReviewEvent.mistake).options(*mistake_options()))
     )
 
 
@@ -76,7 +76,7 @@ async def complete(
         select(ReviewEvent)
         .join(Mistake)
         .where(ReviewEvent.id == review_id, Mistake.user_id == user_id)
-        .options(selectinload(ReviewEvent.mistake).selectinload(Mistake.reviews))
+        .options(selectinload(ReviewEvent.mistake).options(*mistake_options()))
     )
     if event is None:
         raise HTTPException(status_code=404, detail="No such review")

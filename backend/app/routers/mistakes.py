@@ -4,10 +4,18 @@ from __future__ import annotations
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
 from sqlalchemy import select
-from sqlalchemy.orm import selectinload
 
 from ..deps import SessionDep, UserDep
-from ..models import AnalysisStatus, ErrorType, Mistake, Section, Urgency, utcnow
+from ..models import (
+    AnalysisStatus,
+    ErrorType,
+    Mistake,
+    Section,
+    Urgency,
+    blank_collections,
+    mistake_options,
+    utcnow,
+)
 from ..query import BankQuery, run_query
 from ..review import build_ladder
 from ..schemas import MistakeCreate, MistakeRead, MistakeUpdate
@@ -40,6 +48,7 @@ async def log_mistake(
         **body.model_dump(),
     )
     mistake.reviews.extend(build_ladder(mistake.id, logged_at))
+    blank_collections(mistake)
     session.add(mistake)
     await session.commit()
 
@@ -64,7 +73,7 @@ async def list_mistakes(
     stmt = (
         select(Mistake)
         .where(Mistake.user_id == user_id)
-        .options(selectinload(Mistake.reviews))
+        .options(*mistake_options())
         .order_by(Mistake.created_at.desc())
     )
     if error_type is not None:
@@ -88,7 +97,7 @@ async def _load(session: SessionDep, user_id: str, mistake_id: str) -> Mistake:
     mistake = await session.scalar(
         select(Mistake)
         .where(Mistake.id == mistake_id, Mistake.user_id == user_id)
-        .options(selectinload(Mistake.reviews))
+        .options(*mistake_options())
     )
     if mistake is None:
         raise HTTPException(status_code=404, detail="No such mistake")

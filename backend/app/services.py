@@ -4,11 +4,10 @@ from __future__ import annotations
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from .analysis import MistakeInput, get_analyzer
 from .db import get_sessionmaker
-from .models import AnalysisStatus, Mistake, utcnow
+from .models import AnalysisStatus, Mistake, mistake_options, utcnow
 
 
 def to_input(mistake: Mistake) -> MistakeInput:
@@ -62,7 +61,7 @@ async def analyze_in_background(mistake_id: str) -> None:
     """Background-task entry point. Owns its own session; the request's is long gone."""
     async with get_sessionmaker()() as session:
         mistake = await session.scalar(
-            select(Mistake).where(Mistake.id == mistake_id).options(selectinload(Mistake.reviews))
+            select(Mistake).where(Mistake.id == mistake_id).options(*mistake_options())
         )
         if mistake is None:
             return

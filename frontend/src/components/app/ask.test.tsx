@@ -9,6 +9,7 @@ import { renderWithQuery } from "@/test/render";
 import type { Answer, BankQuery } from "@/lib/types";
 
 const EMPTY_QUERY: BankQuery = {
+  concept_ids: [],
   urgency: [],
   error_type: [],
   section: [],

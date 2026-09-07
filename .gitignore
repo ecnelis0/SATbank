@@ -10,6 +10,8 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 *.db
+backend/uploads/
+uploads/
 *.db-journal
 .DS_Store
 coverage/

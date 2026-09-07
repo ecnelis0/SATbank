@@ -6,8 +6,19 @@ import uuid
 from datetime import UTC, datetime
 from enum import StrEnum
 
-from sqlalchemy import JSON, DateTime, ForeignKey, Index, Integer, String, Text, TypeDecorator
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy import (
+    JSON,
+    Column,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Table,
+    Text,
+    TypeDecorator,
+)
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, selectinload
 
 
 def utcnow() -> datetime:
@@ -109,6 +120,38 @@ class ReviewOutcome(StrEnum):
     superseded = "superseded"
 
 
+# A concept is the thing behind a whole family of misses, so the link is many-to-many:
+# one question can sit under several concepts, and a concept collects many questions.
+concept_mistakes = Table(
+    "concept_mistakes",
+    Base.metadata,
+    Column("concept_id", ForeignKey("concepts.id", ondelete="CASCADE"), primary_key=True),
+    Column("mistake_id", ForeignKey("mistakes.id", ondelete="CASCADE"), primary_key=True),
+)
+
+
+class Concept(Base):
+    """Something worth knowing, written by the student, that questions hang off."""
+
+    __tablename__ = "concepts"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=new_id)
+    user_id: Mapped[str] = mapped_column(String(64), index=True)
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime(), default=utcnow)
+    updated_at: Mapped[datetime | None] = mapped_column(UtcDateTime())
+
+    title: Mapped[str] = mapped_column(String(200))
+    body: Mapped[str | None] = mapped_column(Text)
+    # Optional: plenty of concepts (careless-work habits, pacing) belong to neither.
+    section: Mapped[str | None] = mapped_column(String(32), index=True)
+
+    mistakes: Mapped[list[Mistake]] = relationship(
+        secondary=concept_mistakes,
+        back_populates="concepts",
+        order_by="Mistake.created_at.desc()",
+    )
+
+
 class Mistake(Base):
     """One question the student got wrong, plus the AI's analysis of why."""
 
@@ -153,6 +196,49 @@ class Mistake(Base):
         cascade="all, delete-orphan",
         order_by="ReviewEvent.due_at",
     )
+    images: Mapped[list[MistakeImage]] = relationship(
+        back_populates="mistake",
+        cascade="all, delete-orphan",
+        order_by="MistakeImage.position, MistakeImage.created_at",
+    )
+    concepts: Mapped[list[Concept]] = relationship(
+        secondary=concept_mistakes,
+        back_populates="mistakes",
+        order_by="Concept.title",
+    )
+
+
+class MistakeImage(Base):
+    """A picture of the question, filed against it.
+
+    Only the stored filename lives in the database; the bytes are on disk. The
+    filename is generated, never taken from the upload - an attacker-controlled
+    name is how you end up writing outside the upload directory.
+    """
+
+    __tablename__ = "mistake_images"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=new_id)
+    mistake_id: Mapped[str] = mapped_column(
+        ForeignKey("mistakes.id", ondelete="CASCADE"), index=True
+    )
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime(), default=utcnow)
+
+    filename: Mapped[str] = mapped_column(String(80))
+    content_type: Mapped[str] = mapped_column(String(64))
+    byte_size: Mapped[int] = mapped_column(Integer)
+    width: Mapped[int | None] = mapped_column(Integer)
+    height: Mapped[int | None] = mapped_column(Integer)
+    caption: Mapped[str | None] = mapped_column(String(200))
+    # The student's own order, so a question and its answer key stay in sequence.
+    position: Mapped[int] = mapped_column(Integer, default=0)
+
+    mistake: Mapped[Mistake] = relationship(back_populates="images")
+
+    @property
+    def url(self) -> str:
+        """Where the browser fetches it. Serialised straight into `ImageRead`."""
+        return f"/uploads/{self.filename}"
 
 
 class ReviewEvent(Base):
@@ -179,3 +265,29 @@ class ReviewEvent(Base):
 
 # The due-queue reads open events ordered by due date; this is its covering index.
 Index("ix_review_events_open", ReviewEvent.completed_at, ReviewEvent.due_at)
+
+
+def blank_collections(mistake: Mistake) -> Mistake:
+    """Initialise the collections a brand-new question serialises but never loads.
+
+    A pending question has no concepts and no images. Saying so explicitly stops the
+    response from trying to lazy-load them after the commit, which fails as a
+    MissingGreenlet rather than as a missing field. Kept next to `mistake_options`
+    because the two lists must be added to together.
+    """
+    mistake.concepts = []
+    mistake.images = []
+    return mistake
+
+
+def mistake_options() -> tuple:
+    """Everything `MistakeRead` serialises, eager-loaded.
+
+    One place, because a missing relationship here is not a missing field - it is a
+    MissingGreenlet at response time, on whichever endpoint was forgotten.
+    """
+    return (
+        selectinload(Mistake.reviews),
+        selectinload(Mistake.concepts),
+        selectinload(Mistake.images),
+    )

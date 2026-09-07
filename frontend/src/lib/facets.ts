@@ -2,6 +2,7 @@ import type { BankQuery, ErrorType, Section, Urgency } from "./types";
 
 /** The facets the bank can be sliced by. Each holds a list: OR inside, AND across. */
 export interface Facets {
+  concept_ids: string[];
   urgency: Urgency[];
   section: Section[];
   error_type: ErrorType[];
@@ -10,6 +11,7 @@ export interface Facets {
 }
 
 export const NO_FACETS: Facets = {
+  concept_ids: [],
   urgency: [],
   section: [],
   error_type: [],
@@ -19,6 +21,7 @@ export const NO_FACETS: Facets = {
 
 export function isEmpty(facets: Facets): boolean {
   return (
+    facets.concept_ids.length === 0 &&
     facets.urgency.length === 0 &&
     facets.section.length === 0 &&
     facets.error_type.length === 0 &&
@@ -29,6 +32,7 @@ export function isEmpty(facets: Facets): boolean {
 
 export function countSelected(facets: Facets): number {
   return (
+    facets.concept_ids.length +
     facets.urgency.length +
     facets.section.length +
     facets.error_type.length +
@@ -37,7 +41,9 @@ export function countSelected(facets: Facets): number {
 }
 
 /** Add or remove one value, leaving the other facets alone. */
-export function toggle<K extends "urgency" | "section" | "error_type" | "topics">(
+export function toggle<
+  K extends "urgency" | "section" | "error_type" | "topics" | "concept_ids",
+>(
   facets: Facets,
   key: K,
   value: Facets[K][number],
@@ -57,6 +63,7 @@ export function has(facets: Facets, key: keyof Facets, value: string): boolean {
 /** Facets <-> the URL, so a filtered view is a link you can share or go back to. */
 export function toSearchParams(facets: Facets): URLSearchParams {
   const params = new URLSearchParams();
+  for (const value of facets.concept_ids) params.append("concept", value);
   for (const value of facets.urgency) params.append("urgency", value);
   for (const value of facets.section) params.append("section", value);
   for (const value of facets.error_type) params.append("error_type", value);
@@ -67,6 +74,7 @@ export function toSearchParams(facets: Facets): URLSearchParams {
 
 export function fromSearchParams(params: URLSearchParams | ReadonlyURLSearchParamsLike): Facets {
   return {
+    concept_ids: params.getAll("concept"),
     urgency: params.getAll("urgency") as Urgency[],
     section: params.getAll("section") as Section[],
     error_type: params.getAll("error_type") as ErrorType[],
@@ -83,6 +91,7 @@ interface ReadonlyURLSearchParamsLike {
 
 export function toQuery(facets: Facets): Partial<BankQuery> {
   return {
+    concept_ids: facets.concept_ids,
     urgency: facets.urgency,
     section: facets.section,
     error_type: facets.error_type,

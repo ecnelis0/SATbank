@@ -29,6 +29,9 @@ a fixed 1h / 24h / 72h / 1w / 1mo ladder. See `README.md` for how to run it.
 - `backend/app/analysis/` — the analyzer contract (`analyze`, `interpret`, `summarise`),
   the offline stub, the Claude adapter. Adding a provider is one new file plus a line in
   `__init__.py`.
+- `backend/app/images.py` — upload validation. Every rule there is "do not trust the
+  upload": the filename is generated, the type comes from decoding the pixels, the size
+  is capped while reading.
 - `backend/app/query.py` — `BankQuery`, the structured filter the assistant produces.
   **The model writes the filter; the database writes the answer.** Never hand the model
   the bank and ask it to count - it will approximate, and the student cannot tell.
@@ -49,6 +52,18 @@ assume the bank lacks something** — another spec will eventually add it. Asser
 ("every row returned matches the filter") or build the exact condition from an
 impossible value in the URL. One test was written the wrong way and started failing the
 moment an unrelated spec logged a fundamental math question.
+
+## Two traps this codebase keeps setting
+
+- **A new row's collections must be initialised, not left to lazy-load.** Returning a
+  freshly created `Mistake` or `Concept` and letting Pydantic read `.images` /
+  `.concepts` raises `MissingGreenlet` at response time, not at the line that forgot.
+  `blank_collections()` and `mistake_options()` sit next to each other in `models.py`
+  for that reason - a new relationship goes in both.
+- **Duplicate accessible names are bugs.** The concepts page had a header button and an
+  empty-state button both called "Write a concept", and the empty one linked to the page
+  it was already on. It surfaced as a Playwright strict-mode violation; the fix was the
+  UI, not the selector.
 
 ## Conventions
 

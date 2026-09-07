@@ -1,6 +1,9 @@
 import type {
   Answer,
   BankQuery,
+  Concept,
+  ConceptDetail,
+  ConceptDraft,
   DueReview,
   ErrorType,
   Mistake,
@@ -107,6 +110,53 @@ export const api = {
       body: JSON.stringify({ outcome }),
     }),
 
+  /** Multipart, so the JSON Content-Type this client normally sets must not apply:
+   *  the browser has to write its own boundary. */
+  uploadImage: async (mistakeId: string, file: File) => {
+    const body = new FormData();
+    body.append("file", file);
+    const response = await fetch(`${API_URL}/mistakes/${mistakeId}/images`, {
+      method: "POST",
+      body,
+    });
+    if (!response.ok) {
+      const detail = await response
+        .json()
+        .then((parsed) => parsed?.detail)
+        .catch(() => null);
+      throw new ApiError(
+        typeof detail === "string" ? detail : response.statusText,
+        response.status,
+      );
+    }
+    return (await response.json()) as Mistake;
+  },
+
+  deleteImage: (mistakeId: string, imageId: string) =>
+    request<Mistake>(`/mistakes/${mistakeId}/images/${imageId}`, { method: "DELETE" }),
+
+  listConcepts: () => request<Concept[]>("/concepts"),
+
+  getConcept: (id: string) => request<ConceptDetail>(`/concepts/${id}`),
+
+  createConcept: (draft: ConceptDraft) =>
+    request<Concept>("/concepts", { method: "POST", body: JSON.stringify(draft) }),
+
+  updateConcept: (id: string, draft: Partial<ConceptDraft>) =>
+    request<Concept>(`/concepts/${id}`, { method: "PATCH", body: JSON.stringify(draft) }),
+
+  deleteConcept: (id: string) => request<void>(`/concepts/${id}`, { method: "DELETE" }),
+
+  tagQuestion: (conceptId: string, mistakeId: string) =>
+    request<ConceptDetail>(`/concepts/${conceptId}/questions/${mistakeId}`, {
+      method: "POST",
+    }),
+
+  untagQuestion: (conceptId: string, mistakeId: string) =>
+    request<ConceptDetail>(`/concepts/${conceptId}/questions/${mistakeId}`, {
+      method: "DELETE",
+    }),
+
   stats: () => request<Stats>("/stats"),
 
   /** Ask a question about the bank. The model writes the filter; the rows are real. */
@@ -122,4 +172,6 @@ export const keys = {
   due: () => ["reviews", "due"] as const,
   upcoming: () => ["reviews", "upcoming"] as const,
   stats: () => ["stats"] as const,
+  concepts: () => ["concepts"] as const,
+  concept: (id: string) => ["concept", id] as const,
 };

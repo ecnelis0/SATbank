@@ -79,6 +79,74 @@ class MistakeUpdate(BaseModel):
         return any(field in self.model_fields_set for field in ANALYSIS_FIELDS)
 
 
+class ConceptSummary(BaseModel):
+    """What a question shows about the concepts it is filed under."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    title: str
+
+
+class ConceptCreate(BaseModel):
+    title: str = Field(min_length=1, max_length=200)
+    body: str | None = None
+    section: Section | None = None
+
+    @field_validator("title")
+    @classmethod
+    def _strip_title(cls, value: str) -> str:
+        stripped = value.strip()
+        if not stripped:
+            raise ValueError("must not be blank")
+        return stripped
+
+
+class ConceptUpdate(BaseModel):
+    title: str | None = Field(default=None, max_length=200)
+    body: str | None = None
+    section: Section | None = None
+
+    @field_validator("title")
+    @classmethod
+    def _not_blanked(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        stripped = value.strip()
+        if not stripped:
+            raise ValueError("must not be blank")
+        return stripped
+
+
+class ConceptRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    created_at: datetime
+    updated_at: datetime | None
+    title: str
+    body: str | None
+    section: Section | None
+    question_count: int = 0
+
+
+class ConceptDetail(ConceptRead):
+    mistakes: list[MistakeRead] = []
+
+
+class ImageRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    url: str
+    content_type: str
+    byte_size: int
+    width: int | None
+    height: int | None
+    caption: str | None
+    position: int
+
+
 class ReviewEventRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -120,6 +188,8 @@ class MistakeRead(BaseModel):
     tags: list[str] | None
 
     reviews: list[ReviewEventRead] = []
+    concepts: list[ConceptSummary] = []
+    images: list[ImageRead] = []
 
 
 class DueReview(BaseModel):
@@ -165,5 +235,9 @@ class Stats(BaseModel):
     reviews_completed: int
     by_error_type: list[SlotCount]
     by_urgency: list[SlotCount]
+    by_concept: list[SlotCount]
     by_section: list[SlotCount]
     topics: list[TopicCount]
+
+
+ConceptDetail.model_rebuild()

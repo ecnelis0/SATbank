@@ -85,6 +85,10 @@ export function Categories() {
   const [expanded, setExpanded] = useState<Section[]>([]);
 
   const { data, isPending } = useQuery({ queryKey: keys.stats(), queryFn: api.stats });
+  const { data: concepts } = useQuery({
+    queryKey: keys.concepts(),
+    queryFn: api.listConcepts,
+  });
 
   if (isPending) {
     return (
@@ -165,6 +169,20 @@ export function Categories() {
           );
         })}
       </Group>
+
+      {concepts && concepts.length > 0 && (
+        <Group title="Concepts">
+          {concepts.map((concept) => (
+            <Item
+              key={concept.id}
+              label={concept.title}
+              count={concept.question_count}
+              selected={has(facets, "concept_ids", concept.id)}
+              onToggle={() => setFacets(toggle(facets, "concept_ids", concept.id))}
+            />
+          ))}
+        </Group>
+      )}
 
       {data.by_error_type.length > 0 && (
         <Group title="Why you missed it">

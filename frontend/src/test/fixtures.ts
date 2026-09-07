@@ -63,6 +63,8 @@ export function makeMistake(overrides: Partial<Mistake> = {}): Mistake {
     trap: "7 is what you get if you stop at 3x = 15 and read off the 15's factor.",
     tags: ["algebra"],
     reviews: makeLadder(),
+    concepts: [],
+    images: [],
     ...overrides,
   };
 }

@@ -24,6 +24,10 @@ class Settings(BaseSettings):
     # Explicit production origins. Dev is covered by the regex below instead, because
     # `next dev` silently moves to another port when 3000 is taken - and a browser
     # whose origin is not on the list gets a 400 on preflight and a blank page.
+    # Where uploaded pictures land. Outside the repo tree is fine; the path is only
+    # ever joined with names the server generated.
+    upload_root: str = "./uploads"
+
     cors_origins: str = ""
     cors_origin_regex: str = r"https?://(localhost|127\.0\.0\.1)(:\d+)?"
 

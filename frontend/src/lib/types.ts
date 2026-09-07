@@ -38,6 +38,40 @@ export interface ReviewEvent {
   outcome: ReviewOutcome | null;
 }
 
+export interface ConceptSummary {
+  id: string;
+  title: string;
+}
+
+export interface Concept extends ConceptSummary {
+  created_at: string;
+  updated_at: string | null;
+  body: string | null;
+  section: Section | null;
+  question_count: number;
+}
+
+export interface ConceptDetail extends Concept {
+  mistakes: Mistake[];
+}
+
+export interface ConceptDraft {
+  title: string;
+  body?: string | null;
+  section?: Section | null;
+}
+
+export interface MistakeImage {
+  id: string;
+  url: string;
+  content_type: string;
+  byte_size: number;
+  width: number | null;
+  height: number | null;
+  caption: string | null;
+  position: number;
+}
+
 export interface Mistake {
   id: string;
   created_at: string;
@@ -65,6 +99,8 @@ export interface Mistake {
   tags: string[] | null;
 
   reviews: ReviewEvent[];
+  concepts: ConceptSummary[];
+  images: MistakeImage[];
 }
 
 export interface DueReview {
@@ -95,6 +131,7 @@ export interface Stats {
   reviews_completed: number;
   by_error_type: SlotCount[];
   by_urgency: SlotCount[];
+  by_concept: SlotCount[];
   by_section: SlotCount[];
   topics: TopicCount[];
 }
@@ -126,6 +163,7 @@ export type BankSort = "newest" | "oldest" | "most_urgent";
 
 /** Mirrors `backend/app/query.py`. The assistant's reading of your sentence. */
 export interface BankQuery {
+  concept_ids: string[];
   urgency: Urgency[];
   error_type: ErrorType[];
   section: Section[];

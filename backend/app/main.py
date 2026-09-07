@@ -6,11 +6,13 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from .config import get_settings
 from .db import create_all
+from .images import upload_dir
 from .review import LADDER_LABELS
-from .routers import ask, mistakes, reviews, stats
+from .routers import ask, concepts, images, mistakes, reviews, stats
 
 
 @asynccontextmanager
@@ -30,9 +32,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Served straight off disk. Only files this server generated names for ever land here.
+app.mount(
+    "/uploads",
+    StaticFiles(directory=upload_dir(get_settings().upload_root)),
+    name="uploads",
+)
+
 app.include_router(mistakes.router)
 app.include_router(reviews.router)
 app.include_router(stats.router)
+app.include_router(images.router)
+app.include_router(concepts.router)
 app.include_router(ask.router)
 
 

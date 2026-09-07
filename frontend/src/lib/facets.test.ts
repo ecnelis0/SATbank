@@ -13,6 +13,7 @@ import {
 } from "@/lib/facets";
 
 const PICKED: Facets = {
+  concept_ids: [],
   urgency: ["very_important"],
   section: ["math"],
   error_type: ["concept_gap"],

@@ -43,6 +43,11 @@ export function MistakeCard({ mistake }: { mistake: Mistake }) {
           {mistake.topic && (
             <span className="text-xs text-muted-foreground">{mistake.topic}</span>
           )}
+          {mistake.concepts.map((concept) => (
+            <Badge key={concept.id} variant="outline" className="font-normal">
+              {concept.title}
+            </Badge>
+          ))}
         </div>
 
         <Link href={`/bank/${mistake.id}`} className="block">

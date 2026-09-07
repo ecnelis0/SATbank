@@ -7,6 +7,7 @@ import { toast } from "sonner";
 
 import { AnalysisPanel } from "@/components/app/analysis";
 import { Empty } from "@/components/app/empty";
+import { MistakeImages } from "@/components/app/images";
 import { UrgencyBadge } from "@/components/app/urgency-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -84,6 +85,8 @@ export function ReviewSession() {
           <p className="text-base leading-relaxed whitespace-pre-line">
             {mistake.question_text}
           </p>
+
+          {mistake.images.length > 0 && <MistakeImages mistake={mistake} />}
 
           {mistake.choices && (
             <ol className="space-y-1.5 text-sm">
