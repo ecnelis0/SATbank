@@ -56,6 +56,7 @@ export function makeMistake(overrides: Partial<Mistake> = {}): Mistake {
     error_type: "careless_arithmetic",
     topic: "linear equations",
     difficulty: "medium",
+    urgency: "important",
     why_wrong: "You solved for 3x and stopped there.",
     correct_reasoning: "Subtract 7, then divide by 3.",
     takeaway: "Finish the division before you pick.",

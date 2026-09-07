@@ -8,6 +8,7 @@ import type {
   Section,
   Stats,
   StudentOutcome,
+  Urgency,
 } from "./types";
 
 export const API_URL =
@@ -50,6 +51,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export interface MistakeFilters {
   error_type?: ErrorType;
+  urgency?: Urgency;
   section?: Section;
   topic?: string;
   q?: string;

@@ -19,6 +19,10 @@ export const ERROR_TYPES = [
 export type ErrorType = (typeof ERROR_TYPES)[number];
 
 export type Difficulty = "easy" | "medium" | "hard";
+
+/** How badly a question needs revisiting. Ordered most urgent first. */
+export const URGENCIES = ["fundamental", "very_important", "important"] as const;
+export type Urgency = (typeof URGENCIES)[number];
 export type AnalysisStatus = "not_requested" | "pending" | "ready" | "failed";
 export type ReviewOutcome = "correct" | "wrong" | "skipped" | "superseded";
 /** What the student can actually answer with. `superseded` is the ladder's own. */
@@ -53,6 +57,7 @@ export interface Mistake {
   error_type: ErrorType | null;
   topic: string | null;
   difficulty: Difficulty | null;
+  urgency: Urgency | null;
   why_wrong: string | null;
   correct_reasoning: string | null;
   takeaway: string | null;
@@ -83,6 +88,7 @@ export interface Stats {
   due_now: number;
   reviews_completed: number;
   by_error_type: SlotCount[];
+  by_urgency: SlotCount[];
   by_topic: SlotCount[];
   by_section: SlotCount[];
 }
@@ -101,6 +107,7 @@ export type MistakeEdit = Partial<
     | "error_type"
     | "topic"
     | "difficulty"
+    | "urgency"
     | "why_wrong"
     | "correct_reasoning"
     | "takeaway"

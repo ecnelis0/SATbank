@@ -7,7 +7,7 @@ canned; it is not meant to teach anyone anything.
 
 from __future__ import annotations
 
-from ..models import Difficulty, ErrorType
+from ..models import Difficulty, ErrorType, Urgency
 from .base import MistakeAnalysis, MistakeInput
 
 _MATH_HINTS = {
@@ -51,13 +51,26 @@ def _looks_numeric(value: str) -> bool:
     return True
 
 
+# A concept the student has not got is worth more attention than a slip they have.
+_URGENT_ERRORS = {
+    ErrorType.concept_gap: Urgency.fundamental,
+    ErrorType.formula_error: Urgency.fundamental,
+    ErrorType.grammar_rule_gap: Urgency.fundamental,
+    ErrorType.trap_answer: Urgency.very_important,
+    ErrorType.evidence_misread: Urgency.very_important,
+    ErrorType.misread_question: Urgency.very_important,
+}
+
+
 class StubAnalyzer:
     name = "stub"
 
     async def analyze(self, mistake: MistakeInput) -> MistakeAnalysis:
         topic = _guess_topic(mistake.question_text, mistake.section)
+        error_type = _guess_error_type(mistake)
         return MistakeAnalysis(
-            error_type=_guess_error_type(mistake),
+            error_type=error_type,
+            urgency=_URGENT_ERRORS.get(error_type, Urgency.important),
             topic=topic,
             difficulty=Difficulty.medium,
             why_wrong=(

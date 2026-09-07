@@ -14,7 +14,9 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 
-from .models import Mistake, ReviewEvent, ReviewOutcome, utcnow
+from sqlalchemy import case
+
+from .models import Mistake, ReviewEvent, ReviewOutcome, Urgency, utcnow
 
 LADDER: tuple[tuple[str, timedelta], ...] = (
     ("1h", timedelta(hours=1)),
@@ -25,6 +27,16 @@ LADDER: tuple[tuple[str, timedelta], ...] = (
 )
 
 LADDER_LABELS: tuple[str, ...] = tuple(label for label, _ in LADDER)
+
+# Two questions can come due in the same minute. When they do, the more urgent one
+# is the one to spend the attention on, so it comes first in the queue. Anything
+# with no urgency yet sorts last rather than in the middle.
+URGENCY_RANK = case(
+    (Mistake.urgency == Urgency.fundamental, 0),
+    (Mistake.urgency == Urgency.very_important, 1),
+    (Mistake.urgency == Urgency.important, 2),
+    else_=3,
+)
 
 
 def build_ladder(mistake_id: str, anchor: datetime, cycle: int = 0) -> list[ReviewEvent]:

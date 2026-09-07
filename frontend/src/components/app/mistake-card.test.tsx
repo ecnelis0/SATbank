@@ -24,6 +24,23 @@ describe("MistakeCard", () => {
     expect(screen.getByText(/next review in/)).toBeInTheDocument();
   });
 
+  it("says a hand-logged question is waiting, not that it is being analysed", () => {
+    // "analysing…" on a question nobody asked the AI about is a lie about state.
+    render(
+      <MistakeCard
+        mistake={makeMistake({
+          analysis_status: "not_requested",
+          error_type: null,
+          topic: null,
+          urgency: null,
+        })}
+      />,
+    );
+
+    expect(screen.getByText("no debrief yet")).toBeInTheDocument();
+    expect(screen.queryByText("analysing…")).not.toBeInTheDocument();
+  });
+
   it("does not claim a slot while the analysis is still running", () => {
     render(
       <MistakeCard

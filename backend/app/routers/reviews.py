@@ -8,7 +8,7 @@ from sqlalchemy.orm import selectinload
 
 from ..deps import SessionDep, UserDep
 from ..models import Mistake, ReviewEvent, ReviewOutcome, utcnow
-from ..review import restart_ladder
+from ..review import URGENCY_RANK, restart_ladder
 from ..schemas import DueReview, ReviewComplete, ReviewCompleteResult
 
 router = APIRouter(prefix="/reviews", tags=["reviews"])
@@ -20,7 +20,6 @@ def _open_for_user(user_id: str):
         .join(Mistake)
         .where(Mistake.user_id == user_id, ReviewEvent.completed_at.is_(None))
         .options(selectinload(ReviewEvent.mistake).selectinload(Mistake.reviews))
-        .order_by(ReviewEvent.due_at)
     )
 
 
@@ -30,8 +29,17 @@ async def due_now(
     user_id: UserDep,
     limit: int = Query(default=50, ge=1, le=200),
 ) -> list[DueReview]:
-    """Rungs whose time has come. Overdue ones are included, oldest first."""
-    stmt = _open_for_user(user_id).where(ReviewEvent.due_at <= utcnow()).limit(limit)
+    """Rungs whose time has come, most urgent first, then oldest.
+
+    Everything here is already due, so the question to put in front of the student
+    is the one that matters most - not merely the one that ripened first.
+    """
+    stmt = (
+        _open_for_user(user_id)
+        .where(ReviewEvent.due_at <= utcnow())
+        .order_by(URGENCY_RANK, ReviewEvent.due_at)
+        .limit(limit)
+    )
     events = await session.scalars(stmt)
     return [DueReview(review=e, mistake=e.mistake) for e in events]
 
@@ -42,7 +50,12 @@ async def upcoming(
     user_id: UserDep,
     limit: int = Query(default=50, ge=1, le=200),
 ) -> list[DueReview]:
-    stmt = _open_for_user(user_id).where(ReviewEvent.due_at > utcnow()).limit(limit)
+    stmt = (
+        _open_for_user(user_id)
+        .where(ReviewEvent.due_at > utcnow())
+        .order_by(ReviewEvent.due_at)
+        .limit(limit)
+    )
     events = await session.scalars(stmt)
     return [DueReview(review=e, mistake=e.mistake) for e in events]
 

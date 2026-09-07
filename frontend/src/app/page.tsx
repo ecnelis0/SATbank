@@ -5,12 +5,13 @@ import Link from "next/link";
 
 import { Empty } from "@/components/app/empty";
 import { MistakeCard } from "@/components/app/mistake-card";
+import { UrgencyBadge } from "@/components/app/urgency-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api, keys } from "@/lib/api";
-import { ERROR_TYPE_LABELS } from "@/lib/labels";
-import type { ErrorType } from "@/lib/types";
+import { ERROR_TYPE_LABELS, URGENCY_BLURBS } from "@/lib/labels";
+import { URGENCIES, type ErrorType, type Urgency } from "@/lib/types";
 
 function Stat({ value, label }: { value: number | string; label: string }) {
   return (
@@ -81,6 +82,33 @@ export default function DashboardPage() {
         />
       ) : (
         <>
+          <section>
+            <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
+              What to fix first
+            </h2>
+            <div className="mt-3 grid gap-2 sm:grid-cols-3">
+              {URGENCIES.map((urgency) => {
+                const count =
+                  data.by_urgency.find((slot) => slot.key === urgency)?.count ?? 0;
+                return (
+                  <Link
+                    key={urgency}
+                    href={`/bank?urgency=${urgency}`}
+                    className="rounded-lg border px-4 py-3 transition-colors hover:bg-muted/50"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <UrgencyBadge urgency={urgency as Urgency} />
+                      <span className="text-sm font-medium tabular-nums">{count}</span>
+                    </div>
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      {URGENCY_BLURBS[urgency as Urgency]}
+                    </p>
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
+
           <section>
             <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
               Why you&rsquo;re losing points

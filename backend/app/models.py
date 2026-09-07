@@ -88,6 +88,19 @@ class Difficulty(StrEnum):
     hard = "hard"
 
 
+class Urgency(StrEnum):
+    """How badly this one needs revisiting.
+
+    Ordered most urgent first: a hole in something everything else is built on
+    outranks a question that merely matters. `URGENCY_RANK` in `review.py` turns
+    this into the order of the review queue.
+    """
+
+    fundamental = "fundamental"
+    very_important = "very_important"
+    important = "important"
+
+
 class ReviewOutcome(StrEnum):
     correct = "correct"
     wrong = "wrong"
@@ -128,6 +141,7 @@ class Mistake(Base):
     error_type: Mapped[str | None] = mapped_column(String(32), index=True)
     topic: Mapped[str | None] = mapped_column(String(120), index=True)
     difficulty: Mapped[str | None] = mapped_column(String(16))
+    urgency: Mapped[str | None] = mapped_column(String(20), index=True)
     why_wrong: Mapped[str | None] = mapped_column(Text)
     correct_reasoning: Mapped[str | None] = mapped_column(Text)
     takeaway: Mapped[str | None] = mapped_column(Text)

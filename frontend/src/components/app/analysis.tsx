@@ -10,13 +10,23 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
-import { ERROR_TYPE_BLURBS, ERROR_TYPE_LABELS } from "@/lib/labels";
-import { ERROR_TYPES, type Difficulty, type ErrorType, type Mistake } from "@/lib/types";
+import { UrgencyBadge } from "@/components/app/urgency-badge";
+import { ERROR_TYPE_BLURBS, ERROR_TYPE_LABELS, URGENCY_LABELS } from "@/lib/labels";
+import {
+  ERROR_TYPES,
+  URGENCIES,
+  type Difficulty,
+  type ErrorType,
+  type Mistake,
+  type Urgency,
+} from "@/lib/types";
 
 const ERROR_TYPE_OPTIONS = ERROR_TYPES.map((value) => ({
   value,
   label: ERROR_TYPE_LABELS[value],
 }));
+
+const URGENCY_OPTIONS = URGENCIES.map((value) => ({ value, label: URGENCY_LABELS[value] }));
 
 const DIFFICULTY_OPTIONS: { value: Difficulty; label: string }[] = [
   { value: "easy", label: "Easy" },
@@ -39,6 +49,7 @@ function AnalysisEditor({ mistake, onDone }: { mistake: Mistake; onDone: () => v
   const [draft, setDraft] = useState({
     error_type: (mistake.error_type ?? "other") as ErrorType,
     difficulty: (mistake.difficulty ?? "medium") as Difficulty,
+    urgency: (mistake.urgency ?? "important") as Urgency,
     topic: mistake.topic ?? "",
     why_wrong: mistake.why_wrong ?? "",
     trap: mistake.trap ?? "",
@@ -72,6 +83,12 @@ function AnalysisEditor({ mistake, onDone }: { mistake: Mistake; onDone: () => v
           value={draft.error_type}
           options={ERROR_TYPE_OPTIONS}
           onChange={(value) => field("error_type", value)}
+        />
+        <SelectField
+          label="How urgent"
+          value={draft.urgency}
+          options={URGENCY_OPTIONS}
+          onChange={(value) => field("urgency", value)}
         />
         <SelectField
           label="Difficulty"
@@ -209,6 +226,7 @@ export function AnalysisPanel({
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center gap-2">
+        {mistake.urgency && <UrgencyBadge urgency={mistake.urgency} />}
         {mistake.error_type && (
           <Badge variant="secondary">{ERROR_TYPE_LABELS[mistake.error_type]}</Badge>
         )}
@@ -248,7 +266,7 @@ export function AnalysisPanel({
         {editable && (
           <div className="ml-auto flex gap-2">
             <Button size="sm" variant="ghost" onClick={() => setEditing(true)}>
-              Edit
+              Edit the debrief
             </Button>
             <Button
               size="sm"

@@ -10,8 +10,8 @@ import { MistakeCard } from "@/components/app/mistake-card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api, keys, type MistakeFilters } from "@/lib/api";
-import { ERROR_TYPE_LABELS, SECTION_LABELS } from "@/lib/labels";
-import type { ErrorType, Section } from "@/lib/types";
+import { ERROR_TYPE_LABELS, SECTION_LABELS, URGENCY_LABELS } from "@/lib/labels";
+import { URGENCIES, type ErrorType, type Section, type Urgency } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 function Chip({
@@ -41,11 +41,13 @@ function BankList() {
   const [search, setSearch] = useState("");
 
   const errorType = (params.get("error_type") as ErrorType | null) ?? undefined;
+  const urgency = (params.get("urgency") as Urgency | null) ?? undefined;
   const section = (params.get("section") as Section | null) ?? undefined;
   const topic = params.get("topic") ?? undefined;
 
   const filters: MistakeFilters = {
     error_type: errorType,
+    urgency,
     section,
     topic,
     q: search.trim() || undefined,
@@ -68,9 +70,14 @@ function BankList() {
       </div>
 
       <div className="flex flex-wrap gap-1.5">
-        <Chip href="/bank" active={!errorType && !section && !topic}>
+        <Chip href="/bank" active={!errorType && !section && !topic && !urgency}>
           Everything
         </Chip>
+        {URGENCIES.map((value) => (
+          <Chip key={value} href={`/bank?urgency=${value}`} active={urgency === value}>
+            {URGENCY_LABELS[value]}
+          </Chip>
+        ))}
         {(Object.keys(SECTION_LABELS) as Section[]).map((value) => (
           <Chip key={value} href={`/bank?section=${value}`} active={section === value}>
             {SECTION_LABELS[value]}

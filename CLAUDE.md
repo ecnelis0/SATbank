@@ -24,7 +24,8 @@ a fixed 1h / 24h / 72h / 1w / 1mo ladder. See `README.md` for how to run it.
 
 ## Shape of the code
 
-- `backend/app/review.py` — the ladder. The one file to read first.
+- `backend/app/review.py` — the ladder, and `URGENCY_RANK`, the case expression that
+  orders the due queue. The one file to read first.
 - `backend/app/analysis/` — the analyzer contract, the offline stub, the Claude adapter.
   Adding a provider is one new file plus a line in `__init__.py`.
 - `backend/app/services.py` — runs the analyzer and writes its verdict. Never raises on
@@ -42,7 +43,10 @@ a fixed 1h / 24h / 72h / 1w / 1mo ladder. See `README.md` for how to run it.
 - The AI writes the analysis, and the student can overwrite any of it. Anything they
   write is credited to them (`analyzed_by = "you"`), marked with `analysis_edited_at`,
   and guarded against a careless re-run. The app itself still authors no explanations.
-- `ErrorType` is a closed vocabulary. Free-text "why" labels would make the slot view
+- **A shared query helper must not carry an `.order_by()`.** SQLAlchemy *appends*
+  ordering, so a caller adding its own key silently gets it second. `_open_for_user`
+  returns unordered; each endpoint orders itself.
+- `ErrorType` and `Urgency` are closed vocabularies. Free-text "why" labels would make the slot view
   ungroupable. Add a member rather than letting the model invent one.
 - Every domain query is scoped by `user_id`, today from the `X-User-Id` header.
 - Lean on prewritten libraries and skin them; never rebuild a solved system (calendar,

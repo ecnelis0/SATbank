@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -87,7 +87,7 @@ describe("AnalysisPanel", () => {
     const user = userEvent.setup();
 
     renderWithQuery(<AnalysisPanel mistake={mistake} editable />);
-    await user.click(screen.getByRole("button", { name: "Edit" }));
+    await user.click(screen.getByRole("button", { name: "Edit the debrief" }));
 
     // The editor is seeded with the AI's text, not blank.
     expect(screen.getByLabelText("Remember")).toHaveValue(mistake.takeaway);
@@ -109,7 +109,7 @@ describe("AnalysisPanel", () => {
     const user = userEvent.setup();
 
     renderWithQuery(<AnalysisPanel mistake={makeMistake()} editable />);
-    await user.click(screen.getByRole("button", { name: "Edit" }));
+    await user.click(screen.getByRole("button", { name: "Edit the debrief" }));
     await user.type(screen.getByLabelText("Remember"), " and more");
     await user.click(screen.getByRole("button", { name: "Cancel" }));
 
@@ -166,7 +166,52 @@ describe("AnalysisPanel", () => {
   it("offers no edit controls where the panel is read-only", () => {
     renderWithQuery(<AnalysisPanel mistake={makeMistake()} />);
 
-    expect(screen.queryByRole("button", { name: "Edit" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Edit the debrief" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Re-run the AI" })).not.toBeInTheDocument();
+  });
+});
+
+describe("AnalysisPanel urgency", () => {
+  beforeEach(() => vi.restoreAllMocks());
+
+  it("shows how urgent the question is alongside the slot", () => {
+    renderWithQuery(<AnalysisPanel mistake={makeMistake({ urgency: "fundamental" })} />);
+
+    expect(screen.getByText("Fundamental concept")).toBeInTheDocument();
+  });
+
+  it("lets the student overrule the AI's urgency", async () => {
+    const mistake = makeMistake({ urgency: "important" });
+    const update = vi.spyOn(api, "updateMistake").mockResolvedValue(mistake);
+    const user = userEvent.setup();
+
+    renderWithQuery(<AnalysisPanel mistake={mistake} editable />);
+    await user.click(screen.getByRole("button", { name: "Edit the debrief" }));
+
+    // Seeded with what the AI chose, not with a blank or a default.
+    expect(screen.getByLabelText("How urgent")).toHaveValue("important");
+
+    await user.selectOptions(screen.getByLabelText("How urgent"), "fundamental");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() =>
+      expect(update).toHaveBeenCalledWith(
+        mistake.id,
+        expect.objectContaining({ urgency: "fundamental" }),
+      ),
+    );
+  });
+
+  it("offers the three levels most urgent first", async () => {
+    const user = userEvent.setup();
+    renderWithQuery(<AnalysisPanel mistake={makeMistake()} editable />);
+    await user.click(screen.getByRole("button", { name: "Edit the debrief" }));
+
+    const options = within(screen.getByLabelText("How urgent")).getAllByRole("option");
+    expect(options.map((option) => option.textContent)).toEqual([
+      "Fundamental concept",
+      "Very important",
+      "Important",
+    ]);
   });
 });

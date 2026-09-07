@@ -52,6 +52,7 @@ async def stats(session: SessionDep, user_id: UserDep) -> Stats:
         due_now=due or 0,
         reviews_completed=completed or 0,
         by_error_type=await _grouped(session, user_id, Mistake.error_type),
+        by_urgency=await _grouped(session, user_id, Mistake.urgency),
         by_topic=await _grouped(session, user_id, Mistake.topic),
         by_section=await _grouped(session, user_id, Mistake.section),
     )

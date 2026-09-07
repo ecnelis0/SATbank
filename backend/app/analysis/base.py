@@ -10,7 +10,7 @@ from typing import Protocol
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from ..models import Difficulty, ErrorType
+from ..models import Difficulty, ErrorType, Urgency
 
 
 class MistakeInput(BaseModel):
@@ -38,6 +38,12 @@ class MistakeAnalysis(BaseModel):
         "'command of evidence'. Title-free, lowercase, under 60 characters."
     )
     difficulty: Difficulty
+    urgency: Urgency = Field(
+        description="How badly this needs revisiting. 'fundamental' when the miss "
+        "exposes a hole in something the rest of the section is built on; "
+        "'very_important' for a high-frequency skill or a trap they will meet again; "
+        "'important' otherwise. Judge the gap, not the question's difficulty."
+    )
     why_wrong: str = Field(
         description="Two to four sentences addressed to the student, explaining what "
         "their specific answer suggests they did, not just that it was incorrect."

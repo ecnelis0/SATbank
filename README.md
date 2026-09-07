@@ -18,6 +18,23 @@ and the ladder restarts from the top.
 Screens: a dashboard of slots ("why you're losing points"), a log form, the bank with
 filters, a question detail page with the analysis and its ladder, and a review session.
 
+## How urgent is it
+
+Every question carries one of three levels, most urgent first:
+
+| | |
+|---|---|
+| **Fundamental concept** | The miss exposes a hole in something the rest of the section is built on. |
+| **Very important** | A high-frequency skill, or a trap you will walk into again. |
+| **Important** | Worth coming back to, but not what is costing you the most. |
+
+The analyzer assigns it — judging the *gap*, not the question's difficulty — and you can
+overrule it like any other field. It is not just a label: **the review queue is ordered by
+urgency, then by date**, so when several questions are due at once the one that matters
+most is the one on screen. `/reviews/upcoming` stays chronological; urgency decides what
+to do now, not what the calendar looks like. The dashboard leads with a "what to fix
+first" row, and the bank filters by it.
+
 ## The AI is optional, and nothing it writes is final
 
 - **Log it and ask the AI** runs the debrief straight away.

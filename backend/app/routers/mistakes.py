@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from ..deps import SessionDep, UserDep
-from ..models import AnalysisStatus, ErrorType, Mistake, Section, utcnow
+from ..models import AnalysisStatus, ErrorType, Mistake, Section, Urgency, utcnow
 from ..review import build_ladder
 from ..schemas import MistakeCreate, MistakeRead, MistakeUpdate
 from ..services import analyze_in_background, analyze_mistake
@@ -52,6 +52,7 @@ async def list_mistakes(
     session: SessionDep,
     user_id: UserDep,
     error_type: ErrorType | None = None,
+    urgency: Urgency | None = None,
     section: Section | None = None,
     topic: str | None = None,
     status: AnalysisStatus | None = None,
@@ -67,6 +68,8 @@ async def list_mistakes(
     )
     if error_type is not None:
         stmt = stmt.where(Mistake.error_type == error_type)
+    if urgency is not None:
+        stmt = stmt.where(Mistake.urgency == urgency)
     if section is not None:
         stmt = stmt.where(Mistake.section == section)
     if topic is not None:

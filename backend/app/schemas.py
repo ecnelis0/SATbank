@@ -6,7 +6,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from .models import Difficulty, ErrorType, ReviewOutcome, Section
+from .models import Difficulty, ErrorType, ReviewOutcome, Section, Urgency
 
 
 class MistakeCreate(BaseModel):
@@ -31,6 +31,7 @@ ANALYSIS_FIELDS = (
     "error_type",
     "topic",
     "difficulty",
+    "urgency",
     "why_wrong",
     "correct_reasoning",
     "takeaway",
@@ -57,6 +58,7 @@ class MistakeUpdate(BaseModel):
     error_type: ErrorType | None = None
     topic: str | None = Field(default=None, max_length=120)
     difficulty: Difficulty | None = None
+    urgency: Urgency | None = None
     why_wrong: str | None = None
     correct_reasoning: str | None = None
     takeaway: str | None = None
@@ -110,6 +112,7 @@ class MistakeRead(BaseModel):
     error_type: ErrorType | None
     topic: str | None
     difficulty: Difficulty | None
+    urgency: Urgency | None
     why_wrong: str | None
     correct_reasoning: str | None
     takeaway: str | None
@@ -153,5 +156,6 @@ class Stats(BaseModel):
     due_now: int
     reviews_completed: int
     by_error_type: list[SlotCount]
+    by_urgency: list[SlotCount]
     by_topic: list[SlotCount]
     by_section: list[SlotCount]

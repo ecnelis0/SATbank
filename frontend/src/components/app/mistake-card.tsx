@@ -3,6 +3,7 @@
 import { formatDistanceToNowStrict, isPast } from "date-fns";
 import Link from "next/link";
 
+import { UrgencyBadge } from "@/components/app/urgency-badge";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { ERROR_TYPE_LABELS, SECTION_LABELS } from "@/lib/labels";
@@ -23,12 +24,20 @@ export function MistakeCard({ mistake }: { mistake: Mistake }) {
     <Card className="transition-colors hover:border-foreground/20">
       <CardContent className="space-y-3">
         <div className="flex flex-wrap items-center gap-2">
+          {mistake.urgency && <UrgencyBadge urgency={mistake.urgency} />}
           <Badge variant="outline">{SECTION_LABELS[mistake.section]}</Badge>
           {mistake.error_type ? (
             <Badge variant="secondary">{ERROR_TYPE_LABELS[mistake.error_type]}</Badge>
           ) : (
             <Badge variant="outline">
-              {mistake.analysis_status === "failed" ? "no analysis" : "analysing…"}
+              {
+                {
+                  not_requested: "no debrief yet",
+                  pending: "analysing…",
+                  failed: "no analysis",
+                  ready: "no slot",
+                }[mistake.analysis_status]
+              }
             </Badge>
           )}
           {mistake.topic && (

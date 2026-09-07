@@ -7,6 +7,7 @@ import { toast } from "sonner";
 
 import { AnalysisPanel } from "@/components/app/analysis";
 import { Empty } from "@/components/app/empty";
+import { UrgencyBadge } from "@/components/app/urgency-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -72,7 +73,10 @@ export function ReviewSession() {
           {remaining} due · this one is the{" "}
           {INTERVAL_LABELS[review.interval_label] ?? review.interval_label} review
         </p>
-        <Badge variant="outline">{SECTION_LABELS[mistake.section]}</Badge>
+        <div className="flex items-center gap-2">
+          {mistake.urgency && <UrgencyBadge urgency={mistake.urgency} />}
+          <Badge variant="outline">{SECTION_LABELS[mistake.section]}</Badge>
+        </div>
       </div>
 
       <Card>

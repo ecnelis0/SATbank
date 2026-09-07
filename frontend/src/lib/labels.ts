@@ -1,4 +1,4 @@
-import type { ErrorType, Section } from "./types";
+import type { ErrorType, Section, Urgency } from "./types";
 
 /** The slot names the student reads. The keys are the AI's closed vocabulary. */
 export const ERROR_TYPE_LABELS: Record<ErrorType, string> = {
@@ -29,6 +29,25 @@ export const ERROR_TYPE_BLURBS: Record<ErrorType, string> = {
   grammar_rule_gap: "A rule of punctuation or structure that has not landed yet.",
   time_pressure_guess: "Not a knowledge problem. A clock problem.",
   other: "Does not fit the usual slots.",
+};
+
+export const URGENCY_LABELS: Record<Urgency, string> = {
+  fundamental: "Fundamental concept",
+  very_important: "Very important",
+  important: "Important",
+};
+
+export const URGENCY_BLURBS: Record<Urgency, string> = {
+  fundamental: "This is holding up everything built on top of it. Fix it first.",
+  very_important: "A skill or trap you will meet again. Worth real attention.",
+  important: "Worth coming back to, but not what is costing you the most.",
+};
+
+/** Loud to quiet, so the list reads as a priority order at a glance. */
+export const URGENCY_STYLES: Record<Urgency, string> = {
+  fundamental: "border-destructive/40 bg-destructive/10 text-destructive",
+  very_important: "border-foreground/25 bg-foreground/5 text-foreground",
+  important: "border-border bg-transparent text-muted-foreground",
 };
 
 export const SECTION_LABELS: Record<Section, string> = {
