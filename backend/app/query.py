@@ -29,6 +29,31 @@ from .review import URGENCY_RANK
 Sort = Literal["newest", "oldest", "most_urgent"]
 
 
+class Vocabulary(BaseModel):
+    """What this particular bank actually contains.
+
+    Handed to the model before it writes a filter. Without it, "questions about
+    circles" or "everything under the circumference concept" cannot be turned into a
+    filter at all - the model would be guessing at strings it has never seen.
+    """
+
+    topics: list[str] = Field(default_factory=list)
+    concepts: list[str] = Field(default_factory=list)
+    sources: list[str] = Field(default_factory=list)
+
+    def render(self) -> str:
+        def block(title: str, values: list[str]) -> str:
+            return f"{title}: {', '.join(values) if values else '(none yet)'}"
+
+        return "\n".join(
+            [
+                block("Topics in this bank", self.topics),
+                block("Concepts the student has written", self.concepts),
+                block("Sources", self.sources),
+            ]
+        )
+
+
 class BankQuery(BaseModel):
     """What the student asked for, in terms the database understands.
 
@@ -41,8 +66,13 @@ class BankQuery(BaseModel):
 
     concept_ids: list[str] = Field(
         default_factory=list,
-        description="Concept ids to filter by. Not something a student says out loud, "
-        "so the assistant normally leaves this empty; the category rail sets it.",
+        description="Concept ids. The category rail sets these; the model uses "
+        "`concepts` instead, which takes titles.",
+    )
+    concepts: list[str] = Field(
+        default_factory=list,
+        description="Concept titles, copied from the list of concepts you were given. "
+        "Matched as substrings, case-insensitively.",
     )
     urgency: list[Urgency] = Field(default_factory=list)
     error_type: list[ErrorType] = Field(default_factory=list)
@@ -72,6 +102,12 @@ def build_statement(user_id: str, query: BankQuery):
 
     if query.concept_ids:
         stmt = stmt.where(Mistake.concepts.any(Concept.id.in_(query.concept_ids)))
+    if query.concepts:
+        stmt = stmt.where(
+            Mistake.concepts.any(
+                or_(*[Concept.title.ilike(f"%{title}%") for title in query.concepts])
+            )
+        )
     if query.urgency:
         stmt = stmt.where(Mistake.urgency.in_([u.value for u in query.urgency]))
     if query.error_type:
@@ -118,6 +154,8 @@ async def run_query(session: AsyncSession, user_id: str, query: BankQuery) -> li
 def describe(query: BankQuery) -> str:
     """A plain-English readback of the filter, so the student can see what was searched."""
     parts: list[str] = []
+    if query.concepts:
+        parts.append("under " + " or ".join(query.concepts))
     if query.concept_ids:
         count = len(query.concept_ids)
         parts.append(f"under {count} concept{'' if count == 1 else 's'}")
@@ -148,12 +186,58 @@ def describe(query: BankQuery) -> str:
     return ", ".join(parts) if parts else "everything in the bank"
 
 
+async def vocabulary(session: AsyncSession, user_id: str) -> Vocabulary:
+    """The distinct values in this student's bank, for the model to choose from."""
+    topics = await session.scalars(
+        select(Mistake.topic)
+        .where(Mistake.user_id == user_id, Mistake.topic.is_not(None))
+        .distinct()
+    )
+    sources = await session.scalars(
+        select(Mistake.source)
+        .where(Mistake.user_id == user_id, Mistake.source.is_not(None))
+        .distinct()
+    )
+    concepts = await session.scalars(
+        select(Concept.title).where(Concept.user_id == user_id).distinct()
+    )
+    return Vocabulary(topics=sorted(topics), concepts=sorted(concepts), sources=sorted(sources))
+
+
+def overview(mistakes: list[Mistake]) -> str:
+    """Counts across the matched rows.
+
+    Questions like "what am I worst at" are answered from these, not by asking the
+    model to tally a list by eye - which it will do approximately, and confidently.
+    """
+    if not mistakes:
+        return ""
+
+    def tally(values: list[str]) -> str:
+        counts: dict[str, int] = {}
+        for value in values:
+            counts[value] = counts.get(value, 0) + 1
+        ranked = sorted(counts.items(), key=lambda item: (-item[1], item[0]))
+        return ", ".join(f"{key} ({count})" for key, count in ranked)
+
+    lines = [
+        f"By reason: {tally([m.error_type for m in mistakes if m.error_type])}",
+        f"By urgency: {tally([m.urgency for m in mistakes if m.urgency])}",
+        f"By topic: {tally([m.topic for m in mistakes if m.topic])}",
+        f"By section: {tally([m.section for m in mistakes])}",
+    ]
+    concepts = [concept.title for m in mistakes for concept in m.concepts]
+    if concepts:
+        lines.append(f"By concept: {tally(concepts)}")
+    return "\n".join(lines)
+
+
 def digest(mistakes: list[Mistake]) -> str:
     """A compact rendering of the results for the model to summarise. Facts only."""
     if not mistakes:
         return "No questions matched."
 
-    lines = [f"{len(mistakes)} question(s) matched:"]
+    lines = [f"{len(mistakes)} question(s) matched.", "", overview(mistakes), "", "Rows:"]
     for index, mistake in enumerate(mistakes, start=1):
         lines.append(
             f"{index}. [{mistake.urgency or 'unrated'}] [{mistake.section}] "

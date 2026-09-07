@@ -55,6 +55,11 @@ moment an unrelated spec logged a fundamental math question.
 
 ## Two traps this codebase keeps setting
 
+- **`assert s != before` proves *a* replacement applied, not *every* one.** An edit doing
+  two replacements in one file passed its assert with only the first applied, and the
+  vocabulary silently never reached the interpret prompt. Assert per replacement, or
+  grep for the result afterwards.
+
 - **`toBeVisible()` on an `<img>` says nothing about whether it loaded.** Visibility
   lands before the bytes do, so assert the decode with `expect.poll(... img.complete &&
   img.naturalWidth > 0)` rather than reading it once.

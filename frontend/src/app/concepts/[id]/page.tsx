@@ -10,6 +10,7 @@ import { ConceptForm } from "@/components/app/concept-form";
 import { ConceptImages } from "@/components/app/concept-images";
 import { Empty } from "@/components/app/empty";
 import { MistakeCard } from "@/components/app/mistake-card";
+import { TagQuestions } from "@/components/app/tag-questions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -118,16 +119,15 @@ export default function ConceptPage() {
           )}
         </div>
 
+        <TagQuestions concept={concept} />
+
         {concept.mistakes.length === 0 ? (
           <div className="rounded-xl border border-dashed px-6 py-10 text-center">
             <p className="text-sm font-medium">Nothing tagged yet.</p>
             <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
-              Open a question in the bank and tag it with this concept — the tag lives on
-              the question page.
+              Use the button above to tag questions with this concept, or tag from a
+              question&rsquo;s own page. Either way they show up here.
             </p>
-            <Button className="mt-4" onClick={() => router.push("/bank")}>
-              Go to the bank
-            </Button>
           </div>
         ) : (
           concept.mistakes.map((mistake) => (

@@ -9,7 +9,7 @@ from sqlalchemy import select
 
 from app.analysis.stub import StubAnalyzer
 from app.models import Mistake, ReviewEvent
-from app.query import BankQuery, describe
+from app.query import BankQuery, Vocabulary, describe
 from tests.conftest import MATH_MISTAKE, VERBAL_MISTAKE
 
 TODAY = date(2026, 9, 7)
@@ -38,11 +38,15 @@ async def _age(session_factory, mistake_id: str, days: int) -> None:
 # --- interpreting the sentence ------------------------------------------------
 
 
+EMPTY_VOCABULARY = Vocabulary()
+
+
 async def test_the_students_own_example_becomes_the_right_filter():
     query = await StubAnalyzer().interpret(
         "give me all the questions logged in the past 3 months that are very important "
         "and from the reading category",
         TODAY,
+        EMPTY_VOCABULARY,
     )
 
     assert query.urgency == ["very_important"]
@@ -52,7 +56,9 @@ async def test_the_students_own_example_becomes_the_right_filter():
 
 async def test_very_important_does_not_collapse_into_important():
     """'very important' contains 'important'; the longer phrase has to win."""
-    query = await StubAnalyzer().interpret("show me the very important ones", TODAY)
+    query = await StubAnalyzer().interpret(
+        "show me the very important ones", TODAY, EMPTY_VOCABULARY
+    )
 
     assert query.urgency == ["very_important"]
 
@@ -62,13 +68,13 @@ async def test_very_important_does_not_collapse_into_important():
     [("the past 3 months", 90), ("the last two weeks", 14), ("the past year", 365)],
 )
 async def test_relative_dates_resolve_to_absolute_ones(phrase, days):
-    query = await StubAnalyzer().interpret(f"what did I log in {phrase}", TODAY)
+    query = await StubAnalyzer().interpret(f"what did I log in {phrase}", TODAY, EMPTY_VOCABULARY)
 
     assert query.logged_after == TODAY - timedelta(days=days)
 
 
 async def test_a_question_with_no_constraints_searches_everything():
-    query = await StubAnalyzer().interpret("what does my bank look like", TODAY)
+    query = await StubAnalyzer().interpret("what does my bank look like", TODAY, EMPTY_VOCABULARY)
 
     assert query == BankQuery()
     assert describe(query) == "everything in the bank"
@@ -151,7 +157,7 @@ async def test_a_broken_interpreter_still_hands_back_the_bank(client, monkeypatc
     from app.routers import ask as ask_router
 
     class Broken(StubAnalyzer):
-        async def interpret(self, question, today):
+        async def interpret(self, question, today, vocabulary):
             raise RuntimeError("provider is down")
 
     monkeypatch.setattr(ask_router, "get_analyzer", lambda: Broken())
@@ -201,3 +207,78 @@ async def test_the_bank_can_be_asked_about_dates_on_both_sides(client, session_f
     assert (
         body["query"]["logged_after"] == (datetime.now(UTC).date() - timedelta(days=14)).isoformat()
     )
+
+
+# --- filtering by the bank's own words ------------------------------------------
+
+
+async def test_a_topic_the_bank_actually_has_is_matched(client):
+    circles = await _log(client, MATH_MISTAKE, topic="circles")
+    await _log(client, MATH_MISTAKE, topic="linear equations")
+
+    body = (await client.post("/ask", json={"question": "show me my circles questions"})).json()
+
+    assert [m["id"] for m in body["mistakes"]] == [circles]
+    assert "circles" in body["filter_description"]
+
+
+async def test_a_multi_word_topic_is_matched_out_of_order(client):
+    evidence = await _log(client, VERBAL_MISTAKE, topic="command of evidence")
+    await _log(client, MATH_MISTAKE, topic="circles")
+
+    body = (await client.post("/ask", json={"question": "the evidence command ones"})).json()
+
+    assert [m["id"] for m in body["mistakes"]] == [evidence]
+
+
+async def test_a_concept_can_be_asked_for_by_name(client):
+    tagged = await _log(client, MATH_MISTAKE)
+    await _log(client, VERBAL_MISTAKE)
+    concept = (
+        await client.post("/concepts", json={"title": "Circumference gives the radius"})
+    ).json()
+    await client.post(f"/concepts/{concept['id']}/questions/{tagged}")
+
+    body = (
+        await client.post(
+            "/ask", json={"question": "everything under circumference gives the radius"}
+        )
+    ).json()
+
+    assert [m["id"] for m in body["mistakes"]] == [tagged]
+    assert "under Circumference gives the radius" in body["filter_description"]
+
+
+async def test_a_common_word_in_a_concept_title_does_not_drag_it_in(client):
+    """A concept called "Read the question" must not match every question asked."""
+    tagged = await _log(client, MATH_MISTAKE)
+    concept = (await client.post("/concepts", json={"title": "Read the question"})).json()
+    await client.post(f"/concepts/{concept['id']}/questions/{tagged}")
+    await _log(client, VERBAL_MISTAKE)
+
+    body = (await client.post("/ask", json={"question": "show me the questions"})).json()
+
+    assert body["query"]["concepts"] == []
+    assert len(body["mistakes"]) == 2
+
+
+async def test_the_answer_says_which_analyzer_produced_it(client):
+    await _log(client, MATH_MISTAKE)
+
+    body = (await client.post("/ask", json={"question": "everything"})).json()
+
+    assert body["analyzer"] == "stub"
+    assert body["analyzer_ready"] is True
+
+
+async def test_an_overview_question_gets_the_counts_not_a_guess(client):
+    """ "What am I worst at" is answered from tallies, not by the model eyeballing rows."""
+    for _ in range(3):
+        await _log(client, MATH_MISTAKE, error_type="concept_gap", urgency="fundamental")
+    await _log(client, VERBAL_MISTAKE, error_type="trap_answer", urgency="important")
+
+    body = (await client.post("/ask", json={"question": "what am I worst at"})).json()
+
+    assert len(body["mistakes"]) == 4
+    assert "concept_gap (3)" in body["answer"]
+    assert "fundamental (3)" in body["answer"]

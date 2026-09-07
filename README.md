@@ -25,9 +25,11 @@ the question you got wrong. Its own tab: write one down in your own words, then 
 questions onto it after the fact** from the question's page. Tagging is many-to-many —
 a question can sit under several concepts, and a concept collects many questions.
 
-A concept's page lists everything filed under it, and the rail filters the bank by
-concept alongside every other facet. Deleting a concept removes only the tags; the
-questions are untouched.
+Tag from either end: from a question's page, or from the concept's own page — there is
+a search-and-pick list at the bottom of every concept, and what you tag appears
+underneath it immediately. Every question in the bank shows the concepts it belongs to
+on its card. The rail filters the bank by concept alongside every other facet. Deleting
+a concept removes only the tags; the questions are untouched.
 
 ## Pictures and diagrams
 
@@ -52,7 +54,14 @@ directory. Limit is 10MB per image; PNG, JPEG, GIF, WebP and HEIC. Files live in
 
 A rail on every page, opened with **Ask the bank** in the nav, with two tabs.
 
-**Ask** takes a question in your own words:
+**Ask** takes a question in your own words. Before writing the filter, the model is
+handed **what your bank actually contains** — your topics, your concept titles, your
+sources — so "the circles ones" and "everything under *Circumference gives the radius*"
+resolve to filters that match, instead of guessed strings that quietly match nothing.
+Overview questions ("what am I worst at") are answered from real tallies computed over
+the matched rows, not by asking the model to count a list by eye.
+
+Example:
 
 > give me all the questions logged in the past 3 months that are very important and from
 > the reading category
@@ -168,6 +177,15 @@ Rules that keep it out of trouble:
 `analyzer_ready: false` means a provider is selected but its key is missing — the
 difference between "the AI is off" and "the AI is misconfigured", which is otherwise only
 discoverable by watching an analysis fail. Override the model with `ANTHROPIC_MODEL`.
+
+The side panel says which analyzer answered, so the offline stub returning everything is
+never mistaken for a real search that matched everything.
+
+**This path is covered by tests, not just by hope.** `tests/test_claude_path.py` drives
+the real Anthropic SDK against a stand-in endpoint over a real HTTP stack, and checks the
+request shape (model, adaptive thinking, `json_schema` output), that the bank's
+vocabulary reaches the prompt, and that the structured response validates. Between that
+and production, only the host and the credential differ.
 
 The key is read from the environment on the **server** only. It is never sent to the
 browser and never appears in the client bundle.

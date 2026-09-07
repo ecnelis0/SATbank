@@ -111,3 +111,37 @@ test("deleting a concept keeps the questions", async ({ page }) => {
   await page.goto("/bank");
   await expect(page.getByRole("main").getByText(question)).toBeVisible({ timeout: 10_000 });
 });
+
+
+test("questions can be tagged from the concept's own page, and show up there", async ({
+  page,
+}) => {
+  const stamp = Date.now() % 100000;
+  const title = `Tag from concept ${stamp}`;
+  const question = `Tagged from the concept side ${stamp} [e2e]`;
+
+  await logQuestion(page, question);
+
+  await page.goto("/concepts");
+  await page.getByRole("button", { name: /Write (a|your first) concept/ }).first().click();
+  await page.getByLabel("The concept").fill(title);
+  await page.getByRole("button", { name: "Add concept" }).click();
+  await expect(page.getByText(title)).toBeVisible();
+  await page.getByText(title).click();
+  await expect(page).toHaveURL(/\/concepts\/[0-9a-f]{32}/);
+
+  // Tag from here, rather than having to go and find the question.
+  await expect(page.getByText("Nothing tagged yet.")).toBeVisible();
+  await page.getByRole("button", { name: "Tag questions with this concept" }).click();
+  await page.getByLabel("Search your questions").fill(`Tagged from the concept side ${stamp}`);
+  await page.getByRole("button", { name: new RegExp(`Tagged from the concept side ${stamp}`) }).click();
+
+  // It appears at the bottom of the concept immediately.
+  await expect(page.getByText("Nothing tagged yet.")).toBeHidden();
+  await expect(page.getByRole("main").getByText(question)).toBeVisible();
+
+  // And the bank's card for that question now says which concept it is from.
+  await page.goto("/bank");
+  const card = page.getByRole("main").getByText(question).locator("xpath=ancestor::div[3]");
+  await expect(card.getByText(title)).toBeVisible({ timeout: 10_000 });
+});

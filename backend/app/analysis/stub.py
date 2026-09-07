@@ -11,7 +11,7 @@ import re
 from datetime import date, timedelta
 
 from ..models import Difficulty, ErrorType, Section, Urgency
-from ..query import BankQuery
+from ..query import BankQuery, Vocabulary
 from .base import MistakeAnalysis, MistakeInput
 
 _MATH_HINTS = {
@@ -91,12 +91,13 @@ class StubAnalyzer:
             tags=[topic.replace(" ", "-"), mistake.section],
         )
 
-    async def interpret(self, question: str, today: date) -> BankQuery:
-        return _interpret(question, today)
+    async def interpret(self, question: str, today: date, vocabulary: Vocabulary) -> BankQuery:
+        return _interpret(question, today, vocabulary)
 
     async def summarise(self, question: str, digest: str) -> str:
-        first = digest.splitlines()[0]
-        return f"{first} (Offline assistant: set AI_PROVIDER=claude for a real answer.)"
+        """Reports the counts it was given. It does not attempt to answer."""
+        head = [line for line in digest.splitlines()[:6] if line and line != "Rows:"]
+        return "\n".join(head)
 
 
 # --- Asking the bank, offline -------------------------------------------------
@@ -140,6 +141,53 @@ _NUMBER_WORDS = {
 }
 
 
+# Words too common to be evidence that the student meant a particular topic.
+_STOPWORDS = {
+    "a",
+    "an",
+    "and",
+    "are",
+    "as",
+    "at",
+    "be",
+    "for",
+    "from",
+    "i",
+    "in",
+    "is",
+    "it",
+    "me",
+    "my",
+    "of",
+    "on",
+    "or",
+    "questions",
+    "show",
+    "that",
+    "the",
+    "to",
+    "what",
+    "which",
+    "with",
+}
+
+
+def _mentions(text: str, phrase: str) -> bool:
+    """Does the question refer to this topic or concept?
+
+    Whole phrase, or every meaningful word of it - so "circles" matches "circles"
+    and "command of evidence" matches "evidence command", but a concept titled
+    "Read the question" is not dragged in by the word "the".
+    """
+    phrase = phrase.lower().strip()
+    if not phrase:
+        return False
+    if phrase in text:
+        return True
+    words = [word for word in re.findall(r"[a-z]+", phrase) if word not in _STOPWORDS]
+    return bool(words) and all(word in text for word in words)
+
+
 def _since(text: str, today: date) -> date | None:
     """'in the past 3 months' / 'last two weeks' -> an absolute date."""
     # The count is optional: "the past year" means one of them.
@@ -151,7 +199,7 @@ def _since(text: str, today: date) -> date | None:
     return None if count is None else today - timedelta(days=count * _UNITS[unit])
 
 
-def _interpret(question: str, today: date) -> BankQuery:
+def _interpret(question: str, today: date, vocabulary: Vocabulary) -> BankQuery:
     text = question.lower()
 
     urgency = []
@@ -165,13 +213,17 @@ def _interpret(question: str, today: date) -> BankQuery:
 
     error_types = [member for member in ErrorType if member.value.replace("_", " ") in text]
 
-    topics = [topic for topic in (*_MATH_HINTS.values(), *_VERBAL_HINTS.values()) if topic in text]
+    # Match against what the bank actually holds rather than a hardcoded list: the
+    # student's own topics and concept titles are the words they will use.
+    topics = [topic for topic in vocabulary.topics if _mentions(text, topic)]
+    concepts = [title for title in vocabulary.concepts if _mentions(text, title)]
 
     return BankQuery(
         urgency=urgency,
         section=sorted(sections),
         error_type=error_types,
         topics=topics,
+        concepts=concepts,
         logged_after=_since(text, today),
         only_due=("due" in text or "review now" in text),
         sort="most_urgent" if "urgent" in text else "newest",

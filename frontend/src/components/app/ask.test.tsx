@@ -10,6 +10,7 @@ import type { Answer, BankQuery } from "@/lib/types";
 
 const EMPTY_QUERY: BankQuery = {
   concept_ids: [],
+  concepts: [],
   urgency: [],
   error_type: [],
   section: [],
@@ -26,6 +27,8 @@ function answer(overrides: Partial<Answer> = {}): Answer {
   return {
     question: "everything",
     answer: "1 question matched.",
+    analyzer: "claude",
+    analyzer_ready: true,
     filter_description: "everything in the bank",
     query: EMPTY_QUERY,
     mistakes: [makeMistake()],
@@ -126,6 +129,44 @@ describe("Ask", () => {
     expect(await screen.findByText("1 question(s) matched.")).toBeInTheDocument();
     expect(screen.getByText(/provider is down/)).toBeInTheDocument();
     expect(screen.getAllByRole("link")).toHaveLength(1);
+  });
+
+  it("says when the offline assistant answered, so it is not mistaken for a search", async () => {
+    vi.spyOn(api, "ask").mockResolvedValue(
+      answer({ analyzer: "stub", analyzer_ready: true }),
+    );
+    const user = userEvent.setup();
+
+    renderWithQuery(<Ask />);
+    await user.type(screen.getByLabelText("Ask about your bank"), "everything");
+    await user.click(screen.getByRole("button", { name: "Ask" }));
+
+    expect(await screen.findByText(/Offline assistant/)).toBeInTheDocument();
+  });
+
+  it("says plainly when a provider is selected but its key is missing", async () => {
+    vi.spyOn(api, "ask").mockResolvedValue(
+      answer({ analyzer: "claude", analyzer_ready: false }),
+    );
+    const user = userEvent.setup();
+
+    renderWithQuery(<Ask />);
+    await user.type(screen.getByLabelText("Ask about your bank"), "everything");
+    await user.click(screen.getByRole("button", { name: "Ask" }));
+
+    expect(await screen.findByText(/API key is missing/)).toBeInTheDocument();
+  });
+
+  it("shows no offline warning once a real analyzer is answering", async () => {
+    vi.spyOn(api, "ask").mockResolvedValue(answer({ analyzer: "claude" }));
+    const user = userEvent.setup();
+
+    renderWithQuery(<Ask />);
+    await user.type(screen.getByLabelText("Ask about your bank"), "everything");
+    await user.click(screen.getByRole("button", { name: "Ask" }));
+
+    await screen.findByText("1 question matched.");
+    expect(screen.queryByText(/Offline assistant/)).not.toBeInTheDocument();
   });
 
   it("reports a failed request instead of showing a stale answer", async () => {

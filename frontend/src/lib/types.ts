@@ -165,6 +165,7 @@ export type BankSort = "newest" | "oldest" | "most_urgent";
 /** Mirrors `backend/app/query.py`. The assistant's reading of your sentence. */
 export interface BankQuery {
   concept_ids: string[];
+  concepts: string[];
   urgency: Urgency[];
   error_type: ErrorType[];
   section: Section[];
@@ -180,6 +181,8 @@ export interface BankQuery {
 export interface Answer {
   question: string;
   answer: string;
+  analyzer: string;
+  analyzer_ready: boolean;
   filter_description: string;
   query: BankQuery;
   mistakes: Mistake[];

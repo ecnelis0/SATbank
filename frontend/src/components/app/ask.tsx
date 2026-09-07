@@ -100,7 +100,23 @@ export function Ask() {
 
       {result && (
         <div className="space-y-3" aria-live="polite">
-          <p className="text-sm leading-relaxed">{result.answer}</p>
+          {/* The offline assistant returning the whole bank looks exactly like a
+              working search that matched everything. Say which one answered. */}
+          {result.analyzer === "stub" && (
+            <p className="rounded-lg border border-dashed px-3 py-2 text-xs text-muted-foreground">
+              Offline assistant — it matches your topics and concepts by keyword and
+              reports counts, but it cannot reason about your bank. Set{" "}
+              <code className="font-mono">AI_PROVIDER=claude</code> and your API key in{" "}
+              <code className="font-mono">.env</code> for real answers.
+            </p>
+          )}
+          {!result.analyzer_ready && (
+            <p className="rounded-lg border border-destructive/40 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+              {result.analyzer} is selected but its API key is missing, so nothing was
+              analysed.
+            </p>
+          )}
+          <p className="text-sm leading-relaxed whitespace-pre-line">{result.answer}</p>
 
           {/* What it searched for, so a wrong reading of the sentence is visible
               rather than being mistaken for an empty bank. */}

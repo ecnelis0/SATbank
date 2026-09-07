@@ -9,8 +9,9 @@ from __future__ import annotations
 from datetime import date
 
 import anthropic
+import httpx2
 
-from ..query import BankQuery
+from ..query import BankQuery, Vocabulary
 from .base import AnalysisFailed, MistakeAnalysis, MistakeInput
 
 SYSTEM_PROMPT = """\
@@ -35,7 +36,16 @@ filter and reports the rows. Leave a field empty when the student did not constr
 an over-tight filter silently hides their own work from them.
 
 Resolve every relative date against today's date, given below, and write absolute dates. \
-"Reading", "verbal" and "English" all mean the reading_writing section.\
+"Reading", "verbal" and "English" all mean the reading_writing section.
+
+You are given the topics and concepts this bank actually contains. When the student \
+names something, match it to those - copy the exact strings. Do not invent a topic or a \
+concept title; a filter on a string that is not in the bank silently returns nothing, \
+which reads to the student as "you have no such questions".
+
+If the student is asking about the bank as a whole ("what am I worst at", "what should I \
+review first") rather than for a subset, return an empty filter and let them see \
+everything - the counts are computed separately and you will get them.\
 """
 
 SUMMARISE_PROMPT = """\
@@ -68,8 +78,22 @@ def _render(mistake: MistakeInput) -> str:
 class ClaudeAnalyzer:
     name = "claude"
 
-    def __init__(self, api_key: str | None, model: str) -> None:
-        self._client = anthropic.AsyncAnthropic(api_key=api_key)
+    def __init__(
+        self,
+        api_key: str | None,
+        model: str,
+        http_client: httpx2.AsyncClient | None = None,
+        base_url: str | None = None,
+    ) -> None:
+        # `http_client` and `base_url` exist for the test that drives this class
+        # against a stand-in Anthropic endpoint. In the app both are None and the
+        # SDK talks to Anthropic, reading ANTHROPIC_BASE_URL from the environment
+        # if it is set.
+        self._client = anthropic.AsyncAnthropic(
+            api_key=api_key,
+            **({"http_client": http_client} if http_client else {}),
+            **({"base_url": base_url} if base_url else {}),
+        )
         self._model = model
 
     async def analyze(self, mistake: MistakeInput) -> MistakeAnalysis:
@@ -94,7 +118,7 @@ class ClaudeAnalyzer:
             raise AnalysisFailed("model returned no structured output")
         return parsed
 
-    async def interpret(self, question: str, today: date) -> BankQuery:
+    async def interpret(self, question: str, today: date, vocabulary: Vocabulary) -> BankQuery:
         try:
             response = await self._client.messages.parse(
                 model=self._model,
@@ -105,7 +129,9 @@ class ClaudeAnalyzer:
                     {
                         "role": "user",
                         "content": (
-                            f"Today is {today.isoformat()}.\n\nThe student asked: {question}"
+                            f"Today is {today.isoformat()}.\n\n"
+                            f"{vocabulary.render()}\n\n"
+                            f"The student asked: {question}"
                         ),
                     }
                 ],
