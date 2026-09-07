@@ -54,6 +54,8 @@ class Section(StrEnum):
 
 
 class AnalysisStatus(StrEnum):
+    # Logged by hand with the AI deliberately not asked. Not a failure - a choice.
+    not_requested = "not_requested"
     pending = "pending"
     ready = "ready"
     failed = "failed"
@@ -119,6 +121,9 @@ class Mistake(Base):
     analysis_error: Mapped[str | None] = mapped_column(Text)
     analyzed_at: Mapped[datetime | None] = mapped_column(UtcDateTime())
     analyzed_by: Mapped[str | None] = mapped_column(String(64))
+    # Set whenever a human writes over any analysis field. Guards the re-run:
+    # re-analysing would silently discard what they wrote.
+    analysis_edited_at: Mapped[datetime | None] = mapped_column(UtcDateTime())
 
     error_type: Mapped[str | None] = mapped_column(String(32), index=True)
     topic: Mapped[str | None] = mapped_column(String(120), index=True)

@@ -29,12 +29,19 @@ a fixed 1h / 24h / 72h / 1w / 1mo ladder. See `README.md` for how to run it.
   Adding a provider is one new file plus a line in `__init__.py`.
 - `backend/app/services.py` — runs the analyzer and writes its verdict. Never raises on
   an analyzer failure: the mistake is logged and on the ladder regardless.
+- `backend/app/routers/mistakes.py` — `POST /mistakes?analyze=false` logs without asking
+  the AI, `PATCH /mistakes/{id}` edits any field, `POST /mistakes/{id}/analyze` asks for
+  the debrief and refuses (409) to overwrite an edited analysis without `force=true`.
 - `frontend/src/lib/types.ts` mirrors `backend/app/schemas.py`. Change them together.
 
 ## Conventions
 
-- The analysis text is **always** the AI's. The app stores, groups and displays it; it
-  does not hand-author explanations.
+- **Adding a column means altering the dev database by hand.** `create_all` only creates
+  missing tables; it will not add a column to one that already exists, and the app then
+  fails on every read with `no such column`. Until Alembic lands, `ALTER TABLE` it.
+- The AI writes the analysis, and the student can overwrite any of it. Anything they
+  write is credited to them (`analyzed_by = "you"`), marked with `analysis_edited_at`,
+  and guarded against a careless re-run. The app itself still authors no explanations.
 - `ErrorType` is a closed vocabulary. Free-text "why" labels would make the slot view
   ungroupable. Add a member rather than letting the model invent one.
 - Every domain query is scoped by `user_id`, today from the `X-User-Id` header.

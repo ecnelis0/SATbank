@@ -3,6 +3,7 @@ import type {
   ErrorType,
   Mistake,
   MistakeDraft,
+  MistakeEdit,
   ReviewCompleteResult,
   Section,
   Stats,
@@ -64,15 +65,24 @@ function query(filters: MistakeFilters): string {
 }
 
 export const api = {
-  logMistake: (draft: MistakeDraft) =>
-    request<Mistake>("/mistakes", { method: "POST", body: JSON.stringify(draft) }),
+  /** `analyze: false` logs the question and leaves the debrief to be asked for later. */
+  logMistake: (draft: MistakeDraft, analyze = true) =>
+    request<Mistake>(`/mistakes?analyze=${analyze}`, {
+      method: "POST",
+      body: JSON.stringify(draft),
+    }),
+
+  updateMistake: (id: string, edit: MistakeEdit) =>
+    request<Mistake>(`/mistakes/${id}`, { method: "PATCH", body: JSON.stringify(edit) }),
 
   listMistakes: (filters: MistakeFilters = {}) =>
     request<Mistake[]>(`/mistakes${query(filters)}`),
 
   getMistake: (id: string) => request<Mistake>(`/mistakes/${id}`),
 
-  reanalyze: (id: string) => request<Mistake>(`/mistakes/${id}/reanalyze`, { method: "POST" }),
+  /** Ask the AI to debrief this question. `force` overwrites an analysis you edited. */
+  analyze: (id: string, force = false) =>
+    request<Mistake>(`/mistakes/${id}/analyze?force=${force}`, { method: "POST" }),
 
   deleteMistake: (id: string) => request<void>(`/mistakes/${id}`, { method: "DELETE" }),
 

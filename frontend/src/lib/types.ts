@@ -19,7 +19,7 @@ export const ERROR_TYPES = [
 export type ErrorType = (typeof ERROR_TYPES)[number];
 
 export type Difficulty = "easy" | "medium" | "hard";
-export type AnalysisStatus = "pending" | "ready" | "failed";
+export type AnalysisStatus = "not_requested" | "pending" | "ready" | "failed";
 export type ReviewOutcome = "correct" | "wrong" | "skipped" | "superseded";
 /** What the student can actually answer with. `superseded` is the ladder's own. */
 export type StudentOutcome = Exclude<ReviewOutcome, "superseded">;
@@ -49,6 +49,7 @@ export interface Mistake {
   analysis_error: string | null;
   analyzed_at: string | null;
   analyzed_by: string | null;
+  analysis_edited_at: string | null;
   error_type: ErrorType | null;
   topic: string | null;
   difficulty: Difficulty | null;
@@ -85,6 +86,28 @@ export interface Stats {
   by_topic: SlotCount[];
   by_section: SlotCount[];
 }
+
+/** Every field is editable; only the keys sent are changed. */
+export type MistakeEdit = Partial<
+  Pick<
+    Mistake,
+    | "section"
+    | "source"
+    | "question_text"
+    | "choices"
+    | "your_answer"
+    | "correct_answer"
+    | "student_note"
+    | "error_type"
+    | "topic"
+    | "difficulty"
+    | "why_wrong"
+    | "correct_reasoning"
+    | "takeaway"
+    | "trap"
+    | "tags"
+  >
+>;
 
 export interface MistakeDraft {
   section: Section;

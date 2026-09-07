@@ -52,6 +52,7 @@ export function makeMistake(overrides: Partial<Mistake> = {}): Mistake {
     analysis_error: null,
     analyzed_at: new Date().toISOString(),
     analyzed_by: "stub",
+    analysis_edited_at: null,
     error_type: "careless_arithmetic",
     topic: "linear equations",
     difficulty: "medium",

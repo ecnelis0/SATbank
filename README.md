@@ -18,6 +18,20 @@ and the ladder restarts from the top.
 Screens: a dashboard of slots ("why you're losing points"), a log form, the bank with
 filters, a question detail page with the analysis and its ladder, and a review session.
 
+## The AI is optional, and nothing it writes is final
+
+- **Log it and ask the AI** runs the debrief straight away.
+- **Just log it** saves the question with no analysis at all. The ladder still starts.
+  The question then sits there offering two buttons: *Ask the AI to debrief this*, and
+  *Write it myself*.
+- **Everything is editable** — the question, source, choices, both answers, your note,
+  and every field the AI wrote: the slot, topic, difficulty, why-you-got-it-wrong, the
+  trap, the reasoning, the takeaway, the tags.
+- An analysis you wrote or edited **files exactly like an AI one** — same slots, same
+  filters, same counts — and is credited to you.
+- Re-running the AI over an analysis you have edited **asks first**, and the API refuses
+  it outright without `force=true`. Your words are not lost to a stray click.
+
 ## Running it
 
 Two processes. The defaults need no configuration at all — SQLite on disk and the
@@ -82,6 +96,7 @@ separate database file, so it never touches your dev data.
 
 - **Auth.** Every query is already scoped by a user id, but it comes from an
   `X-User-Id` header that defaults to `local`. Clerk goes here.
-- **Migrations.** Tables are created at startup. Alembic before this holds data anyone
-  would mind losing.
+- **Migrations.** Tables are created at startup, and `create_all` will not alter a
+  table that already exists — adding `analysis_edited_at` meant an `ALTER TABLE` by
+  hand on the dev database. Alembic before this holds data anyone would mind losing.
 - **Notifications.** Nothing tells you a review came due; you have to open the app.

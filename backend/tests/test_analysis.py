@@ -66,7 +66,7 @@ async def test_reanalyze_recovers_a_failed_analysis(client, monkeypatch):
     assert (await client.get(f"/mistakes/{mistake_id}")).json()["analysis_status"] == "failed"
 
     monkeypatch.setattr(services, "get_analyzer", lambda: StubAnalyzer())
-    recovered = (await client.post(f"/mistakes/{mistake_id}/reanalyze")).json()
+    recovered = (await client.post(f"/mistakes/{mistake_id}/analyze")).json()
 
     assert recovered["analysis_status"] == "ready"
     assert recovered["analysis_error"] is None

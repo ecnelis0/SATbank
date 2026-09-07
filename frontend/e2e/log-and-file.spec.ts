@@ -18,7 +18,7 @@ test("logging a miss analyses it, files it in a slot, and arms the full ladder",
   await page.getByLabel("You put").fill("7");
   await page.getByLabel("The answer was").fill("5");
   await page.getByLabel("What happened?").fill("Stopped one step early.");
-  await page.getByRole("button", { name: "Log this miss" }).click();
+  await page.getByRole("button", { name: "Log it and ask the AI" }).click();
 
   // Landing on the question's own page is what tells the student it was saved.
   await expect(page).toHaveURL(/\/bank\/[0-9a-f]{32}/);
@@ -43,7 +43,7 @@ test("a freshly logged miss is findable in the bank", async ({ page }) => {
   await page.getByLabel("The question").fill(question);
   await page.getByLabel("You put").fill("12");
   await page.getByLabel("The answer was").fill("9");
-  await page.getByRole("button", { name: "Log this miss" }).click();
+  await page.getByRole("button", { name: "Log it and ask the AI" }).click();
   await expect(page).toHaveURL(/\/bank\/[0-9a-f]{32}/);
 
   await page.goto("/bank");

@@ -48,6 +48,9 @@ async def analyze_mistake(session: AsyncSession, mistake: Mistake) -> Mistake:
     mistake.tags = result.tags
     mistake.analysis_status = AnalysisStatus.ready
     mistake.analysis_error = None
+    # A fresh analysis replaces whatever the student wrote, so the edit marker - and
+    # the guard it drives - goes with it.
+    mistake.analysis_edited_at = None
     mistake.analyzed_at = utcnow()
     mistake.analyzed_by = analyzer.name
     await session.commit()

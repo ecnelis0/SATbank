@@ -9,10 +9,10 @@ import { toast } from "sonner";
 import { AnalysisPanel } from "@/components/app/analysis";
 import { Empty } from "@/components/app/empty";
 import { Ladder } from "@/components/app/ladder";
+import { QuestionCard } from "@/components/app/question-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api, keys } from "@/lib/api";
 import { SECTION_LABELS } from "@/lib/labels";
@@ -63,47 +63,14 @@ export default function MistakePage() {
       </div>
 
       <Card>
-        <CardContent className="space-y-4">
-          {mistake.source && (
-            <p className="text-xs text-muted-foreground">{mistake.source}</p>
-          )}
-          <p className="leading-relaxed whitespace-pre-line">{mistake.question_text}</p>
-
-          {mistake.choices && (
-            <ol className="space-y-1.5 text-sm text-muted-foreground">
-              {mistake.choices.map((choice, index) => (
-                <li key={choice}>
-                  <span className="font-mono">{String.fromCharCode(65 + index)}.</span>{" "}
-                  {choice}
-                </li>
-              ))}
-            </ol>
-          )}
-
-          <Separator />
-
-          <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
-            <span>
-              <span className="text-muted-foreground">You put </span>
-              <span className="font-medium text-destructive">{mistake.your_answer}</span>
-            </span>
-            <span>
-              <span className="text-muted-foreground">Answer </span>
-              <span className="font-medium">{mistake.correct_answer}</span>
-            </span>
-          </div>
-
-          {mistake.student_note && (
-            <p className="text-sm text-muted-foreground italic">
-              Your note: {mistake.student_note}
-            </p>
-          )}
+        <CardContent>
+          <QuestionCard mistake={mistake} />
         </CardContent>
       </Card>
 
       <Card>
         <CardContent>
-          <AnalysisPanel mistake={mistake} />
+          <AnalysisPanel mistake={mistake} editable />
         </CardContent>
       </Card>
 

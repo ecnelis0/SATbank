@@ -62,7 +62,8 @@ export function MistakeForm() {
   const section = useWatch({ control, name: "section" });
 
   const log = useMutation({
-    mutationFn: (draft: MistakeDraft) => api.logMistake(draft),
+    mutationFn: ({ draft, analyze }: { draft: MistakeDraft; analyze: boolean }) =>
+      api.logMistake(draft, analyze),
     onSuccess: (mistake) => {
       queryClient.invalidateQueries({ queryKey: ["mistakes"] });
       queryClient.invalidateQueries({ queryKey: keys.stats() });
@@ -73,20 +74,24 @@ export function MistakeForm() {
     onError: (error: Error) => toast.error(error.message),
   });
 
-  const onSubmit = handleSubmit((values) =>
-    log.mutate({
-      section: values.section,
-      source: values.source?.trim() || null,
-      question_text: values.question_text.trim(),
-      choices: parseChoices(values.choicesText),
-      your_answer: values.your_answer.trim(),
-      correct_answer: values.correct_answer.trim(),
-      student_note: values.student_note?.trim() || null,
-    }),
-  );
+  const submitWith = (analyze: boolean) =>
+    handleSubmit((values) =>
+      log.mutate({
+        analyze,
+        draft: {
+          section: values.section,
+          source: values.source?.trim() || null,
+          question_text: values.question_text.trim(),
+          choices: parseChoices(values.choicesText),
+          your_answer: values.your_answer.trim(),
+          correct_answer: values.correct_answer.trim(),
+          student_note: values.student_note?.trim() || null,
+        },
+      }),
+    );
 
   return (
-    <form onSubmit={onSubmit} className="space-y-6" noValidate>
+    <form onSubmit={submitWith(true)} className="space-y-6" noValidate>
       <fieldset>
         <legend className="text-sm font-medium">Section</legend>
         <div className="mt-2 flex gap-2">
@@ -166,9 +171,23 @@ export function MistakeForm() {
         />
       </div>
 
-      <Button type="submit" disabled={log.isPending}>
-        {log.isPending ? "Logging…" : "Log this miss"}
-      </Button>
+      <div className="flex flex-wrap items-center gap-3">
+        <Button type="submit" disabled={log.isPending}>
+          {log.isPending ? "Logging…" : "Log it and ask the AI"}
+        </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          disabled={log.isPending}
+          onClick={submitWith(false)}
+        >
+          Just log it
+        </Button>
+        <p className="text-xs text-muted-foreground">
+          Either way the review ladder starts now. You can ask for the debrief, or write
+          your own, at any point.
+        </p>
+      </div>
     </form>
   );
 }

@@ -27,6 +27,56 @@ class MistakeCreate(BaseModel):
         return stripped
 
 
+ANALYSIS_FIELDS = (
+    "error_type",
+    "topic",
+    "difficulty",
+    "why_wrong",
+    "correct_reasoning",
+    "takeaway",
+    "trap",
+    "tags",
+)
+
+
+class MistakeUpdate(BaseModel):
+    """Every field on a mistake is editable, including everything the AI wrote.
+
+    All optional: only the keys actually sent are changed, so a form can save one
+    field without having to round-trip the rest.
+    """
+
+    section: Section | None = None
+    source: str | None = Field(default=None, max_length=200)
+    question_text: str | None = None
+    choices: list[str] | None = None
+    your_answer: str | None = None
+    correct_answer: str | None = None
+    student_note: str | None = None
+
+    error_type: ErrorType | None = None
+    topic: str | None = Field(default=None, max_length=120)
+    difficulty: Difficulty | None = None
+    why_wrong: str | None = None
+    correct_reasoning: str | None = None
+    takeaway: str | None = None
+    trap: str | None = None
+    tags: list[str] | None = None
+
+    @field_validator("question_text", "your_answer", "correct_answer")
+    @classmethod
+    def _not_blanked(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        stripped = value.strip()
+        if not stripped:
+            raise ValueError("must not be blank")
+        return stripped
+
+    def touches_analysis(self) -> bool:
+        return any(field in self.model_fields_set for field in ANALYSIS_FIELDS)
+
+
 class ReviewEventRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -56,6 +106,7 @@ class MistakeRead(BaseModel):
     analysis_error: str | None
     analyzed_at: datetime | None
     analyzed_by: str | None
+    analysis_edited_at: datetime | None
     error_type: ErrorType | None
     topic: str | None
     difficulty: Difficulty | None

@@ -9,7 +9,7 @@ from sqlalchemy.orm import selectinload
 from ..deps import SessionDep, UserDep
 from ..models import AnalysisStatus, ErrorType, Mistake, Section, utcnow
 from ..review import build_ladder
-from ..schemas import MistakeCreate, MistakeRead
+from ..schemas import MistakeCreate, MistakeRead, MistakeUpdate
 from ..services import analyze_in_background, analyze_mistake
 
 router = APIRouter(prefix="/mistakes", tags=["mistakes"])
@@ -21,24 +21,29 @@ async def log_mistake(
     session: SessionDep,
     user_id: UserDep,
     background: BackgroundTasks,
+    analyze: bool = Query(
+        default=True,
+        description="Ask the AI now. False logs the question and waits to be asked.",
+    ),
 ) -> Mistake:
     """Log a question you got wrong.
 
-    The ladder is armed immediately, anchored to now - a slow or failed analysis must
-    never cost the student their 1-hour review.
+    The ladder is armed immediately, anchored to now - a slow, failed, or unasked-for
+    analysis must never cost the student their 1-hour review.
     """
     logged_at = utcnow()
     mistake = Mistake(
         user_id=user_id,
         created_at=logged_at,
-        analysis_status=AnalysisStatus.pending,
+        analysis_status=AnalysisStatus.pending if analyze else AnalysisStatus.not_requested,
         **body.model_dump(),
     )
     mistake.reviews.extend(build_ladder(mistake.id, logged_at))
     session.add(mistake)
     await session.commit()
 
-    background.add_task(analyze_in_background, mistake.id)
+    if analyze:
+        background.add_task(analyze_in_background, mistake.id)
     return mistake
 
 
@@ -91,10 +96,54 @@ async def get_mistake(mistake_id: str, session: SessionDep, user_id: UserDep) ->
     return await _load(session, user_id, mistake_id)
 
 
-@router.post("/{mistake_id}/reanalyze", response_model=MistakeRead)
-async def reanalyze(mistake_id: str, session: SessionDep, user_id: UserDep) -> Mistake:
-    """Re-run the analyzer, synchronously, so the caller sees the outcome."""
+@router.patch("/{mistake_id}", response_model=MistakeRead)
+async def update_mistake(
+    mistake_id: str,
+    body: MistakeUpdate,
+    session: SessionDep,
+    user_id: UserDep,
+) -> Mistake:
+    """Edit any field, the AI's included. Only the keys sent are changed."""
     mistake = await _load(session, user_id, mistake_id)
+
+    for field, value in body.model_dump(exclude_unset=True).items():
+        setattr(mistake, field, value)
+
+    if body.touches_analysis():
+        mistake.analysis_edited_at = utcnow()
+        # Hand-written analysis counts as analysis: it should read, group and filter
+        # exactly like the AI's, and the question should stop asking to be analysed.
+        if mistake.analysis_status != AnalysisStatus.ready:
+            mistake.analysis_status = AnalysisStatus.ready
+            mistake.analysis_error = None
+        if mistake.analyzed_by is None:
+            mistake.analyzed_by = "you"
+
+    await session.commit()
+    return mistake
+
+
+@router.post("/{mistake_id}/analyze", response_model=MistakeRead)
+async def analyze(
+    mistake_id: str,
+    session: SessionDep,
+    user_id: UserDep,
+    force: bool = Query(
+        default=False, description="Required to overwrite an analysis you have edited."
+    ),
+) -> Mistake:
+    """Ask the AI to debrief this question, synchronously, so the caller sees the result.
+
+    Covers the first run for a hand-logged question and a re-run for one that failed.
+    """
+    mistake = await _load(session, user_id, mistake_id)
+
+    if mistake.analysis_edited_at is not None and not force:
+        raise HTTPException(
+            status_code=409,
+            detail="You have edited this analysis. Re-run with force=true to replace it.",
+        )
+
     return await analyze_mistake(session, mistake)
 
 
