@@ -83,14 +83,20 @@ export interface SlotCount {
   count: number;
 }
 
+export interface TopicCount {
+  section: Section;
+  topic: string;
+  count: number;
+}
+
 export interface Stats {
   total_mistakes: number;
   due_now: number;
   reviews_completed: number;
   by_error_type: SlotCount[];
   by_urgency: SlotCount[];
-  by_topic: SlotCount[];
   by_section: SlotCount[];
+  topics: TopicCount[];
 }
 
 /** Every field is editable; only the keys sent are changed. */

@@ -7,7 +7,7 @@ from sqlalchemy import func, select
 
 from ..deps import SessionDep, UserDep
 from ..models import Mistake, ReviewEvent, ReviewOutcome, utcnow
-from ..schemas import SlotCount, Stats
+from ..schemas import SlotCount, Stats, TopicCount
 
 router = APIRouter(prefix="/stats", tags=["stats"])
 
@@ -20,6 +20,17 @@ async def _grouped(session, user_id: str, column) -> list[SlotCount]:
         .order_by(func.count().desc())
     )
     return [SlotCount(key=key, count=count) for key, count in rows]
+
+
+async def _topics(session, user_id: str) -> list[TopicCount]:
+    """Topics grouped under the section they belong to, commonest first."""
+    rows = await session.execute(
+        select(Mistake.section, Mistake.topic, func.count())
+        .where(Mistake.user_id == user_id, Mistake.topic.is_not(None))
+        .group_by(Mistake.section, Mistake.topic)
+        .order_by(Mistake.section, func.count().desc(), Mistake.topic)
+    )
+    return [TopicCount(section=section, topic=topic, count=count) for section, topic, count in rows]
 
 
 @router.get("", response_model=Stats)
@@ -53,6 +64,6 @@ async def stats(session: SessionDep, user_id: UserDep) -> Stats:
         reviews_completed=completed or 0,
         by_error_type=await _grouped(session, user_id, Mistake.error_type),
         by_urgency=await _grouped(session, user_id, Mistake.urgency),
-        by_topic=await _grouped(session, user_id, Mistake.topic),
         by_section=await _grouped(session, user_id, Mistake.section),
+        topics=await _topics(session, user_id),
     )

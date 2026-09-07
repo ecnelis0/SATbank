@@ -39,18 +39,26 @@ test("the side panel answers a question in the student's own words", async ({ pa
   await expect(panel).toBeVisible();
 });
 
-test("a filter that matches nothing says so rather than looking empty", async ({ page }) => {
-  await logOne(page, `Nothing matches this ${Date.now() % 10000} [e2e]`);
+test("every row the panel returns actually satisfies the filter", async ({ page }) => {
+  // Asserted as an invariant rather than an exact list: the specs share one e2e
+  // database, so any "nothing matches" expectation is at the mercy of test order.
+  // The empty state itself is covered deterministically in facets.spec.ts.
+  await logOne(page, `Panel invariant ${Date.now() % 10000} [e2e]`);
 
   await page.getByRole("button", { name: "Ask the bank" }).click();
   const panel = page.getByRole("complementary", { name: "Ask the bank" });
   await panel.getByLabel("Ask about your bank").fill("fundamental math questions");
   await panel.getByRole("button", { name: "Ask" }).click();
 
-  await expect(panel.getByText("Nothing matched. Try a looser question.")).toBeVisible({
-    timeout: 15_000,
-  });
-  await expect(panel.getByText(/Searched:.*fundamental/)).toBeVisible();
+  await expect(panel.getByText(/Searched:.*fundamental/)).toBeVisible({ timeout: 15_000 });
+  await expect(panel.getByText(/Searched:.*Math/)).toBeVisible();
+
+  const hits = panel.getByRole("link");
+  for (let index = 0; index < (await hits.count()); index++) {
+    const hit = hits.nth(index);
+    await expect(hit.getByText("Fundamental concept")).toBeVisible();
+    await expect(hit.getByText(/Math/)).toBeVisible();
+  }
 });
 
 test("the categories tab lists the bank and filters it", async ({ page }) => {
@@ -62,10 +70,11 @@ test("the categories tab lists the bank and filters it", async ({ page }) => {
   await panel.getByRole("tab", { name: "Categories" }).click();
 
   await expect(panel.getByText("How urgent")).toBeVisible();
-  await expect(panel.getByText("Section")).toBeVisible();
+  await expect(panel.getByText("Section & topic")).toBeVisible();
   await expect(panel.getByText("Why you missed it")).toBeVisible();
 
-  await panel.getByRole("link", { name: /Reading & Writing/ }).click();
+  await panel.getByRole("checkbox", { name: /Reading & Writing/ }).click();
+  await panel.getByRole("button", { name: /^Show 1 filter$/ }).click();
   await expect(page).toHaveURL(/\/bank\?section=reading_writing/);
   await expect(page.getByText(question)).toBeVisible({ timeout: 10_000 });
 });

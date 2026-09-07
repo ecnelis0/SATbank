@@ -151,11 +151,19 @@ class SlotCount(BaseModel):
     count: int
 
 
+class TopicCount(BaseModel):
+    """A topic always belongs to a section, so it is never reported without one."""
+
+    section: Section
+    topic: str
+    count: int
+
+
 class Stats(BaseModel):
     total_mistakes: int
     due_now: int
     reviews_completed: int
     by_error_type: list[SlotCount]
     by_urgency: list[SlotCount]
-    by_topic: list[SlotCount]
     by_section: list[SlotCount]
+    topics: list[TopicCount]

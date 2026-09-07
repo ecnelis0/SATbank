@@ -37,8 +37,12 @@ straight to the question.
 If the model fails to interpret, you get the whole bank rather than nothing. If it fails to
 summarise, you still get the rows — the prose is the disposable half.
 
-**Categories** lists the whole bank grouped by urgency, section, error slot and topic, with
-live counts; each row filters the bank.
+**Categories** is the browsing half. Topics are folded under the section they belong to —
+click a section's arrow and its topics expand beneath it. Everything is a checkbox, and
+selections combine: **OR within a facet, AND across them**. So *Math + math fundamentals +
+concept gap + very important* is one click each and returns only questions satisfying all
+four. The chosen filters become the URL, so a filtered bank is a link you can share or come
+back to, and each one can be peeled off individually from the pills at the top of the bank.
 
 ## How urgent is it
 
@@ -100,11 +104,37 @@ Copy `.env.example` to `.env` at the repo root. Everything has a working default
 | `ANTHROPIC_MODEL` | `claude-opus-5` | |
 | `NEXT_PUBLIC_API_URL` | `http://127.0.0.1:8000` | Where the browser finds the API |
 
-**The analyzer is pluggable and the provider is still an open decision.** `stub` is an
-offline analyzer: no API key, no network, deterministic output, and what the test suite
-runs against. `claude` is the real one, using structured outputs so the response is a
-validated object rather than prose to scrape. Adding an OpenAI adapter means one file
-implementing `Analyzer` in `backend/app/analysis/` plus a line in its `__init__.py`.
+### Turning the real AI on
+
+Two lines in `.env` at the repo root, then restart the API. No code change:
+
+```
+AI_PROVIDER=claude
+ANTHROPIC_API_KEY=sk-ant-...
+```
+
+`GET /health` tells you whether it took:
+
+```json
+{ "analyzer": "claude", "analyzer_ready": true, "model": "claude-opus-5" }
+```
+
+`analyzer_ready: false` means a provider is selected but its key is missing — the
+difference between "the AI is off" and "the AI is misconfigured", which is otherwise only
+discoverable by watching an analysis fail. Override the model with `ANTHROPIC_MODEL`.
+
+The key is read from the environment on the **server** only. It is never sent to the
+browser and never appears in the client bundle.
+
+That one switch turns on all three AI jobs at once: the debrief on a logged question, the
+side panel's reading of your sentence, and its summary of the results.
+
+**The analyzer is pluggable.** `stub` is an offline analyzer: no API key, no network,
+deterministic output, and what the test suite runs against — its answers are obviously
+canned and its search is keyword matching, not understanding. `claude` is the real one,
+using structured outputs so responses are validated objects rather than prose to scrape.
+Adding an OpenAI adapter means one file implementing `Analyzer` in `backend/app/analysis/`
+plus a line in its `__init__.py`.
 
 ## The ladder, precisely
 

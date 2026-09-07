@@ -8,6 +8,7 @@ from sqlalchemy.orm import selectinload
 
 from ..deps import SessionDep, UserDep
 from ..models import AnalysisStatus, ErrorType, Mistake, Section, Urgency, utcnow
+from ..query import BankQuery, run_query
 from ..review import build_ladder
 from ..schemas import MistakeCreate, MistakeRead, MistakeUpdate
 from ..services import analyze_in_background, analyze_mistake
@@ -92,6 +93,17 @@ async def _load(session: SessionDep, user_id: str, mistake_id: str) -> Mistake:
     if mistake is None:
         raise HTTPException(status_code=404, detail="No such mistake")
     return mistake
+
+
+@router.post("/search", response_model=list[MistakeRead])
+async def search(body: BankQuery, session: SessionDep, user_id: UserDep) -> list[Mistake]:
+    """Filter the bank by any combination of facets.
+
+    A POST because the filter is a structure, not a handful of scalars: each facet
+    takes a list, OR within a list and AND across them. The same `BankQuery` the
+    assistant produces, so the panel and the bank page cannot drift apart.
+    """
+    return await run_query(session, user_id, body)
 
 
 @router.get("/{mistake_id}", response_model=MistakeRead)

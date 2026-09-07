@@ -1,5 +1,6 @@
 import type {
   Answer,
+  BankQuery,
   DueReview,
   ErrorType,
   Mistake,
@@ -81,6 +82,13 @@ export const api = {
   listMistakes: (filters: MistakeFilters = {}) =>
     request<Mistake[]>(`/mistakes${query(filters)}`),
 
+  /** Multi-facet filter: OR within a facet, AND across them. */
+  searchMistakes: (query: Partial<BankQuery>) =>
+    request<Mistake[]>("/mistakes/search", {
+      method: "POST",
+      body: JSON.stringify(query),
+    }),
+
   getMistake: (id: string) => request<Mistake>(`/mistakes/${id}`),
 
   /** Ask the AI to debrief this question. `force` overwrites an analysis you edited. */
@@ -109,6 +117,7 @@ export const api = {
 /** Query keys, in one place so mutations can invalidate precisely. */
 export const keys = {
   mistakes: (filters: MistakeFilters = {}) => ["mistakes", filters] as const,
+  search: (query: Partial<BankQuery>) => ["mistakes", "search", query] as const,
   mistake: (id: string) => ["mistake", id] as const,
   due: () => ["reviews", "due"] as const,
   upcoming: () => ["reviews", "upcoming"] as const,

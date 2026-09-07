@@ -38,10 +38,21 @@ app.include_router(ask.router)
 
 @app.get("/health", tags=["meta"])
 async def health() -> dict:
+    """Says which analyzer is running and whether it can actually be used.
+
+    `analyzer_ready` is false when a provider is selected but its key is missing -
+    the difference between "the AI is off" and "the AI is misconfigured", which is
+    otherwise only discoverable by watching an analysis fail.
+    """
     settings = get_settings()
+    provider = settings.ai_provider.lower()
+    ready = provider == "stub" or (provider == "claude" and bool(settings.anthropic_api_key))
+
     return {
         "status": "ok",
         "analyzer": settings.ai_provider,
+        "analyzer_ready": ready,
+        "model": settings.anthropic_model if provider == "claude" else None,
         "ladder": list(LADDER_LABELS),
     }
 

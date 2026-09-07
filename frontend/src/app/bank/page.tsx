@@ -1,105 +1,121 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useMemo, useState } from "react";
 
 import { Empty } from "@/components/app/empty";
 import { MistakeCard } from "@/components/app/mistake-card";
+import { UrgencyBadge } from "@/components/app/urgency-badge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { api, keys, type MistakeFilters } from "@/lib/api";
-import { ERROR_TYPE_LABELS, SECTION_LABELS, URGENCY_LABELS } from "@/lib/labels";
-import { URGENCIES, type ErrorType, type Section, type Urgency } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import { api, keys } from "@/lib/api";
+import {
+  fromSearchParams,
+  isEmpty,
+  toQuery,
+  toSearchParams,
+  toggle,
+  type Facets,
+  NO_FACETS,
+} from "@/lib/facets";
+import { ERROR_TYPE_LABELS, SECTION_LABELS } from "@/lib/labels";
+import type { ErrorType, Section, Urgency } from "@/lib/types";
 
-function Chip({
-  href,
-  active,
-  children,
-}: {
-  href: string;
-  active: boolean;
-  children: React.ReactNode;
-}) {
+/** One selected facet, with the click that removes it. */
+function Pill({ label, onRemove }: { label: React.ReactNode; onRemove: () => void }) {
   return (
-    <Link
-      href={href}
-      className={cn(
-        "rounded-full border px-3 py-1 text-xs transition-colors",
-        active ? "border-primary bg-primary text-primary-foreground" : "hover:bg-muted",
-      )}
-    >
-      {children}
-    </Link>
+    <span className="inline-flex items-center gap-1.5 rounded-full border bg-muted/50 py-0.5 pr-1.5 pl-2.5 text-xs">
+      {label}
+      <button
+        type="button"
+        onClick={onRemove}
+        aria-label="Remove filter"
+        className="rounded-full px-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+      >
+        ×
+      </button>
+    </span>
   );
 }
 
 function BankList() {
+  const router = useRouter();
   const params = useSearchParams();
-  const [search, setSearch] = useState("");
 
-  const errorType = (params.get("error_type") as ErrorType | null) ?? undefined;
-  const urgency = (params.get("urgency") as Urgency | null) ?? undefined;
-  const section = (params.get("section") as Section | null) ?? undefined;
-  const topic = params.get("topic") ?? undefined;
+  // The URL is the single source of truth for the facets, so a filtered view is a
+  // link, and arriving from the rail or the dashboard needs no syncing effect.
+  const selected = useMemo(() => fromSearchParams(params), [params]);
+  const [text, setText] = useState(() => params.get("q") ?? "");
+  const facets: Facets = { ...selected, text };
 
-  const filters: MistakeFilters = {
-    error_type: errorType,
-    urgency,
-    section,
-    topic,
-    q: search.trim() || undefined,
+  const apply = (next: Facets) => {
+    setText(next.text);
+    const query = toSearchParams(next).toString();
+    router.replace(query ? `/bank?${query}` : "/bank");
   };
 
+  const query = toQuery(facets);
   const { data, isPending } = useQuery({
-    queryKey: keys.mistakes(filters),
-    queryFn: () => api.listMistakes(filters),
+    queryKey: keys.search(query),
+    queryFn: () => api.searchMistakes(query),
   });
 
-  const stats = useQuery({ queryKey: keys.stats(), queryFn: api.stats });
+  const filtering = !isEmpty(facets);
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">The bank</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Every question you have missed, filed by what went wrong.
+          Every question you have missed, filed by what went wrong. Pick as many filters
+          as you like — they narrow each other.
         </p>
       </div>
 
-      <div className="flex flex-wrap gap-1.5">
-        <Chip href="/bank" active={!errorType && !section && !topic && !urgency}>
-          Everything
-        </Chip>
-        {URGENCIES.map((value) => (
-          <Chip key={value} href={`/bank?urgency=${value}`} active={urgency === value}>
-            {URGENCY_LABELS[value]}
-          </Chip>
-        ))}
-        {(Object.keys(SECTION_LABELS) as Section[]).map((value) => (
-          <Chip key={value} href={`/bank?section=${value}`} active={section === value}>
-            {SECTION_LABELS[value]}
-          </Chip>
-        ))}
-        {stats.data?.by_error_type.map((slot) => (
-          <Chip
-            key={slot.key}
-            href={`/bank?error_type=${slot.key}`}
-            active={errorType === slot.key}
-          >
-            {ERROR_TYPE_LABELS[slot.key as ErrorType] ?? slot.key} · {slot.count}
-          </Chip>
-        ))}
-      </div>
-
       <Input
-        value={search}
-        onChange={(event) => setSearch(event.target.value)}
+        value={facets.text}
+        onChange={(event) => setText(event.target.value)}
         placeholder="Search the questions…"
         aria-label="Search the questions"
       />
+
+      {filtering && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          {facets.urgency.map((value) => (
+            <Pill
+              key={value}
+              label={<UrgencyBadge urgency={value as Urgency} />}
+              onRemove={() => apply(toggle(facets, "urgency", value))}
+            />
+          ))}
+          {facets.section.map((value) => (
+            <Pill
+              key={value}
+              label={SECTION_LABELS[value as Section]}
+              onRemove={() => apply(toggle(facets, "section", value))}
+            />
+          ))}
+          {facets.error_type.map((value) => (
+            <Pill
+              key={value}
+              label={ERROR_TYPE_LABELS[value as ErrorType] ?? value}
+              onRemove={() => apply(toggle(facets, "error_type", value))}
+            />
+          ))}
+          {facets.topics.map((value) => (
+            <Pill
+              key={value}
+              label={value}
+              onRemove={() => apply(toggle(facets, "topics", value))}
+            />
+          ))}
+          <Button size="sm" variant="ghost" onClick={() => apply(NO_FACETS)}>
+            Clear all
+          </Button>
+        </div>
+      )}
 
       {isPending ? (
         <div className="space-y-3">
@@ -107,15 +123,24 @@ function BankList() {
           <Skeleton className="h-28 w-full" />
         </div>
       ) : data && data.length > 0 ? (
-        <div className="space-y-3">
-          {data.map((mistake) => (
-            <MistakeCard key={mistake.id} mistake={mistake} />
-          ))}
-        </div>
+        <>
+          <p className="text-sm text-muted-foreground">
+            {data.length} question{data.length === 1 ? "" : "s"}
+          </p>
+          <div className="space-y-3">
+            {data.map((mistake) => (
+              <MistakeCard key={mistake.id} mistake={mistake} />
+            ))}
+          </div>
+        </>
       ) : (
         <Empty
-          title="Nothing here."
-          body="No question in the bank matches this filter yet."
+          title={filtering ? "Nothing matches all of those." : "Nothing here."}
+          body={
+            filtering
+              ? "The filters narrow each other, so a question has to satisfy every one. Drop one and see."
+              : "No question in the bank yet."
+          }
           action={{ href: "/log", label: "Log a miss" }}
         />
       )}

@@ -38,6 +38,17 @@ a fixed 1h / 24h / 72h / 1w / 1mo ladder. See `README.md` for how to run it.
   the AI, `PATCH /mistakes/{id}` edits any field, `POST /mistakes/{id}/analyze` asks for
   the debrief and refuses (409) to overwrite an edited analysis without `force=true`.
 - `frontend/src/lib/types.ts` mirrors `backend/app/schemas.py`. Change them together.
+- `frontend/src/lib/facets.ts` — the multi-select model, and the only place facets are
+  translated to and from the URL. The URL is the source of truth for the bank's filters,
+  so there is no state to keep in sync when the rail navigates there.
+
+## Testing note
+
+The Playwright specs share one e2e database and run in a single worker, so **no test may
+assume the bank lacks something** — another spec will eventually add it. Assert invariants
+("every row returned matches the filter") or build the exact condition from an
+impossible value in the URL. One test was written the wrong way and started failing the
+moment an unrelated spec logged a fundamental math question.
 
 ## Conventions
 
