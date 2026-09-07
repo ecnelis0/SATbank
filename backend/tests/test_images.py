@@ -162,10 +162,17 @@ async def test_deleting_a_picture_removes_the_row_and_the_file(client, uploads):
 
 async def test_deleting_a_question_takes_its_pictures_with_it(client, uploads):
     mistake_id = await _question(client)
-    await _upload(client, mistake_id, png())
+    first = (await _upload(client, mistake_id, png(), name="a.png")).json()["images"][0]
+    second = (await _upload(client, mistake_id, png(), name="b.png")).json()["images"][1]
+    paths = [uploads / Path(image["url"]).name for image in (first, second)]
+    assert all(path.exists() for path in paths)
 
     assert (await client.delete(f"/mistakes/{mistake_id}")).status_code == 204
+
     assert (await client.get(f"/mistakes/{mistake_id}")).status_code == 404
+    # The rows cascade; the bytes have to be removed on purpose, or every deleted
+    # question leaves its pictures on disk forever.
+    assert not any(path.exists() for path in paths)
 
 
 async def test_you_cannot_attach_a_picture_to_someone_elses_question(client, uploads):

@@ -11,7 +11,11 @@ __pycache__/
 .ruff_cache/
 *.db
 backend/uploads/
+e2e-uploads/
+backend/e2e-uploads/
 uploads/
+e2e-uploads/
+backend/e2e-uploads/
 *.db-journal
 .DS_Store
 coverage/

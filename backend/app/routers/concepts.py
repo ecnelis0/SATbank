@@ -122,10 +122,16 @@ async def update_concept(
 
 @router.delete("/{concept_id}", status_code=204)
 async def delete_concept(concept_id: str, session: SessionDep, user_id: UserDep) -> None:
-    """Deletes the concept and its tags. The questions themselves are untouched."""
+    """Deletes the concept, its tags and its diagrams. The questions are untouched."""
     concept = await _load(session, user_id, concept_id)
+    filenames = [image.filename for image in concept.images]
+
     await session.delete(concept)
     await session.commit()
+
+    root = get_settings().upload_root
+    for filename in filenames:
+        delete_file(filename, root)
 
 
 async def _own_mistake(session, user_id: str, mistake_id: str) -> Mistake:

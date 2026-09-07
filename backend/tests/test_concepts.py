@@ -311,13 +311,39 @@ async def test_a_concept_diagram_can_be_deleted(client, uploads):
 
 async def test_deleting_a_concept_takes_its_diagrams_with_it(client, uploads):
     concept = await _concept(client)
+    image = (
+        await client.post(
+            f"/concepts/{concept['id']}/images",
+            files={"file": ("diagram.png", _png(), "image/png")},
+        )
+    ).json()["images"][0]
+    path = uploads / Path(image["url"]).name
+    assert path.exists()
+
+    assert (await client.delete(f"/concepts/{concept['id']}")).status_code == 204
+
+    assert (await client.get(f"/concepts/{concept['id']}")).status_code == 404
+    assert not path.exists()
+
+
+async def test_no_upload_outlives_the_thing_it_was_attached_to(client, uploads):
+    """The invariant: nothing on disk without a row pointing at it."""
+    mistake_id = await _question(client)
+    concept = await _concept(client)
+    await client.post(
+        f"/mistakes/{mistake_id}/images",
+        files={"file": ("shot.png", _png(), "image/png")},
+    )
     await client.post(
         f"/concepts/{concept['id']}/images",
         files={"file": ("diagram.png", _png(), "image/png")},
     )
+    assert len(list(uploads.iterdir())) == 2
 
-    assert (await client.delete(f"/concepts/{concept['id']}")).status_code == 204
-    assert (await client.get(f"/concepts/{concept['id']}")).status_code == 404
+    await client.delete(f"/mistakes/{mistake_id}")
+    await client.delete(f"/concepts/{concept['id']}")
+
+    assert list(uploads.iterdir()) == []
 
 
 async def test_you_cannot_attach_a_diagram_to_someone_elses_concept(client, uploads):

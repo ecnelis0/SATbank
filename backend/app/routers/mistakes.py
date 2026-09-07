@@ -5,7 +5,9 @@ from __future__ import annotations
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
 from sqlalchemy import select
 
+from ..config import get_settings
 from ..deps import SessionDep, UserDep
+from ..images import delete as delete_file
 from ..models import (
     AnalysisStatus,
     ErrorType,
@@ -173,6 +175,17 @@ async def analyze(
 
 @router.delete("/{mistake_id}", status_code=204)
 async def delete_mistake(mistake_id: str, session: SessionDep, user_id: UserDep) -> None:
+    """Deletes the question, its ladder, and the bytes of its pictures.
+
+    The image rows cascade; the files on disk do not, so without this every deleted
+    question leaves its pictures behind forever.
+    """
     mistake = await _load(session, user_id, mistake_id)
+    filenames = [image.filename for image in mistake.images]
+
     await session.delete(mistake)
     await session.commit()
+
+    root = get_settings().upload_root
+    for filename in filenames:
+        delete_file(filename, root)

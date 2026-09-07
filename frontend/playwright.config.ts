@@ -22,7 +22,14 @@ export default defineConfig({
       command: `uv run uvicorn app.main:app --host 127.0.0.1 --port ${API_PORT}`,
       cwd: "../backend",
       url: `http://127.0.0.1:${API_PORT}/health`,
-      env: { DATABASE_URL: "sqlite+aiosqlite:///./e2e.db", AI_PROVIDER: "stub" },
+      env: {
+        DATABASE_URL: "sqlite+aiosqlite:///./e2e.db",
+        AI_PROVIDER: "stub",
+        // Its own upload root too: sharing ./uploads with a dev session meant an
+        // e2e run wrote into the real bank, and cleaning up before a run deleted
+        // the real bank's pictures.
+        UPLOAD_ROOT: "./e2e-uploads",
+      },
       reuseExistingServer: !process.env.CI,
       timeout: 60_000,
     },

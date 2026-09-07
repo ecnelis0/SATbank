@@ -47,6 +47,13 @@ a fixed 1h / 24h / 72h / 1w / 1mo ladder. See `README.md` for how to run it.
 
 ## Testing note
 
+The e2e suite has **its own database and its own upload directory** (`e2e.db`,
+`e2e-uploads/`). It did not always: sharing `uploads/` with a dev session meant an e2e
+run wrote into the real bank, and the `rm -rf` before a run deleted the real bank's
+pictures. If you add another kind of stored state, isolate it in `playwright.config.ts`
+at the same time.
+
+
 The Playwright specs share one e2e database and run in a single worker, so **no test may
 assume the bank lacks something** — another spec will eventually add it. Assert invariants
 ("every row returned matches the filter") or build the exact condition from an
