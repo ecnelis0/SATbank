@@ -21,7 +21,11 @@ class Settings(BaseSettings):
     anthropic_api_key: str | None = None
     anthropic_model: str = "claude-opus-5"
 
-    cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
+    # Explicit production origins. Dev is covered by the regex below instead, because
+    # `next dev` silently moves to another port when 3000 is taken - and a browser
+    # whose origin is not on the list gets a 400 on preflight and a blank page.
+    cors_origins: str = ""
+    cors_origin_regex: str = r"https?://(localhost|127\.0\.0\.1)(:\d+)?"
 
     @property
     def cors_origin_list(self) -> list[str]:
