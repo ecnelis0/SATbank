@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -9,15 +10,20 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from .config import get_settings
-from .db import create_all
 from .images import upload_dir
+from .migrate import upgrade
 from .review import LADDER_LABELS
 from .routers import ask, concepts, images, mistakes, reviews, stats
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await create_all()
+    # Migrations, not create_all: the latter cannot add a column to a table that
+    # already exists, which is why six schema changes were applied by hand.
+    # `upgrade` copies the database aside first if there is anything to apply.
+    backup = await asyncio.to_thread(upgrade)
+    if backup is not None:
+        print(f"Migrated. Backed up first to {backup}")
     yield
 
 

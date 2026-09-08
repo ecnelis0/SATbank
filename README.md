@@ -230,6 +230,27 @@ Completing a review:
 A failed analysis leaves the question logged, on the ladder, and re-analyzable from its
 detail page. The schedule never depends on the AI succeeding.
 
+## Schema changes and backups
+
+The API runs **Alembic migrations on startup**, so a database is built or brought up to
+date automatically — nothing to run by hand on a new machine. After changing a model:
+
+```bash
+cd backend
+uv run alembic revision --autogenerate -m "what changed"   # review the file it writes
+uv run alembic upgrade head                                # or just restart the API
+```
+
+**A migration copies the database aside first**, to `~/Documents/sat_bank-backups/`,
+keeping the last 20. To take one any time:
+
+```bash
+cd backend && uv run python scripts/backup.py
+```
+
+`tests/test_migrations.py` fails if a model is changed without a migration — the exact
+mistake that used to surface as `no such column` at the first query after a clean start.
+
 ## If the app looks empty
 
 Your questions live in `backend/sat_bank.db` and survive restarts, refreshes and new
@@ -251,7 +272,5 @@ separate database file, so it never touches your dev data.
 
 - **Auth.** Every query is already scoped by a user id, but it comes from an
   `X-User-Id` header that defaults to `local`. Clerk goes here.
-- **Migrations.** Tables are created at startup, and `create_all` will not alter a
-  table that already exists — adding `analysis_edited_at` meant an `ALTER TABLE` by
-  hand on the dev database. Alembic before this holds data anyone would mind losing.
+- **Auth is still the gap.** Everything else below is done.
 - **Notifications.** Nothing tells you a review came due; you have to open the app.

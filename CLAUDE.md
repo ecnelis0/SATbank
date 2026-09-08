@@ -95,9 +95,11 @@ moment an unrelated spec logged a fundamental math question.
 
 ## Conventions
 
-- **Adding a column means altering the dev database by hand.** `create_all` only creates
-  missing tables; it will not add a column to one that already exists, and the app then
-  fails on every read with `no such column`. Until Alembic lands, `ALTER TABLE` it.
+- **A model change needs a migration in the same commit.** The API migrates on startup
+  and `tests/test_migrations.py` compares the migrated schema against the models, so
+  forgetting one fails the suite rather than surfacing as `no such column` at the first
+  query. Autogenerate renders custom types by their qualified name, which is why
+  `script.py.mako` imports `app.models`.
 - The AI writes the analysis, and the student can overwrite any of it. Anything they
   write is credited to them (`analyzed_by = "you"`), marked with `analysis_edited_at`,
   and guarded against a careless re-run. The app itself still authors no explanations.
