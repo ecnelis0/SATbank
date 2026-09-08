@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { Unreachable } from "@/components/app/unreachable";
 import { UrgencyBadge } from "@/components/app/urgency-badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -95,7 +96,7 @@ export function Categories() {
   const [facets, setFacets] = useState<Facets>(NO_FACETS);
   const [expanded, setExpanded] = useState<Section[]>([]);
 
-  const { data, isPending } = useQuery({
+  const { data, isPending, isError, error } = useQuery({
     queryKey: keys.stats(),
     queryFn: api.stats,
   });
@@ -113,6 +114,7 @@ export function Categories() {
       </div>
     );
   }
+  if (isError) return <Unreachable error={error as Error} />;
   if (!data) return null;
 
   const countOf = (slots: { key: string; count: number }[], key: string) =>

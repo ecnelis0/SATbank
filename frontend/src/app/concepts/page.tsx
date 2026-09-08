@@ -6,6 +6,7 @@ import { useState } from "react";
 
 import { ConceptForm } from "@/components/app/concept-form";
 import { Empty } from "@/components/app/empty";
+import { Unreachable } from "@/components/app/unreachable";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -15,7 +16,7 @@ import { SECTION_LABELS } from "@/lib/labels";
 
 export default function ConceptsPage() {
   const [writing, setWriting] = useState(false);
-  const { data, isPending } = useQuery({
+  const { data, isPending, isError, error } = useQuery({
     queryKey: keys.concepts(),
     queryFn: api.listConcepts,
   });
@@ -48,6 +49,8 @@ export default function ConceptsPage() {
           <Skeleton className="h-24 w-full" />
           <Skeleton className="h-24 w-full" />
         </div>
+      ) : isError ? (
+        <Unreachable error={error as Error} />
       ) : data && data.length > 0 ? (
         <div className="space-y-3">
           {data.map((concept) => (

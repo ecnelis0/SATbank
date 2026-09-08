@@ -230,6 +230,13 @@ Completing a review:
 A failed analysis leaves the question logged, on the ladder, and re-analyzable from its
 detail page. The schedule never depends on the AI succeeding.
 
+## If the app looks empty
+
+Your questions live in `backend/sat_bank.db` and survive restarts, refreshes and new
+browsers. If a screen looks empty, check the API is running — it will say **"Can't reach
+the app's API"** rather than showing an empty bank. The database file is the whole of
+your data; copy it to back it up.
+
 ## Tests
 
 ```bash

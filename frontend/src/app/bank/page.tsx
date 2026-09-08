@@ -7,6 +7,7 @@ import { Suspense, useMemo, useState } from "react";
 import { ConceptHeader } from "@/components/app/concept-header";
 import { Empty } from "@/components/app/empty";
 import { MistakeCard } from "@/components/app/mistake-card";
+import { Unreachable } from "@/components/app/unreachable";
 import { UrgencyBadge } from "@/components/app/urgency-badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -67,7 +68,7 @@ function BankList() {
     concepts?.find((concept) => concept.id === id)?.title ?? "concept";
 
   const query = toQuery(facets);
-  const { data, isPending } = useQuery({
+  const { data, isPending, isError, error } = useQuery({
     queryKey: keys.search(query),
     queryFn: () => api.searchMistakes(query),
   });
@@ -173,6 +174,8 @@ function BankList() {
           <Skeleton className="h-28 w-full" />
           <Skeleton className="h-28 w-full" />
         </div>
+      ) : isError ? (
+        <Unreachable error={error as Error} />
       ) : data && data.length > 0 ? (
         <>
           <p className="text-sm text-muted-foreground">

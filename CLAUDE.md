@@ -62,6 +62,12 @@ moment an unrelated spec logged a fundamental math question.
 
 ## Two traps this codebase keeps setting
 
+- **Never render an empty state for a failed load.** The bank said "Nothing here",
+  review said "Nothing is due", and the rail rendered blank whenever the API was
+  unreachable — in an app whose whole promise is not losing your work, that is the most
+  alarming and least true thing it could say. Every list surface branches on `isError`
+  to `<Unreachable/>` first, and a test asserts the empty state is *not* shown.
+
 - **`assert s != before` proves *a* replacement applied, not *every* one.** An edit doing
   two replacements in one file passed its assert with only the first applied, and the
   vocabulary silently never reached the interpret prompt. Assert per replacement, or

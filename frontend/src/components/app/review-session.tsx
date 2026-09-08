@@ -9,6 +9,7 @@ import { AnalysisPanel } from "@/components/app/analysis";
 import { Empty } from "@/components/app/empty";
 import { MistakeImages } from "@/components/app/images";
 import { UrgencyBadge } from "@/components/app/urgency-badge";
+import { Unreachable } from "@/components/app/unreachable";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -21,7 +22,7 @@ export function ReviewSession() {
   const queryClient = useQueryClient();
   const [revealed, setRevealed] = useState(false);
 
-  const { data: due, isPending } = useQuery({
+  const { data: due, isPending, isError, error } = useQuery({
     queryKey: keys.due(),
     queryFn: api.dueReviews,
   });
@@ -51,6 +52,10 @@ export function ReviewSession() {
       </div>
     );
   }
+
+  // A failed load must not read as "nothing is due" - that is the one message that
+  // would make a student close the app believing they had no reviews.
+  if (isError) return <Unreachable error={error as Error} />;
 
   const current = due?.[0];
 
