@@ -95,8 +95,31 @@ class StubAnalyzer:
         return _interpret(question, today, vocabulary)
 
     async def summarise(self, question: str, digest: str) -> str:
-        """Reports the counts it was given. It does not attempt to answer."""
-        head = [line for line in digest.splitlines()[:6] if line and line != "Rows:"]
+        """Reports the counts it was given. It does not attempt to answer.
+
+        When the question is about repetition, the repetition block is the part
+        worth showing - which is also what a real provider is asked to lead with.
+        """
+        lines = digest.splitlines()
+        rows_at = lines.index("Rows:") if "Rows:" in lines else len(lines)
+        head = [line for line in lines[:rows_at] if line.strip()]
+
+        asked_about_repetition = any(
+            word in question.lower()
+            for word in ("consistent", "always", "keep", "again", "repeat", "recurring")
+        )
+        if asked_about_repetition:
+            # "Worst offenders" too: the question was "which questions", and naming
+            # them is the answer. A tally alone leaves the student still looking.
+            repeats = [
+                line
+                for line in head
+                if "repeat miss" in line
+                or "missed again" in line
+                or line.startswith("Worst offenders")
+            ]
+            if repeats:
+                return "\n".join([head[0], *repeats])
         return "\n".join(head)
 
 

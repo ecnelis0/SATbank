@@ -57,6 +57,7 @@ export function makeMistake(overrides: Partial<Mistake> = {}): Mistake {
     topic: "linear equations",
     difficulty: "medium",
     urgency: "important",
+    urgency_is_yours: false,
     why_wrong: "You solved for 3x and stopped there.",
     correct_reasoning: "Subtract 7, then divide by 3.",
     takeaway: "Finish the division before you pick.",

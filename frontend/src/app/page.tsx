@@ -5,6 +5,7 @@ import Link from "next/link";
 
 import { Empty } from "@/components/app/empty";
 import { MistakeCard } from "@/components/app/mistake-card";
+import { Recurring } from "@/components/app/recurring";
 import { UrgencyBadge } from "@/components/app/urgency-badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -95,6 +96,8 @@ export default function DashboardPage() {
               <span className="shrink-0 text-xs text-muted-foreground">Tag them →</span>
             </Link>
           )}
+
+          <Recurring />
 
           <section>
             <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">

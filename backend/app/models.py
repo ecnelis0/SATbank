@@ -8,6 +8,7 @@ from enum import StrEnum
 
 from sqlalchemy import (
     JSON,
+    Boolean,
     Column,
     DateTime,
     ForeignKey,
@@ -190,6 +191,10 @@ class Mistake(Base):
     topic: Mapped[str | None] = mapped_column(String(120), index=True)
     difficulty: Mapped[str | None] = mapped_column(String(16))
     urgency: Mapped[str | None] = mapped_column(String(20), index=True)
+    # Set when the student chose the urgency themselves. The analyzer then leaves it
+    # alone: having the AI overwrite the importance you just picked, seconds after you
+    # picked it, is worse than having no AI opinion at all.
+    urgency_is_yours: Mapped[bool] = mapped_column(Boolean, default=False)
     why_wrong: Mapped[str | None] = mapped_column(Text)
     correct_reasoning: Mapped[str | None] = mapped_column(Text)
     takeaway: Mapped[str | None] = mapped_column(Text)

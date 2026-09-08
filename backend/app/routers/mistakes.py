@@ -43,11 +43,15 @@ async def log_mistake(
     analysis must never cost the student their 1-hour review.
     """
     logged_at = utcnow()
+    fields = body.model_dump()
     mistake = Mistake(
         user_id=user_id,
         created_at=logged_at,
         analysis_status=AnalysisStatus.pending if analyze else AnalysisStatus.not_requested,
-        **body.model_dump(),
+        # An urgency chosen here is the student's, and the analyzer must not
+        # overwrite it a moment later.
+        urgency_is_yours=fields.get("urgency") is not None,
+        **fields,
     )
     mistake.reviews.extend(build_ladder(mistake.id, logged_at))
     blank_collections(mistake)
@@ -143,6 +147,8 @@ async def update_mistake(
     for field, value in body.model_dump(exclude_unset=True).items():
         setattr(mistake, field, value)
 
+    if "urgency" in body.model_fields_set and body.urgency is not None:
+        mistake.urgency_is_yours = True
     if body.touches_analysis():
         mistake.analysis_edited_at = utcnow()
         # Hand-written analysis counts as analysis: it should read, group and filter

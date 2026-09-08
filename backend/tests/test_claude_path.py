@@ -118,3 +118,33 @@ async def test_a_refusal_is_reported_rather_than_returned_as_an_analysis(analyze
         await analyzer.analyze(
             MistakeInput(section="math", question_text="q", your_answer="1", correct_answer="2")
         )
+
+
+async def test_the_model_is_told_that_repetition_answers_a_consistency_question(analyzer):
+    """The student's ask: "which questions have I consistently been getting wrong"."""
+    await analyzer.summarise(
+        "which questions have I consistently been getting wrong in the past month",
+        "3 question(s) matched.\n"
+        "2 question(s) have been missed again on review, 5 time(s) in total.\n"
+        "Topics that keep coming back: inverse trig (4 repeat misses)",
+    )
+
+    sent = anthropic_stub.seen[-1]
+    system = sent["system"]
+    # Told to answer from repeat counts rather than from how many questions exist.
+    assert "repeat-miss counts" in system
+    assert "is not a pattern" in system
+    # And given the counts themselves.
+    assert "inverse trig (4 repeat misses)" in sent["messages"][0]["content"]
+
+
+async def test_a_consistency_question_is_read_as_a_date_range(analyzer):
+    await analyzer.interpret(
+        "what have I consistently got wrong in the past month",
+        TODAY,
+        Vocabulary(topics=["inverse trig"]),
+    )
+
+    system = anthropic_stub.seen[-1]["system"]
+    assert "consistently been getting wrong" in system
+    assert "logged_after" in system

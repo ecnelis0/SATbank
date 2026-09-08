@@ -227,6 +227,9 @@ export function AnalysisPanel({
     <div className="space-y-5">
       <div className="flex flex-wrap items-center gap-2">
         {mistake.urgency && <UrgencyBadge urgency={mistake.urgency} />}
+        {mistake.urgency_is_yours && (
+          <span className="text-xs text-muted-foreground">your call</span>
+        )}
         {mistake.error_type && (
           <Badge variant="secondary">{ERROR_TYPE_LABELS[mistake.error_type]}</Badge>
         )}

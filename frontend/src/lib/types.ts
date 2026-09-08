@@ -93,6 +93,7 @@ export interface Mistake {
   topic: string | null;
   difficulty: Difficulty | null;
   urgency: Urgency | null;
+  urgency_is_yours: boolean;
   why_wrong: string | null;
   correct_reasoning: string | null;
   takeaway: string | null;
@@ -193,6 +194,7 @@ export interface Answer {
 
 export interface MistakeDraft {
   section: Section;
+  urgency?: Urgency | null;
   question_text: string;
   your_answer: string;
   correct_answer: string;

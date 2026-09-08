@@ -11,6 +11,9 @@ from .models import Difficulty, ErrorType, ReviewOutcome, Section, Urgency
 
 class MistakeCreate(BaseModel):
     section: Section
+    # Optional: say how badly this needs revisiting while you still remember. Left
+    # unset, the analyzer decides.
+    urgency: Urgency | None = None
     question_text: str = Field(min_length=1)
     your_answer: str = Field(min_length=1)
     correct_answer: str = Field(min_length=1)
@@ -182,6 +185,7 @@ class MistakeRead(BaseModel):
     topic: str | None
     difficulty: Difficulty | None
     urgency: Urgency | None
+    urgency_is_yours: bool
     why_wrong: str | None
     correct_reasoning: str | None
     takeaway: str | None

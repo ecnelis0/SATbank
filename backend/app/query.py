@@ -19,6 +19,7 @@ from .models import (
     ErrorType,
     Mistake,
     ReviewEvent,
+    ReviewOutcome,
     Section,
     Urgency,
     mistake_options,
@@ -245,6 +246,55 @@ async def vocabulary(session: AsyncSession, user_id: str) -> Vocabulary:
     return Vocabulary(topics=sorted(topics), concepts=sorted(concepts), sources=sorted(sources))
 
 
+def times_missed_again(mistake: Mistake) -> int:
+    """How many times this question was still wrong when it came back.
+
+    The number that separates "I slipped once" from "I do not know this". A review
+    answered `wrong` is a genuine repeat miss; `superseded` rungs are bookkeeping
+    from the restart that miss caused, and counting them would inflate every total.
+    """
+    return sum(1 for review in mistake.reviews if review.outcome == ReviewOutcome.wrong)
+
+
+def recurring(mistakes: list[Mistake]) -> str:
+    """What keeps coming back, as opposed to what merely happened once.
+
+    "Which questions have I consistently been getting wrong" is a question about
+    repetition, and no amount of listing rows answers it - so the repetition is
+    counted here and handed to the model as fact.
+    """
+    repeats = [(m, times_missed_again(m)) for m in mistakes]
+    repeated = [(m, n) for m, n in repeats if n > 0]
+    if not repeated:
+        return "Nothing in this set has been missed again on review."
+
+    def tally(pairs: list[tuple[str, int]]) -> str:
+        counts: dict[str, int] = {}
+        for key, n in pairs:
+            counts[key] = counts.get(key, 0) + n
+        ranked = sorted(counts.items(), key=lambda item: (-item[1], item[0]))
+        return ", ".join(f"{key} ({n} repeat miss{'es' if n > 1 else ''})" for key, n in ranked)
+
+    lines = [
+        f"{len(repeated)} question(s) have been missed again on review, "
+        f"{sum(n for _, n in repeated)} time(s) in total.",
+    ]
+    by_topic = [(m.topic, n) for m, n in repeated if m.topic]
+    if by_topic:
+        lines.append(f"Topics that keep coming back: {tally(by_topic)}")
+    by_slot = [(m.error_type, n) for m, n in repeated if m.error_type]
+    if by_slot:
+        lines.append(f"Reasons that keep coming back: {tally(by_slot)}")
+    by_concept = [(c.title, n) for m, n in repeated for c in m.concepts]
+    if by_concept:
+        lines.append(f"Concepts that keep coming back: {tally(by_concept)}")
+    worst = sorted(repeated, key=lambda pair: -pair[1])[:5]
+    lines.append(
+        "Worst offenders: " + "; ".join(f'"{m.question_text[:60]}" ({n}x)' for m, n in worst)
+    )
+    return "\n".join(lines)
+
+
 def overview(mistakes: list[Mistake]) -> str:
     """Counts across the matched rows.
 
@@ -270,6 +320,8 @@ def overview(mistakes: list[Mistake]) -> str:
     concepts = [concept.title for m in mistakes for concept in m.concepts]
     if concepts:
         lines.append(f"By concept: {tally(concepts)}")
+    lines.append("")
+    lines.append(recurring(mistakes))
     return "\n".join(lines)
 
 
@@ -280,10 +332,13 @@ def digest(mistakes: list[Mistake]) -> str:
 
     lines = [f"{len(mistakes)} question(s) matched.", "", overview(mistakes), "", "Rows:"]
     for index, mistake in enumerate(mistakes, start=1):
+        repeats = times_missed_again(mistake)
+        concepts = ", ".join(concept.title for concept in mistake.concepts) or "-"
         lines.append(
             f"{index}. [{mistake.urgency or 'unrated'}] [{mistake.section}] "
             f"[{mistake.error_type or 'no slot'}] topic={mistake.topic or '-'} "
-            f"logged={mistake.created_at.date()} "
+            f"concepts={concepts} logged={mistake.created_at.date()} "
+            f"missed_again_on_review={repeats} "
             f'question="{mistake.question_text[:120]}" '
             f"you_put={mistake.your_answer!r} answer={mistake.correct_answer!r}"
         )

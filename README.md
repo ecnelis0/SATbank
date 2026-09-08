@@ -91,6 +91,23 @@ straight to the question.
 If the model fails to interpret, you get the whole bank rather than nothing. If it fails to
 summarise, you still get the rows — the prose is the disposable half.
 
+### What you keep getting wrong
+
+Ask *"which questions have I consistently been getting wrong in the past month"* and you
+get an answer built from counts, not from the model's impression of a list:
+
+```
+3 question(s) have been missed again on review, 6 time(s) in total.
+Topics that keep coming back: inverse trig (6 repeat misses)
+Reasons that keep coming back: concept_gap (6 repeat misses)
+Worst offenders: "cos^-1(0) is which angle?" (2x); "arctan(1) in radians?" (2x); …
+```
+
+Repetition, not volume, is what counts: ten questions on a topic logged once each is not
+a weakness, three missed again on review is. A review answered *wrong* is a repeat; the
+rungs that miss retires are bookkeeping and are excluded. The dashboard shows the same
+thing under **"What keeps coming back"**, without needing to ask.
+
 **Categories** is the browsing half. Topics are folded under the section they belong to —
 click a section's arrow and its topics expand beneath it. Everything is a checkbox, and
 selections combine: **OR within a facet, AND across them**. So *Math + math fundamentals +
@@ -108,8 +125,10 @@ Every question carries one of three levels, most urgent first:
 | **Very important** | A high-frequency skill, or a trap you will walk into again. |
 | **Important** | Worth coming back to, but not what is costing you the most. |
 
-The analyzer assigns it — judging the *gap*, not the question's difficulty — and you can
-overrule it like any other field. It is not just a label: **the review queue is ordered by
+**You can set it while logging**, before the AI sees the question — pick a level on the
+log form and the analyzer will not overrule it (the question shows "your call"). Leave it
+to the AI and it judges the *gap*, not the question's difficulty. Either way you can
+change it later. It is not just a label: **the review queue is ordered by
 urgency, then by date**, so when several questions are due at once the one that matters
 most is the one on screen. `/reviews/upcoming` stays chronological; urgency decides what
 to do now, not what the calendar looks like. The dashboard leads with a "what to fix

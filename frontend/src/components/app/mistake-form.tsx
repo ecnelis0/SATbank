@@ -13,12 +13,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { api, keys } from "@/lib/api";
-import { SECTION_LABELS } from "@/lib/labels";
+import { SECTION_LABELS, URGENCY_LABELS } from "@/lib/labels";
 import type { MistakeDraft, Section } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const schema = z.object({
   section: z.enum(["reading_writing", "math"]),
+  // "ai" means: leave it to the analyzer. Anything else is the student's own call
+  // and the analyzer will not overrule it.
+  urgency: z.enum(["ai", "fundamental", "very_important", "important"]),
   source: z.string().max(200).optional(),
   question_text: z.string().trim().min(1, "Paste the question you missed."),
   choicesText: z.string().optional(),
@@ -56,12 +59,13 @@ export function MistakeForm() {
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { section: "math" },
+    defaultValues: { section: "math", urgency: "ai" },
   });
 
   // `useWatch` rather than `watch()`: the latter returns a fresh function each
   // render, which opts this component out of the React Compiler's memoization.
   const section = useWatch({ control, name: "section" });
+  const urgency = useWatch({ control, name: "urgency" });
 
   const log = useMutation({
     mutationFn: async ({ draft, analyze }: { draft: MistakeDraft; analyze: boolean }) => {
@@ -104,6 +108,7 @@ export function MistakeForm() {
         analyze,
         draft: {
           section: values.section,
+          urgency: values.urgency === "ai" ? null : values.urgency,
           source: values.source?.trim() || null,
           question_text: values.question_text.trim(),
           choices: parseChoices(values.choicesText),
@@ -183,6 +188,39 @@ export function MistakeForm() {
           <FieldError message={errors.correct_answer?.message} />
         </div>
       </div>
+
+      <fieldset>
+        <legend className="text-sm font-medium">How urgent is this?</legend>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          Say now while you still remember. Leave it to the AI and it will judge from
+          the miss.
+        </p>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {(
+            [
+              ["ai", "Let the AI decide"],
+              ["fundamental", URGENCY_LABELS.fundamental],
+              ["very_important", URGENCY_LABELS.very_important],
+              ["important", URGENCY_LABELS.important],
+            ] as const
+          ).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              aria-pressed={urgency === value}
+              onClick={() => setValue("urgency", value)}
+              className={cn(
+                "rounded-md border px-3 py-1.5 text-sm transition-colors",
+                urgency === value
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "hover:bg-muted",
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </fieldset>
 
       <div>
         <Label htmlFor="pictures">Pictures</Label>

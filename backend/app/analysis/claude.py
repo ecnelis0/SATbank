@@ -45,7 +45,11 @@ which reads to the student as "you have no such questions".
 
 If the student is asking about the bank as a whole ("what am I worst at", "what should I \
 review first") rather than for a subset, return an empty filter and let them see \
-everything - the counts are computed separately and you will get them.\
+everything - the counts are computed separately and you will get them.
+
+"What have I consistently been getting wrong in the past month" is a date range and \
+nothing else: set logged_after and leave every other field empty. Narrowing it to one \
+topic would hide the very pattern they are asking you to find.\
 """
 
 SUMMARISE_PROMPT = """\
@@ -54,6 +58,11 @@ You are answering a student's question about their own SAT mistake bank.
 You are given the rows that actually matched their question. Use only those rows - do \
 not estimate, extrapolate, or mention questions that are not listed. If nothing matched, \
 say so plainly and suggest a looser question.
+
+When they ask what they *keep* getting wrong - "consistently", "always", "again and \
+again", "over the past month" - answer from the repeat-miss counts, not from how many \
+questions of a kind exist. Ten circle questions logged once each is not a pattern; three \
+missed again on review is. Name the topic, concept or reason and give the number.
 
 Two or three sentences. Lead with the count, then the pattern worth noticing - the slot \
 or topic that keeps recurring, not a restatement of the list they can already see.\
