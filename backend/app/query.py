@@ -11,7 +11,7 @@ from datetime import UTC, date, datetime, time
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy import or_, select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .models import (
@@ -102,6 +102,33 @@ class BankQuery(BaseModel):
     limit: int = Field(default=25, ge=1, le=100)
 
 
+# What a text search looks at. The question alone is not enough: people search for
+# where a question came from ("Bluebook"), for an answer ("36"), or for the topic.
+SEARCHABLE = (
+    Mistake.question_text,
+    Mistake.source,
+    Mistake.your_answer,
+    Mistake.correct_answer,
+    Mistake.student_note,
+    Mistake.topic,
+    Mistake.why_wrong,
+    Mistake.takeaway,
+)
+
+
+def text_filter(term: str):
+    """Every word must appear somewhere; each word may appear in any field.
+
+    So "area circle" finds a question about the area of a circle even though those
+    two words never sit next to each other - which a single LIKE '%area circle%'
+    cannot do, and which is how the old search returned nothing for most phrases.
+    """
+    words = [word for word in term.split() if word]
+    if not words:
+        return None
+    return and_(*[or_(*[column.ilike(f"%{word}%") for column in SEARCHABLE]) for word in words])
+
+
 def build_statement(user_id: str, query: BankQuery):
     stmt = select(Mistake).where(Mistake.user_id == user_id).options(*mistake_options())
 
@@ -122,7 +149,9 @@ def build_statement(user_id: str, query: BankQuery):
     if query.topics:
         stmt = stmt.where(or_(*[Mistake.topic.ilike(f"%{topic}%") for topic in query.topics]))
     if query.text:
-        stmt = stmt.where(Mistake.question_text.ilike(f"%{query.text}%"))
+        clause = text_filter(query.text)
+        if clause is not None:
+            stmt = stmt.where(clause)
     if query.logged_after:
         stmt = stmt.where(
             Mistake.created_at >= datetime.combine(query.logged_after, time.min, tzinfo=UTC)

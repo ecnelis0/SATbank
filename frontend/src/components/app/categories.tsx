@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -27,7 +28,9 @@ function Check({ on }: { on: boolean }) {
       aria-hidden
       className={cn(
         "flex size-4 shrink-0 items-center justify-center rounded border text-[10px]",
-        on ? "border-primary bg-primary text-primary-foreground" : "border-border",
+        on
+          ? "border-primary bg-primary text-primary-foreground"
+          : "border-border",
       )}
     >
       {on ? "✓" : ""}
@@ -61,12 +64,20 @@ function Item({
     >
       <Check on={selected} />
       <span className="min-w-0 flex-1 truncate">{label}</span>
-      <span className="shrink-0 text-xs tabular-nums text-muted-foreground">{count}</span>
+      <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+        {count}
+      </span>
     </button>
   );
 }
 
-function Group({ title, children }: { title: string; children: React.ReactNode }) {
+function Group({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
   return (
     <section>
       <h3 className="mb-1 px-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -84,7 +95,10 @@ export function Categories() {
   const [facets, setFacets] = useState<Facets>(NO_FACETS);
   const [expanded, setExpanded] = useState<Section[]>([]);
 
-  const { data, isPending } = useQuery({ queryKey: keys.stats(), queryFn: api.stats });
+  const { data, isPending } = useQuery({
+    queryKey: keys.stats(),
+    queryFn: api.stats,
+  });
   const { data: concepts } = useQuery({
     queryKey: keys.concepts(),
     queryFn: api.listConcepts,
@@ -123,7 +137,9 @@ export function Categories() {
 
       <Group title="Section & topic">
         {sections.map((section) => {
-          const topics = data.topics.filter((entry) => entry.section === section);
+          const topics = data.topics.filter(
+            (entry) => entry.section === section,
+          );
           const open = expanded.includes(section);
           return (
             <div key={section}>
@@ -149,7 +165,9 @@ export function Categories() {
                     label={SECTION_LABELS[section]}
                     count={countOf(data.by_section, section)}
                     selected={has(facets, "section", section)}
-                    onToggle={() => setFacets(toggle(facets, "section", section))}
+                    onToggle={() =>
+                      setFacets(toggle(facets, "section", section))
+                    }
                   />
                 </div>
               </div>
@@ -162,7 +180,9 @@ export function Categories() {
                     count={entry.count}
                     indent
                     selected={has(facets, "topics", entry.topic)}
-                    onToggle={() => setFacets(toggle(facets, "topics", entry.topic))}
+                    onToggle={() =>
+                      setFacets(toggle(facets, "topics", entry.topic))
+                    }
                   />
                 ))}
             </div>
@@ -173,28 +193,44 @@ export function Categories() {
       {concepts && concepts.length > 0 && (
         <Group title="Concepts">
           {concepts.map((concept) => (
-            <Item
-              key={concept.id}
-              label={
-                <span className="flex items-center gap-1.5">
-                  <span className="truncate">{concept.title}</span>
-                  {/* A concept with nothing tagged filters to an empty bank. Saying
+            <div key={concept.id} className="flex items-center gap-1">
+              <div className="min-w-0 flex-1">
+                <Item
+                  label={
+                    <span className="flex items-center gap-1.5">
+                      <span className="truncate">{concept.title}</span>
+                      {/* A concept with nothing tagged filters to an empty bank. Saying
                       so here is cheaper than letting them find out by clicking. */}
-                  {concept.question_count === 0 && (
-                    <span className="shrink-0 text-[10px] text-muted-foreground">
-                      nothing tagged
+                      {concept.question_count === 0 && (
+                        <span className="shrink-0 text-[10px] text-muted-foreground">
+                          nothing tagged
+                        </span>
+                      )}
                     </span>
-                  )}
-                </span>
-              }
-              count={concept.question_count}
-              selected={has(facets, "concept_ids", concept.id)}
-              onToggle={() => setFacets(toggle(facets, "concept_ids", concept.id))}
-            />
+                  }
+                  count={concept.question_count}
+                  selected={has(facets, "concept_ids", concept.id)}
+                  onToggle={() =>
+                    setFacets(toggle(facets, "concept_ids", concept.id))
+                  }
+                />
+              </div>
+              {/* A sibling, not a child: a link inside a role="checkbox" button is
+                  invalid HTML and unreachable for a keyboard user. */}
+              <Link
+                href={`/concepts/${concept.id}`}
+                aria-label={`Open ${concept.title}`}
+                className="flex size-6 shrink-0 items-center justify-center rounded text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              >
+                ↗
+              </Link>
+            </div>
           ))}
           {data.untagged_questions > 0 && (
             <Item
-              label={<span className="text-muted-foreground">No concept yet</span>}
+              label={
+                <span className="text-muted-foreground">No concept yet</span>
+              }
               count={data.untagged_questions}
               selected={facets.hasConcept === false}
               onToggle={() =>
@@ -216,7 +252,9 @@ export function Categories() {
               label={ERROR_TYPE_LABELS[slot.key as ErrorType] ?? slot.key}
               count={slot.count}
               selected={has(facets, "error_type", slot.key)}
-              onToggle={() => setFacets(toggle(facets, "error_type", slot.key as ErrorType))}
+              onToggle={() =>
+                setFacets(toggle(facets, "error_type", slot.key as ErrorType))
+              }
             />
           ))}
         </Group>
@@ -226,14 +264,20 @@ export function Categories() {
         <Button
           size="sm"
           disabled={isEmpty(facets)}
-          onClick={() => router.push(`/bank?${toSearchParams(facets).toString()}`)}
+          onClick={() =>
+            router.push(`/bank?${toSearchParams(facets).toString()}`)
+          }
         >
           {selected === 0
             ? "Show questions"
             : `Show ${selected} filter${selected === 1 ? "" : "s"}`}
         </Button>
         {selected > 0 && (
-          <Button size="sm" variant="ghost" onClick={() => setFacets(NO_FACETS)}>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => setFacets(NO_FACETS)}
+          >
             Clear
           </Button>
         )}

@@ -18,7 +18,7 @@ from ..models import (
     mistake_options,
     utcnow,
 )
-from ..query import BankQuery, run_query
+from ..query import BankQuery, run_query, text_filter
 from ..review import build_ladder
 from ..schemas import MistakeCreate, MistakeRead, MistakeUpdate
 from ..services import analyze_in_background, analyze_mistake
@@ -68,7 +68,11 @@ async def list_mistakes(
     section: Section | None = None,
     topic: str | None = None,
     status: AnalysisStatus | None = None,
-    q: str | None = Query(default=None, description="Substring match on the question text"),
+    q: str | None = Query(
+        default=None,
+        description="Words to find. Every word must appear somewhere on the question - "
+        "its text, source, answers, note, topic or analysis.",
+    ),
     limit: int = Query(default=100, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
 ) -> list[Mistake]:
@@ -89,7 +93,11 @@ async def list_mistakes(
     if status is not None:
         stmt = stmt.where(Mistake.analysis_status == status)
     if q:
-        stmt = stmt.where(Mistake.question_text.ilike(f"%{q}%"))
+        # The same matcher the bank and the assistant use, so a search means the
+        # same thing wherever it is typed.
+        clause = text_filter(q)
+        if clause is not None:
+            stmt = stmt.where(clause)
 
     result = await session.scalars(stmt.limit(limit).offset(offset))
     return list(result)

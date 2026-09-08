@@ -18,12 +18,22 @@ and the ladder restarts from the top.
 Screens: a dashboard of slots ("why you're losing points"), a log form, the bank with
 filters, a question detail page with the analysis and its ladder, and a review session.
 
+Search looks at **every field, word by word**: the question, where it came from, both
+answers, your note, the topic and the AI's analysis. Each word must appear somewhere, so
+"area circle" finds a question about the area of a circle even though those words never
+sit next to each other, and "Bluebook" finds everything from that test.
+
 ## Concepts
 
 A concept is the thing behind a family of misses — the rule you keep forgetting, not
 the question you got wrong. Its own tab: write one down in your own words, then **tag
 questions onto it after the fact** from the question's page. Tagging is many-to-many —
 a question can sit under several concepts, and a concept collects many questions.
+
+Filtering the bank by one concept leads with **the concept itself** — its title, your
+notes, its diagrams and its count — above the questions filed under it, so the thing you
+are revising is on the same screen as the evidence for it. The rail's ↗ opens the
+concept's own page.
 
 A concept with nothing tagged is marked **"nothing tagged"** in the rail, and filtering
 by it says which concept is empty rather than showing a bare "nothing matches". The rail

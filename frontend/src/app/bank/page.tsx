@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useMemo, useState } from "react";
 
+import { ConceptHeader } from "@/components/app/concept-header";
 import { Empty } from "@/components/app/empty";
 import { MistakeCard } from "@/components/app/mistake-card";
 import { UrgencyBadge } from "@/components/app/urgency-badge";
@@ -160,6 +161,11 @@ function BankList() {
             Clear all
           </Button>
         </div>
+      )}
+
+      {/* One concept selected: show the concept, then the questions under it. */}
+      {selected.concept_ids.length === 1 && (
+        <ConceptHeader conceptId={selected.concept_ids[0]} />
       )}
 
       {isPending ? (

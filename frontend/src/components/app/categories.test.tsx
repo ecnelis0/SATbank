@@ -204,3 +204,31 @@ describe("Categories concepts", () => {
     expect(url.searchParams.getAll("concept")).toEqual(["c1"]);
   });
 });
+
+
+describe("Categories concept links", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    push.mockClear();
+  });
+
+  it("offers a way to open the concept itself, not only to filter by it", async () => {
+    await open();
+
+    const link = await screen.findByRole("link", {
+      name: "Open Circumference gives the radius",
+    });
+    expect(link).toHaveAttribute("href", "/concepts/c1");
+  });
+
+  it("keeps that link out of the checkbox rather than nested inside it", async () => {
+    await open();
+
+    const box = await screen.findByRole("checkbox", {
+      name: /Circumference gives the radius/,
+    });
+    // A link inside a role="checkbox" button is invalid HTML and unreachable by
+    // keyboard; it has to be a sibling.
+    expect(within(box).queryByRole("link")).not.toBeInTheDocument();
+  });
+});
