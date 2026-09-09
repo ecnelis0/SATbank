@@ -55,7 +55,6 @@ function AnalysisEditor({ mistake, onDone }: { mistake: Mistake; onDone: () => v
     trap: mistake.trap ?? "",
     correct_reasoning: mistake.correct_reasoning ?? "",
     takeaway: mistake.takeaway ?? "",
-    tags: (mistake.tags ?? []).join(", "),
   });
   const save = useUpdateMistake(mistake.id, onDone);
 
@@ -70,10 +69,6 @@ function AnalysisEditor({ mistake, onDone }: { mistake: Mistake; onDone: () => v
         save.mutate({
           ...draft,
           topic: draft.topic.trim() || null,
-          tags: draft.tags
-            .split(",")
-            .map((tag) => tag.trim())
-            .filter(Boolean),
         });
       }}
     >
@@ -127,17 +122,6 @@ function AnalysisEditor({ mistake, onDone }: { mistake: Mistake; onDone: () => v
           />
         </div>
       ))}
-
-      <div>
-        <Label htmlFor="tags">Tags</Label>
-        <Input
-          id="tags"
-          className="mt-1.5"
-          placeholder="comma, separated"
-          value={draft.tags}
-          onChange={(event) => field("tags", event.target.value)}
-        />
-      </div>
 
       <div className="flex gap-2">
         <Button type="submit" disabled={save.isPending}>

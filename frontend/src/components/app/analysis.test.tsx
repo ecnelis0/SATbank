@@ -65,7 +65,6 @@ describe("AnalysisPanel", () => {
     await user.clear(screen.getByLabelText("Topic"));
     await user.type(screen.getByLabelText("Topic"), "linear equations");
     await user.type(screen.getByLabelText("Remember"), "Read the constant twice.");
-    await user.type(screen.getByLabelText("Tags"), "algebra, careless");
     await user.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() =>
@@ -75,10 +74,12 @@ describe("AnalysisPanel", () => {
           error_type: "time_pressure_guess",
           topic: "linear equations",
           takeaway: "Read the constant twice.",
-          tags: ["algebra", "careless"],
         }),
       ),
     );
+    // Labels are the student's own, edited with the picker rather than typed into
+    // the debrief as a comma-separated string.
+    expect(update.mock.calls[0][1]).not.toHaveProperty("tags");
   });
 
   it("edits an existing analysis starting from what is already there", async () => {

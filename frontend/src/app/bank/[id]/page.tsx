@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { AnalysisPanel } from "@/components/app/analysis";
 import { ConceptTags } from "@/components/app/concept-tags";
 import { MistakeImages } from "@/components/app/images";
+import { MistakeLabels } from "@/components/app/mistake-labels";
 import { Empty } from "@/components/app/empty";
 import { Ladder } from "@/components/app/ladder";
 import { QuestionCard } from "@/components/app/question-card";
@@ -79,6 +80,12 @@ export default function MistakePage() {
       <Card>
         <CardContent>
           <MistakeImages mistake={mistake} editable />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent>
+          <MistakeLabels mistake={mistake} editable />
         </CardContent>
       </Card>
 

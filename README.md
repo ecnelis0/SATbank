@@ -59,7 +59,9 @@ the next question so the bank does not fill up with three spellings of one idea.
 filter the bank like every other facet, and the assistant is told which ones exist.
 
 The log form also files a question **under a concept as you log it**, rather than only
-afterwards.
+afterwards — and the question's own page has the same label picker, so a label added later
+is the same act as one added at the time. Relabelling never counts as editing the AI's
+debrief, so it cannot lock a re-run.
 
 ## Pictures and diagrams
 

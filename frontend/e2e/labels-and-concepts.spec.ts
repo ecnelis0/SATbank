@@ -74,3 +74,46 @@ test("concepts are grouped into Math and Reading & Writing", async ({ page }) =>
   await math.click();
   await expect(page.getByRole("link", { name: new RegExp(mathConcept) })).toBeVisible();
 });
+
+
+test("labels can be added and removed from a question already in the bank", async ({
+  page,
+}) => {
+  const stamp = Date.now() % 100000;
+  const question = `Relabel me later ${stamp} [e2e]`;
+
+  // Logged with no labels at all.
+  await page.goto("/log");
+  await page.getByLabel("The question").fill(question);
+  await page.getByLabel("You put").fill("1");
+  await page.getByLabel("The answer was").fill("2");
+  await page.getByRole("button", { name: "Log it and ask the AI" }).click();
+  await expect(page).toHaveURL(/\/bank\/[0-9a-f]{32}/);
+  const url = page.url();
+
+  // The question page has its own label picker - this is what was missing.
+  await expect(page.getByText("Your labels")).toBeVisible();
+  await page.getByLabel("Add a label").fill(`invented ${stamp}`);
+  await page.getByLabel("Add a label").press("Enter");
+  await expect(page.getByRole("button", { name: `Remove label invented ${stamp}` })).toBeVisible();
+
+  // One of the offered ones too.
+  await page.getByRole("button", { name: /^by mistake/ }).click();
+  await expect(page.getByRole("button", { name: "Remove label by mistake" })).toBeVisible();
+
+  // It really saved.
+  await page.reload();
+  await expect(page.getByRole("button", { name: `Remove label invented ${stamp}` })).toBeVisible();
+
+  // Removing one saves too.
+  await page.getByRole("button", { name: "Remove label by mistake" }).click();
+  await page.reload();
+  await expect(page.getByRole("button", { name: "Remove label by mistake" })).toBeHidden();
+  await expect(page.getByRole("button", { name: `Remove label invented ${stamp}` })).toBeVisible();
+
+  // And relabelling has not locked the AI out of its own analysis.
+  await page.goto(url);
+  await page.getByRole("button", { name: "Re-run the AI" }).click();
+  await expect(page.getByText("WHY YOU GOT IT WRONG")).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByRole("button", { name: `Remove label invented ${stamp}` })).toBeVisible();
+});

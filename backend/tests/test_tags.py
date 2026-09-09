@@ -208,3 +208,29 @@ async def test_a_concept_id_that_does_not_exist_is_ignored_not_fatal(client):
     body = await _log(client, concept_ids=["deadbeef" * 4])
 
     assert body["concepts"] == []
+
+
+async def test_relabelling_does_not_block_a_fresh_analysis(client):
+    """Labels are the student's, so changing one is not editing the AI's work.
+
+    While `tags` counted as an analysis field, adding a label set
+    analysis_edited_at and every later re-run came back 409.
+    """
+    body = await _log(client)
+
+    updated = (await client.patch(f"/mistakes/{body['id']}", json={"tags": ["by mistake"]})).json()
+    assert updated["analysis_edited_at"] is None
+
+    rerun = await client.post(f"/mistakes/{body['id']}/analyze")
+    assert rerun.status_code == 200
+    assert rerun.json()["tags"] == ["by mistake"]
+
+
+async def test_editing_the_debrief_still_locks_it(client):
+    """The guard itself must survive: only analysis fields should trip it."""
+    body = await _log(client)
+
+    updated = (await client.patch(f"/mistakes/{body['id']}", json={"takeaway": "Mine."})).json()
+    assert updated["analysis_edited_at"] is not None
+
+    assert (await client.post(f"/mistakes/{body['id']}/analyze")).status_code == 409

@@ -57,8 +57,10 @@ ANALYSIS_FIELDS = (
     "correct_reasoning",
     "takeaway",
     "trap",
-    "tags",
 )
+# Note: `tags` is deliberately not here. They are the student's own labels, not
+# something the analyzer writes, so relabelling a question must not mark its
+# analysis as edited - which would block a re-run behind a 409.
 
 
 class MistakeUpdate(BaseModel):
