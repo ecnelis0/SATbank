@@ -47,7 +47,6 @@ async def analyze_mistake(session: AsyncSession, mistake: Mistake) -> Mistake:
     mistake.correct_reasoning = result.correct_reasoning
     mistake.takeaway = result.takeaway
     mistake.trap = result.trap
-    mistake.tags = result.tags
     mistake.analysis_status = AnalysisStatus.ready
     mistake.analysis_error = None
     # A fresh analysis replaces whatever the student wrote, so the edit marker - and

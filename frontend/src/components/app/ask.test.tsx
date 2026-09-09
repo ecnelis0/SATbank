@@ -11,6 +11,7 @@ import type { Answer, BankQuery } from "@/lib/types";
 const EMPTY_QUERY: BankQuery = {
   concept_ids: [],
   concepts: [],
+  tags: [],
   has_concept: null,
   urgency: [],
   error_type: [],

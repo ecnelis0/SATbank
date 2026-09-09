@@ -10,6 +10,7 @@ from ..deps import SessionDep, UserDep
 from ..images import delete as delete_file
 from ..models import (
     AnalysisStatus,
+    Concept,
     ErrorType,
     Mistake,
     Section,
@@ -44,6 +45,7 @@ async def log_mistake(
     """
     logged_at = utcnow()
     fields = body.model_dump()
+    concept_ids = fields.pop("concept_ids", [])
     mistake = Mistake(
         user_id=user_id,
         created_at=logged_at,
@@ -55,6 +57,14 @@ async def log_mistake(
     )
     mistake.reviews.extend(build_ladder(mistake.id, logged_at))
     blank_collections(mistake)
+
+    if concept_ids:
+        # Scoped to the student: a concept id from someone else's bank must not
+        # attach a question to it.
+        concepts = await session.scalars(
+            select(Concept).where(Concept.id.in_(concept_ids), Concept.user_id == user_id)
+        )
+        mistake.concepts = list(concepts)
     session.add(mistake)
     await session.commit()
 

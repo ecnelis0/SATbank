@@ -3,11 +3,14 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 
+import { ConceptPicker } from "@/components/app/concept-picker";
 import { PendingImages, usePendingImages } from "@/components/app/pending-images";
+import { TagPicker } from "@/components/app/tag-picker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -50,6 +53,8 @@ export function MistakeForm() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const pictures = usePendingImages();
+  const [tags, setTags] = useState<string[]>([]);
+  const [conceptIds, setConceptIds] = useState<string[]>([]);
 
   const {
     control,
@@ -89,6 +94,8 @@ export function MistakeForm() {
       queryClient.invalidateQueries({ queryKey: keys.stats() });
       queryClient.invalidateQueries({ queryKey: ["reviews"] });
       pictures.clear();
+      setTags([]);
+      setConceptIds([]);
       if (failed > 0) {
         toast.error(
           `Logged, but ${failed} picture${failed === 1 ? "" : "s"} would not upload. ` +
@@ -109,6 +116,8 @@ export function MistakeForm() {
         draft: {
           section: values.section,
           urgency: values.urgency === "ai" ? null : values.urgency,
+          tags,
+          concept_ids: conceptIds,
           source: values.source?.trim() || null,
           question_text: values.question_text.trim(),
           choices: parseChoices(values.choicesText),
@@ -221,6 +230,31 @@ export function MistakeForm() {
           ))}
         </div>
       </fieldset>
+
+      <div>
+        <Label htmlFor="labels">Your labels</Label>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          Optional. How it went wrong in your own words — &ldquo;by mistake&rdquo;,
+          &ldquo;ran out of time&rdquo;. Reuse one or invent your own.
+        </p>
+        <div id="labels" className="mt-1.5">
+          <TagPicker selected={tags} onChange={setTags} disabled={log.isPending} />
+        </div>
+      </div>
+
+      <div>
+        <Label htmlFor="concepts">File under a concept</Label>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          Optional. Tag it now, or from the question later.
+        </p>
+        <div id="concepts" className="mt-1.5">
+          <ConceptPicker
+            selected={conceptIds}
+            onChange={setConceptIds}
+            disabled={log.isPending}
+          />
+        </div>
+      </div>
 
       <div>
         <Label htmlFor="pictures">Pictures</Label>

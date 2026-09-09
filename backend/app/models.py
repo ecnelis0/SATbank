@@ -73,6 +73,20 @@ class AnalysisStatus(StrEnum):
     failed = "failed"
 
 
+# Offered on the log form as a starting point. Not a closed set: the student's own
+# tags sit alongside these, and nothing here is special once it has been used.
+SUGGESTED_TAGS = (
+    "by mistake",
+    "ran out of time",
+    "guessed",
+    "didn't read the question",
+    "knew it, blanked",
+    "never seen this before",
+    "silly error",
+    "need to memorise",
+)
+
+
 class ErrorType(StrEnum):
     """The 'why did I get this wrong' slots. The AI must pick exactly one.
 

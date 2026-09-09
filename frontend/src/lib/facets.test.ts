@@ -14,6 +14,7 @@ import {
 
 const PICKED: Facets = {
   concept_ids: [],
+  tags: [],
   hasConcept: null,
   urgency: ["very_important"],
   section: ["math"],

@@ -13,6 +13,7 @@ import type {
   Section,
   Stats,
   StudentOutcome,
+  TagCount,
   Urgency,
 } from "./types";
 
@@ -160,6 +161,9 @@ export const api = {
       method: "DELETE",
     }),
 
+  /** Every label in use, commonest first, then the unused suggestions. */
+  listTags: () => request<TagCount[]>("/tags"),
+
   listConcepts: () => request<Concept[]>("/concepts"),
 
   getConcept: (id: string) => request<ConceptDetail>(`/concepts/${id}`),
@@ -198,5 +202,6 @@ export const keys = {
   upcoming: () => ["reviews", "upcoming"] as const,
   stats: () => ["stats"] as const,
   concepts: () => ["concepts"] as const,
+  tags: () => ["tags"] as const,
   concept: (id: string) => ["concept", id] as const,
 };

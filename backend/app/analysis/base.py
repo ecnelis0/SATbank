@@ -63,10 +63,6 @@ class MistakeAnalysis(BaseModel):
         description="What made the wrong answer attractive - the specific trap this "
         "question sets. One or two sentences."
     )
-    tags: list[str] = Field(
-        default_factory=list,
-        description="Two to four extra lowercase keywords for filtering the bank.",
-    )
 
 
 class AnalysisFailed(RuntimeError):

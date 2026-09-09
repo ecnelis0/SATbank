@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 async function logOne(page: import("@playwright/test").Page, question: string) {
   await page.goto("/log");
-  await page.getByRole("button", { name: "Reading & Writing" }).click();
+  await page.getByRole("button", { name: "Reading & Writing", exact: true }).click();
   await page.getByLabel("The question").fill(question);
   await page.getByLabel("You put").fill("Lines 4-6");
   await page.getByLabel("The answer was").fill("Lines 20-22");

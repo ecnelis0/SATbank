@@ -11,7 +11,7 @@ from datetime import UTC, date, datetime, time
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy import and_, or_, select
+from sqlalchemy import String, and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .models import (
@@ -38,6 +38,10 @@ class Vocabulary(BaseModel):
     filter at all - the model would be guessing at strings it has never seen.
     """
 
+    tags: list[str] = Field(
+        default_factory=list,
+        description="The student's own labels, e.g. 'by mistake'. Matched exactly, ignoring case.",
+    )
     topics: list[str] = Field(default_factory=list)
     concepts: list[str] = Field(default_factory=list)
     sources: list[str] = Field(default_factory=list)
@@ -49,6 +53,7 @@ class Vocabulary(BaseModel):
         return "\n".join(
             [
                 block("Topics in this bank", self.topics),
+                block("Tags the student uses", self.tags),
                 block("Concepts the student has written", self.concepts),
                 block("Sources", self.sources),
             ]
@@ -74,6 +79,11 @@ class BankQuery(BaseModel):
         default_factory=list,
         description="Concept titles, copied from the list of concepts you were given. "
         "Matched as substrings, case-insensitively.",
+    )
+    tags: list[str] = Field(
+        default_factory=list,
+        description="The student's own labels, copied from the tags you were given, "
+        "e.g. 'by mistake'. Matched exactly, ignoring case.",
     )
     urgency: list[Urgency] = Field(default_factory=list)
     error_type: list[ErrorType] = Field(default_factory=list)
@@ -147,6 +157,12 @@ def build_statement(user_id: str, query: BankQuery):
         stmt = stmt.where(Mistake.error_type.in_([e.value for e in query.error_type]))
     if query.section:
         stmt = stmt.where(Mistake.section.in_([s.value for s in query.section]))
+    if query.tags:
+        # tags is a JSON array, so this is a substring match on the serialised list.
+        # Quoted to stop "guessed" matching a tag that merely contains it.
+        stmt = stmt.where(
+            or_(*[Mistake.tags.cast(String).ilike(f'%"{tag}"%') for tag in query.tags])
+        )
     if query.topics:
         stmt = stmt.where(or_(*[Mistake.topic.ilike(f"%{topic}%") for topic in query.topics]))
     if query.text:
@@ -208,6 +224,8 @@ def describe(query: BankQuery) -> str:
         )
     if query.error_type:
         parts.append(" or ".join(e.value.replace("_", " ") for e in query.error_type))
+    if query.tags:
+        parts.append("tagged " + " or ".join(query.tags))
     if query.topics:
         parts.append("about " + " or ".join(query.topics))
     if query.text:
@@ -243,7 +261,16 @@ async def vocabulary(session: AsyncSession, user_id: str) -> Vocabulary:
     concepts = await session.scalars(
         select(Concept.title).where(Concept.user_id == user_id).distinct()
     )
-    return Vocabulary(topics=sorted(topics), concepts=sorted(concepts), sources=sorted(sources))
+    tag_rows = await session.scalars(
+        select(Mistake.tags).where(Mistake.user_id == user_id, Mistake.tags.is_not(None))
+    )
+    tags = sorted({tag for row in tag_rows for tag in (row or [])})
+    return Vocabulary(
+        topics=sorted(topics),
+        concepts=sorted(concepts),
+        sources=sorted(sources),
+        tags=tags,
+    )
 
 
 def times_missed_again(mistake: Mistake) -> int:

@@ -88,7 +88,6 @@ class StubAnalyzer:
             ),
             takeaway=f"Re-read the stem before committing on {topic} questions.",
             trap=f"{mistake.your_answer!r} is the answer you reach if you stop one step early.",
-            tags=[topic.replace(" ", "-"), mistake.section],
         )
 
     async def interpret(self, question: str, today: date, vocabulary: Vocabulary) -> BankQuery:

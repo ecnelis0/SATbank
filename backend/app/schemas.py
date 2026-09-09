@@ -20,6 +20,24 @@ class MistakeCreate(BaseModel):
     choices: list[str] | None = None
     source: str | None = Field(default=None, max_length=200)
     student_note: str | None = None
+    # Filed and labelled while you still remember, rather than only afterwards.
+    concept_ids: list[str] = Field(default_factory=list)
+    tags: list[str] = Field(default_factory=list)
+
+    @field_validator("tags")
+    @classmethod
+    def _tidy_tags(cls, values: list[str]) -> list[str]:
+        """Trim, drop blanks, and de-duplicate case-insensitively.
+
+        "By Mistake" and "by mistake" being two different tags would quietly split
+        every count and every filter in half.
+        """
+        seen: dict[str, str] = {}
+        for value in values:
+            tidy = " ".join(value.split())
+            if tidy and tidy.casefold() not in seen:
+                seen[tidy.casefold()] = tidy
+        return list(seen.values())
 
     @field_validator("question_text", "your_answer", "correct_answer")
     @classmethod
@@ -67,6 +85,18 @@ class MistakeUpdate(BaseModel):
     takeaway: str | None = None
     trap: str | None = None
     tags: list[str] | None = None
+
+    @field_validator("tags")
+    @classmethod
+    def _tidy_tags(cls, values: list[str] | None) -> list[str] | None:
+        if values is None:
+            return None
+        seen: dict[str, str] = {}
+        for value in values:
+            tidy = " ".join(value.split())
+            if tidy and tidy.casefold() not in seen:
+                seen[tidy.casefold()] = tidy
+        return list(seen.values())
 
     @field_validator("question_text", "your_answer", "correct_answer")
     @classmethod

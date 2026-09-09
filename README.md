@@ -40,11 +40,26 @@ by it says which concept is empty rather than showing a bare "nothing matches". 
 also offers **"No concept yet"** — every question filed under nothing — and the dashboard
 says how many those are, so the gap is visible instead of something you find by scrolling.
 
+**The Concepts tab groups them by section** — Math, Reading & Writing, and one for
+concepts belonging to neither. Each opens to show its own concepts and nothing else.
+
 Tag from either end: from a question's page, or from the concept's own page — there is
 a search-and-pick list at the bottom of every concept, and what you tag appears
 underneath it immediately. Every question in the bank shows the concepts it belongs to
 on its card. The rail filters the bank by concept alongside every other facet. Deleting
 a concept removes only the tags; the questions are untouched.
+
+## Your own labels
+
+Separately from the AI's slots and from concepts, every question takes **labels you write
+yourself** — "by mistake", "ran out of time", "forgot the +C". Add them on the log form
+while it is fresh: type one and press Enter, or click one you have used before. A starting
+vocabulary is offered until you have your own, and labels you invent are offered back to
+the next question so the bank does not fill up with three spellings of one idea. They
+filter the bank like every other facet, and the assistant is told which ones exist.
+
+The log form also files a question **under a concept as you log it**, rather than only
+afterwards.
 
 ## Pictures and diagrams
 

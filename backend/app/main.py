@@ -13,7 +13,7 @@ from .config import get_settings
 from .images import upload_dir
 from .migrate import upgrade
 from .review import LADDER_LABELS
-from .routers import ask, concepts, images, mistakes, reviews, stats
+from .routers import ask, concepts, images, mistakes, reviews, stats, tags
 
 
 @asynccontextmanager
@@ -48,6 +48,7 @@ app.mount(
 app.include_router(mistakes.router)
 app.include_router(reviews.router)
 app.include_router(stats.router)
+app.include_router(tags.router)
 app.include_router(images.router)
 app.include_router(concepts.router)
 app.include_router(ask.router)

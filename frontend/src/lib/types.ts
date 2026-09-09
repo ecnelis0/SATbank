@@ -38,6 +38,13 @@ export interface ReviewEvent {
   outcome: ReviewOutcome | null;
 }
 
+export interface TagCount {
+  tag: string;
+  count: number;
+  /** True while nothing carries it — a starting suggestion, not a chosen tag. */
+  suggested: boolean;
+}
+
 export interface ConceptSummary {
   id: string;
   title: string;
@@ -168,6 +175,7 @@ export type BankSort = "newest" | "oldest" | "most_urgent";
 export interface BankQuery {
   concept_ids: string[];
   concepts: string[];
+  tags: string[];
   urgency: Urgency[];
   error_type: ErrorType[];
   section: Section[];
@@ -195,6 +203,8 @@ export interface Answer {
 export interface MistakeDraft {
   section: Section;
   urgency?: Urgency | null;
+  concept_ids?: string[];
+  tags?: string[];
   question_text: string;
   your_answer: string;
   correct_answer: string;
