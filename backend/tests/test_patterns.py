@@ -61,7 +61,7 @@ async def test_a_question_answered_correctly_is_not_a_pattern(client, session_fa
 
     body = (await client.post("/ask", json={"question": "everything"})).json()
 
-    assert "Nothing in this set has been missed again" in body["answer"]
+    assert "Nothing here has been missed again" in body["answer"]
 
 
 async def test_the_topic_you_keep_missing_is_named(client, session_factory):
@@ -83,8 +83,13 @@ async def test_the_topic_you_keep_missing_is_named(client, session_factory):
     assert body["answer"].index("inverse trig") < body["answer"].index("command of evidence")
 
 
-async def test_repetition_beats_volume(client, session_factory):
-    """Ten questions logged once each is not a pattern; three repeats is."""
+async def test_breadth_and_repetition_are_both_reported(client, session_factory):
+    """Both are real patterns, and reporting only repetition was a genuine gap.
+
+    Four different command-of-evidence questions wrong once each is a weakness in
+    command of evidence. One inverse trig question missed twice is a weakness too.
+    An answer that names only one of them is not answering the question.
+    """
     for _ in range(4):
         await _log(client, VERBAL_MISTAKE, topic="command of evidence")
     trig = await _log(client, MATH_MISTAKE, topic="inverse trig")
@@ -92,8 +97,55 @@ async def test_repetition_beats_volume(client, session_factory):
 
     body = (await client.post("/ask", json={"question": "what do I keep getting wrong"})).json()
 
-    assert "inverse trig" in body["answer"]
+    assert "command of evidence (4 different questions)" in body["answer"]
+    assert "inverse trig (2 repeat misses)" in body["answer"]
+
+
+async def test_the_students_own_example_different_questions_same_weakness(client):
+    """Four *different* inverse trig questions, each wrong once, never reviewed.
+
+    This is the case the feature was asked for and the one it originally missed:
+    it answered "nothing has been missed again on review" - true, and useless.
+    """
+    for question in (
+        "arcsin(0.5) is which angle?",
+        "arctan(1) in radians?",
+        "cos^-1(0) is which angle?",
+        "sin^-1(-1) is which angle?",
+    ):
+        await _log(client, {**MATH_MISTAKE, "question_text": question}, topic="inverse trig")
+    await _log(client, VERBAL_MISTAKE, topic="command of evidence")
+
+    body = (
+        await client.post(
+            "/ask",
+            json={"question": "which questions have I consistently been getting wrong"},
+        )
+    ).json()
+
+    assert "inverse trig (4 different questions)" in body["answer"]
+    # A topic with a single question is not dressed up as a pattern.
     assert "command of evidence" not in body["answer"]
+
+
+async def test_a_single_question_is_never_called_a_pattern(client):
+    await _log(client, MATH_MISTAKE, topic="inverse trig")
+
+    body = (await client.post("/ask", json={"question": "what do I keep getting wrong"})).json()
+
+    assert "different questions" not in body["answer"]
+    assert "accounts for more than one question" in body["answer"]
+
+
+async def test_a_concept_across_several_questions_counts(client):
+    concept = (await client.post("/concepts", json={"title": "Inverse trig needs a domain"})).json()
+    for question in ("arcsin(0.5)?", "arccos(1)?", "arctan(0)?"):
+        mistake_id = await _log(client, {**MATH_MISTAKE, "question_text": question})
+        await client.post(f"/concepts/{concept['id']}/questions/{mistake_id}")
+
+    body = (await client.post("/ask", json={"question": "what am I consistently missing"})).json()
+
+    assert "Inverse trig needs a domain (3 different questions)" in body["answer"]
 
 
 async def test_a_concept_you_keep_missing_is_named(client, session_factory):

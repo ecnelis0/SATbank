@@ -69,12 +69,36 @@ describe("Recurring", () => {
     renderWithQuery(<Recurring />);
 
     expect(await screen.findByText("3× missed again")).toBeInTheDocument();
+  });
+
+  it("counts several different questions on one topic as a weakness", async () => {
+    // The student's own example: different inverse trig questions, each wrong once,
+    // none ever missed again. Showing only repeats would say nothing at all here.
+    const three = [1, 2, 3].map((n) =>
+      makeMistake({
+        id: `t${n}`,
+        question_text: `Inverse trig question ${n}`,
+        topic: "inverse trig",
+      }),
+    );
+    vi.spyOn(api, "listMistakes").mockResolvedValue(three);
+
+    renderWithQuery(<Recurring />);
+
     expect(
-      screen.getByRole("link", { name: /inverse trig · missed again 3×/ }),
+      await screen.findByRole("link", { name: /inverse trig · 3 different questions/ }),
     ).toHaveAttribute("href", "/bank?topic=inverse%20trig");
   });
 
-  it("ranks the topic you keep missing above the one you missed once", async () => {
+  it("does not call a single question on a topic a pattern", async () => {
+    vi.spyOn(api, "listMistakes").mockResolvedValue([once()]);
+
+    renderWithQuery(<Recurring />);
+
+    expect(screen.queryByText(/different questions/)).not.toBeInTheDocument();
+  });
+
+  it("puts the worst repeat offender first in the list", async () => {
     const other = makeMistake({
       id: "m3",
       question_text: "Evidence question",
@@ -85,8 +109,8 @@ describe("Recurring", () => {
 
     renderWithQuery(<Recurring />);
 
-    const links = await screen.findAllByRole("link", { name: /missed again/ });
-    expect(links[0]).toHaveTextContent("inverse trig");
+    const items = await screen.findAllByText(/× missed again/);
+    expect(items[0]).toHaveTextContent("3×");
   });
 
   it("shows nothing at all when nothing has repeated", async () => {

@@ -13,10 +13,12 @@ export function timesMissedAgain(mistake: Mistake): number {
   return mistake.reviews.filter((review) => review.outcome === "wrong").length;
 }
 
-/** What keeps coming back — the thing volume alone never shows.
+/** What the student keeps getting wrong.
  *
- *  Ten questions on a topic logged once each is not a weakness. Three missed again
- *  on review is. */
+ *  Two things count, and showing only one of them was a real gap: several
+ *  *different* questions missed in the same topic, and the same question still wrong
+ *  when it came round again. Four different inverse trig questions, each wrong once,
+ *  is a weakness in inverse trig even though nothing has ever come back. */
 export function Recurring() {
   const { data } = useQuery({
     queryKey: keys.mistakes(),
@@ -30,14 +32,18 @@ export function Recurring() {
     .filter((entry) => entry.times > 0)
     .sort((a, b) => b.times - a.times);
 
-  if (repeated.length === 0) return null;
-
-  const byTopic = new Map<string, number>();
-  for (const { mistake, times } of repeated) {
+  // Breadth: topics carrying more than one distinct question.
+  const questionsPerTopic = new Map<string, number>();
+  for (const mistake of data) {
     if (!mistake.topic) continue;
-    byTopic.set(mistake.topic, (byTopic.get(mistake.topic) ?? 0) + times);
+    questionsPerTopic.set(mistake.topic, (questionsPerTopic.get(mistake.topic) ?? 0) + 1);
   }
-  const topics = [...byTopic.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4);
+  const topics = [...questionsPerTopic.entries()]
+    .filter(([, count]) => count > 1)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 4);
+
+  if (repeated.length === 0 && topics.length === 0) return null;
 
   return (
     <section>
@@ -45,18 +51,19 @@ export function Recurring() {
         What keeps coming back
       </h2>
       <p className="mt-1 text-xs text-muted-foreground">
-        Questions you were still getting wrong when they came round again.
+        Topics you have missed more than once, and questions you were still getting
+        wrong when they came round again.
       </p>
 
       {topics.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-1.5">
-          {topics.map(([topic, times]) => (
+          {topics.map(([topic, count]) => (
             <Link
               key={topic}
               href={`/bank?topic=${encodeURIComponent(topic)}`}
               className="rounded-full border px-3 py-1 text-xs transition-colors hover:bg-muted"
             >
-              {topic} · missed again {times}×
+              {topic} · {count} different questions
             </Link>
           ))}
         </div>

@@ -131,9 +131,11 @@ async def test_the_model_is_told_that_repetition_answers_a_consistency_question(
 
     sent = anthropic_stub.seen[-1]
     system = sent["system"]
-    # Told to answer from repeat counts rather than from how many questions exist.
-    assert "repeat-miss counts" in system
-    assert "is not a pattern" in system
+    # Told that both kinds of pattern count: several different questions in one
+    # area, and the same question coming back wrong.
+    assert "questions missed in the same topic" in system
+    assert "came round again" in system
+    assert "A single question wrong once is not a pattern" in system
     # And given the counts themselves.
     assert "inverse trig (4 repeat misses)" in sent["messages"][0]["content"]
 

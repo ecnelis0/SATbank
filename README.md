@@ -97,16 +97,23 @@ Ask *"which questions have I consistently been getting wrong in the past month"*
 get an answer built from counts, not from the model's impression of a list:
 
 ```
-3 question(s) have been missed again on review, 6 time(s) in total.
-Topics that keep coming back: inverse trig (6 repeat misses)
-Reasons that keep coming back: concept_gap (6 repeat misses)
-Worst offenders: "cos^-1(0) is which angle?" (2x); "arctan(1) in radians?" (2x); …
+Topics missed across several different questions: inverse trig (4 different questions)
+2 question(s) have also been missed again on review, 5 time(s) in total.
+Topics that keep coming back: inverse trig (5 repeat misses)
+Worst offenders: "cos^-1(0) is which angle?" (3x); "arctan(1) in radians?" (2x)
 ```
 
-Repetition, not volume, is what counts: ten questions on a topic logged once each is not
-a weakness, three missed again on review is. A review answered *wrong* is a repeat; the
-rungs that miss retires are bookkeeping and are excluded. The dashboard shows the same
-thing under **"What keeps coming back"**, without needing to ask.
+**Two things count as consistently getting something wrong**, and only one of them is
+about repeating a question:
+
+- **Breadth** — several *different* questions missed in the same topic, concept or for
+  the same reason. Four different inverse trig questions, each wrong once, is a weakness
+  in inverse trig even though no single one has ever come back.
+- **Repetition** — the same question still wrong when it came round again.
+
+A single question wrong once is never dressed up as a pattern. A review answered *wrong*
+is a repeat; the rungs that miss retires are bookkeeping and are excluded. The dashboard
+shows both under **"What keeps coming back"**, without needing to ask.
 
 **Categories** is the browsing half. Topics are folded under the section they belong to —
 click a section's arrow and its topics expand beneath it. Everything is a checkbox, and

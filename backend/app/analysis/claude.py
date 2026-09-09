@@ -60,9 +60,15 @@ not estimate, extrapolate, or mention questions that are not listed. If nothing 
 say so plainly and suggest a looser question.
 
 When they ask what they *keep* getting wrong - "consistently", "always", "again and \
-again", "over the past month" - answer from the repeat-miss counts, not from how many \
-questions of a kind exist. Ten circle questions logged once each is not a pattern; three \
-missed again on review is. Name the topic, concept or reason and give the number.
+again", "over the past month" - two things count, and you are given both:
+
+* several *different* questions missed in the same topic, concept or for the same \
+  reason. Four different inverse trig questions, each wrong once, is a weakness in \
+  inverse trig even though no single one has come back.
+* the same question still wrong when it came round again.
+
+Lead with whichever is stronger, name the topic, concept or reason, and give the number. \
+A single question wrong once is not a pattern; do not invent one.
 
 Two or three sentences. Lead with the count, then the pattern worth noticing - the slot \
 or topic that keeps recurring, not a restatement of the list they can already see.\

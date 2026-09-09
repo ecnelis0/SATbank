@@ -109,14 +109,18 @@ class StubAnalyzer:
             for word in ("consistent", "always", "keep", "again", "repeat", "recurring")
         )
         if asked_about_repetition:
-            # "Worst offenders" too: the question was "which questions", and naming
-            # them is the answer. A tally alone leaves the student still looking.
+            # Breadth lines too - several different questions in one area is the
+            # commoner pattern, and the one the student's own example described.
+            # "Worst offenders" because the question was "which questions": a tally
+            # alone leaves them still looking.
             repeats = [
                 line
                 for line in head
                 if "repeat miss" in line
                 or "missed again" in line
+                or "different questions" in line
                 or line.startswith("Worst offenders")
+                or "accounts for more than one question" in line
             ]
             if repeats:
                 return "\n".join([head[0], *repeats])

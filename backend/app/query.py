@@ -256,38 +256,79 @@ def times_missed_again(mistake: Mistake) -> int:
     return sum(1 for review in mistake.reviews if review.outcome == ReviewOutcome.wrong)
 
 
-def recurring(mistakes: list[Mistake]) -> str:
-    """What keeps coming back, as opposed to what merely happened once.
+def _rank(pairs: list[tuple[str, int]]) -> list[tuple[str, int]]:
+    counts: dict[str, int] = {}
+    for key, n in pairs:
+        counts[key] = counts.get(key, 0) + n
+    return sorted(counts.items(), key=lambda item: (-item[1], item[0]))
 
-    "Which questions have I consistently been getting wrong" is a question about
-    repetition, and no amount of listing rows answers it - so the repetition is
-    counted here and handed to the model as fact.
+
+def recurring(mistakes: list[Mistake]) -> str:
+    """What the student keeps getting wrong.
+
+    Two different things count, and reporting only one of them was a real gap:
+
+    * **Breadth** - several *different* questions missed in the same area. Four
+      different inverse trig questions, each wrong once, is a weakness in inverse
+      trig even though no single question has ever come back.
+    * **Repetition** - the same question still wrong when it came round again.
+
+    Both answer "what do I consistently get wrong"; neither answers it alone.
     """
+    lines: list[str] = []
+
+    def spread(label: str, pairs: list[tuple[str, int]]) -> None:
+        areas = [(key, n) for key, n in _rank(pairs) if n > 1]
+        if areas:
+            lines.append(
+                f"{label}: " + ", ".join(f"{key} ({n} different questions)" for key, n in areas)
+            )
+
+    spread(
+        "Topics missed across several different questions",
+        [(m.topic, 1) for m in mistakes if m.topic],
+    )
+    spread(
+        "Concepts missed across several different questions",
+        [(c.title, 1) for m in mistakes for c in m.concepts],
+    )
+    spread(
+        "Reasons behind several different questions",
+        [(m.error_type, 1) for m in mistakes if m.error_type],
+    )
+
+    if not lines:
+        lines.append("No topic, concept or reason accounts for more than one question yet.")
+
     repeats = [(m, times_missed_again(m)) for m in mistakes]
     repeated = [(m, n) for m, n in repeats if n > 0]
     if not repeated:
-        return "Nothing in this set has been missed again on review."
+        lines.append("Nothing here has been missed again on review.")
+        return "\n".join(lines)
 
-    def tally(pairs: list[tuple[str, int]]) -> str:
-        counts: dict[str, int] = {}
-        for key, n in pairs:
-            counts[key] = counts.get(key, 0) + n
-        ranked = sorted(counts.items(), key=lambda item: (-item[1], item[0]))
-        return ", ".join(f"{key} ({n} repeat miss{'es' if n > 1 else ''})" for key, n in ranked)
+    lines.append(
+        f"{len(repeated)} question(s) have also been missed again on review, "
+        f"{sum(n for _, n in repeated)} time(s) in total."
+    )
 
-    lines = [
-        f"{len(repeated)} question(s) have been missed again on review, "
-        f"{sum(n for _, n in repeated)} time(s) in total.",
-    ]
-    by_topic = [(m.topic, n) for m, n in repeated if m.topic]
-    if by_topic:
-        lines.append(f"Topics that keep coming back: {tally(by_topic)}")
-    by_slot = [(m.error_type, n) for m, n in repeated if m.error_type]
-    if by_slot:
-        lines.append(f"Reasons that keep coming back: {tally(by_slot)}")
-    by_concept = [(c.title, n) for m, n in repeated for c in m.concepts]
-    if by_concept:
-        lines.append(f"Concepts that keep coming back: {tally(by_concept)}")
+    def again(label: str, pairs: list[tuple[str, int]]) -> None:
+        if pairs:
+            lines.append(
+                f"{label}: "
+                + ", ".join(
+                    f"{key} ({n} repeat miss{'es' if n > 1 else ''})" for key, n in _rank(pairs)
+                )
+            )
+
+    again("Topics that keep coming back", [(m.topic, n) for m, n in repeated if m.topic])
+    again(
+        "Reasons that keep coming back",
+        [(m.error_type, n) for m, n in repeated if m.error_type],
+    )
+    again(
+        "Concepts that keep coming back",
+        [(c.title, n) for m, n in repeated for c in m.concepts],
+    )
     worst = sorted(repeated, key=lambda pair: -pair[1])[:5]
     lines.append(
         "Worst offenders: " + "; ".join(f'"{m.question_text[:60]}" ({n}x)' for m, n in worst)
