@@ -100,6 +100,14 @@ The palette lives in `frontend/src/app/globals.css`, and its names mirror the Fi
 so the two cannot quietly drift. Figma file:
 https://www.figma.com/design/vMy6YVeJtHlUwdUSFUDLOF
 
+Type: **Fraunces** for page titles only (`h1`, via `--font-display`), the body face for
+everything else. A display serif on every heading turns a study tool into a magazine
+spread; on the page title alone it gives the product a voice.
+
+`next/font` rejects `axes` alongside pinned `weight` values — "Axes can only be defined
+for variable fonts" — and it fails at build time, not typecheck. Load the page after
+touching fonts.
+
 Two things the palette is deliberately doing: warm paper rather than pure white, because
 this is a study notebook someone stares at for hours; and one colour per urgency level, so
 Fundamental / Very important / Important read as a scale instead of three identical chips.

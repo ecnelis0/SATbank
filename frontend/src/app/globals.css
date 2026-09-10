@@ -9,7 +9,7 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-sans);
   --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
+  --font-heading: var(--font-display);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -126,12 +126,16 @@
   * {
     @apply border-border outline-ring/50;
   }
-  h1,
+  /* Page titles carry the editorial voice; section headings stay in the body face
+     so a page does not turn into a magazine spread. */
+  h1 {
+    font-family: var(--font-display), Georgia, serif;
+    letter-spacing: -0.022em;
+    line-height: 1.08;
+  }
   h2,
   h3 {
-    /* Headings sit tighter than body text; at 30px the default leading reads as a
-       gap rather than a heading. */
-    letter-spacing: -0.018em;
+    letter-spacing: -0.012em;
   }
   body {
     @apply bg-background text-foreground;

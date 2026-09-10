@@ -3,27 +3,16 @@
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 
+import { DueHero } from "@/components/app/due-hero";
 import { Empty } from "@/components/app/empty";
 import { MistakeCard } from "@/components/app/mistake-card";
 import { Recurring } from "@/components/app/recurring";
 import { UrgencyBadge } from "@/components/app/urgency-badge";
 import { buttonVariants } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api, keys } from "@/lib/api";
 import { ERROR_TYPE_LABELS, URGENCY_BLURBS } from "@/lib/labels";
 import { URGENCIES, type ErrorType, type Urgency } from "@/lib/types";
-
-function Stat({ value, label }: { value: number | string; label: string }) {
-  return (
-    <Card>
-      <CardContent>
-        <p className="text-3xl font-semibold tabular-nums">{value}</p>
-        <p className="mt-1 text-sm text-muted-foreground">{label}</p>
-      </CardContent>
-    </Card>
-  );
-}
 
 export default function DashboardPage() {
   const stats = useQuery({ queryKey: keys.stats(), queryFn: api.stats });
@@ -57,22 +46,28 @@ export default function DashboardPage() {
             Every miss comes back at 1 hour, 24 hours, 72 hours, 1 week and 1 month.
           </p>
         </div>
-        <div className="flex gap-2">
-          <Link href="/log" className={buttonVariants({ variant: "secondary" })}>
-            Log a miss
-          </Link>
-          {data.due_now > 0 && (
-            <Link href="/review" className={buttonVariants()}>
-              Review {data.due_now}
-            </Link>
-          )}
-        </div>
+        <Link href="/log" className={buttonVariants({ variant: "secondary" })}>
+          Log a miss
+        </Link>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-3">
-        <Stat value={data.total_mistakes} label="questions in the bank" />
-        <Stat value={data.due_now} label="due for review now" />
-        <Stat value={data.reviews_completed} label="reviews answered" />
+      <DueHero due={data.due_now} total={data.total_mistakes} />
+
+      <div className="flex flex-wrap gap-x-8 gap-y-2 text-sm text-muted-foreground">
+        <span>
+          <span className="font-medium text-foreground">{data.total_mistakes}</span> in the
+          bank
+        </span>
+        <span>
+          <span className="font-medium text-foreground">{data.reviews_completed}</span>{" "}
+          reviews answered
+        </span>
+        {data.untagged_questions > 0 && (
+          <span>
+            <span className="font-medium text-foreground">{data.untagged_questions}</span>{" "}
+            with no concept
+          </span>
+        )}
       </div>
 
       {data.total_mistakes === 0 ? (

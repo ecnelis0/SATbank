@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Fraunces, Geist, Geist_Mono } from "next/font/google";
 
 import { Assistant } from "@/components/app/assistant";
 import { Nav } from "@/components/app/nav";
@@ -11,6 +11,16 @@ import "./globals.css";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
+// A display serif for headings only. The bank is a study journal, and an editorial
+// voice suits it better than the same grotesque at three sizes.
+const fraunces = Fraunces({
+  variable: "--font-display",
+  subsets: ["latin"],
+  // No `axes` here: naming them requires the variable axis to stay open, and
+  // pinning explicit weights alongside them fails the build with "Axes can only be
+  // defined for variable fonts".
+  weight: ["400", "600"],
+});
 
 export const metadata: Metadata = {
   title: "Mistake Bank",
@@ -20,7 +30,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+      <body className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable} antialiased`}>
         <Providers>
           <SidePanelProvider>
             <Nav />
