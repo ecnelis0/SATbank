@@ -1,12 +1,13 @@
 import { MistakeForm } from "@/components/app/mistake-form";
+import { PageHeader } from "@/components/app/page-header";
 
 export default function LogPage() {
   return (
-    <div className="mx-auto max-w-2xl">
-      <h1 className="text-2xl font-semibold tracking-tight">Log a miss</h1>
-      <p className="mt-1 mb-8 text-sm text-muted-foreground">
-        The analysis runs as soon as you save. The first review lands an hour from now.
-      </p>
+    <div className="mx-auto max-w-2xl space-y-8">
+      <PageHeader
+        title="Log a miss"
+        lede="Two answers is the minimum. Everything else makes the debrief better, and the review ladder starts either way."
+      />
       <MistakeForm />
     </div>
   );

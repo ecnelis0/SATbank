@@ -6,6 +6,7 @@ import { useState } from "react";
 
 import { ConceptForm } from "@/components/app/concept-form";
 import { Empty } from "@/components/app/empty";
+import { PageHeader } from "@/components/app/page-header";
 import { Unreachable } from "@/components/app/unreachable";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -39,18 +40,15 @@ export default function ConceptsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Concepts</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            The things worth knowing. Write one down, then tag the questions that keep
-            catching you on it.
-          </p>
-        </div>
-        <Button variant={writing ? "ghost" : "default"} onClick={() => setWriting(!writing)}>
-          {writing ? "Cancel" : "Write a concept"}
-        </Button>
-      </div>
+      <PageHeader
+        title="Concepts"
+        lede="The thing behind a family of misses — the rule you keep forgetting, not the question you got wrong."
+        actions={
+          <Button variant={writing ? "ghost" : "default"} onClick={() => setWriting(!writing)}>
+            {writing ? "Cancel" : "Write a concept"}
+          </Button>
+        }
+      />
 
       {writing && (
         <Card>

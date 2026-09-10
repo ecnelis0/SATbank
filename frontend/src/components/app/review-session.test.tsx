@@ -24,12 +24,15 @@ describe("ReviewSession", () => {
 
     // The whole point of a review is answering first: the correct answer and the
     // analysis must not be on screen yet.
-    expect(screen.queryByText(/The answer is/)).not.toBeInTheDocument();
+    // Not the answer string itself: for a multiple-choice question it is sitting
+    // in the choices, correctly. The reveal panel is what must be absent.
+    expect(screen.queryByText("You put")).not.toBeInTheDocument();
     expect(screen.queryByText(due.mistake.why_wrong!)).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Show the answer" }));
 
-    expect(await screen.findByText(/The answer is/)).toBeInTheDocument();
+    expect(await screen.findByText("You put")).toBeInTheDocument();
+    expect(screen.getByText("Answer")).toBeInTheDocument();
     expect(screen.getByText(due.mistake.why_wrong!)).toBeInTheDocument();
   });
 

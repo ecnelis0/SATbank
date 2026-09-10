@@ -7,6 +7,7 @@ import { Suspense, useMemo, useState } from "react";
 import { ConceptHeader } from "@/components/app/concept-header";
 import { Empty } from "@/components/app/empty";
 import { MistakeCard } from "@/components/app/mistake-card";
+import { PageHeader } from "@/components/app/page-header";
 import { Unreachable } from "@/components/app/unreachable";
 import { UrgencyBadge } from "@/components/app/urgency-badge";
 import { Button } from "@/components/ui/button";
@@ -100,13 +101,10 @@ function BankList() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">The bank</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Every question you have missed, filed by what went wrong. Pick as many filters
-          as you like — they narrow each other.
-        </p>
-      </div>
+      <PageHeader
+        title="The bank"
+        lede="Every question you have missed, filed by what went wrong. Filters narrow each other."
+      />
 
       <Input
         value={facets.text}

@@ -100,6 +100,16 @@ The palette lives in `frontend/src/app/globals.css`, and its names mirror the Fi
 so the two cannot quietly drift. Figma file:
 https://www.figma.com/design/vMy6YVeJtHlUwdUSFUDLOF
 
+Three primitives carry the whole front end; use them rather than assembling a page out
+of raw cards and headings:
+
+- `PageHeader` — display-serif title, one line of lede, actions on the right. Every page
+  opens the same way, which is most of what makes a set of screens feel like one product.
+- `Section` — a small, spaced, quiet eyebrow over its content. A same-size bold heading
+  always competes with the thing it is labelling.
+- `Panel` — the one card. `spine` paints a coloured left edge from `SPINE[urgency]`, so a
+  card's status is legible before any of it is read.
+
 Type: **Fraunces** for page titles only (`h1`, via `--font-display`), the body face for
 everything else. A display serif on every heading turns a study tool into a magazine
 spread; on the page title alone it gives the product a voice.

@@ -13,9 +13,10 @@ import { MistakeLabels } from "@/components/app/mistake-labels";
 import { Empty } from "@/components/app/empty";
 import { Ladder } from "@/components/app/ladder";
 import { QuestionCard } from "@/components/app/question-card";
+import { Panel, SPINE } from "@/components/app/panel";
+import { Section } from "@/components/app/section";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api, keys } from "@/lib/api";
 import { SECTION_LABELS } from "@/lib/labels";
@@ -58,52 +59,51 @@ export default function MistakePage() {
 
   return (
     <article className="mx-auto max-w-2xl space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center gap-2">
         <Link href="/bank" className="text-sm text-muted-foreground hover:text-foreground">
           ← The bank
         </Link>
-        <Badge variant="outline">{SECTION_LABELS[mistake.section]}</Badge>
+        {/* No urgency badge here: the debrief already carries one, and the same
+            badge twice on one screen is a duplicate to read and to announce. The
+            coloured spine on the question panel says it at a glance. */}
+        <Badge variant="outline" className="ml-auto">
+          {SECTION_LABELS[mistake.section]}
+        </Badge>
       </div>
 
-      <Card>
-        <CardContent>
-          <QuestionCard mistake={mistake} />
-        </CardContent>
-      </Card>
+      <Panel
+        spine={mistake.urgency ? SPINE[mistake.urgency] : undefined}
+        className="px-6 py-5"
+      >
+        <QuestionCard mistake={mistake} />
+      </Panel>
 
-      <Card>
-        <CardContent>
+      <Section title="The debrief">
+        <Panel className="px-6 py-5">
           <AnalysisPanel mistake={mistake} editable />
-        </CardContent>
-      </Card>
+        </Panel>
+      </Section>
 
-      <Card>
-        <CardContent>
-          <MistakeImages mistake={mistake} editable />
-        </CardContent>
-      </Card>
+      <Panel className="px-6 py-5">
+        <MistakeImages mistake={mistake} editable />
+      </Panel>
 
-      <Card>
-        <CardContent>
-          <MistakeLabels mistake={mistake} editable />
-        </CardContent>
-      </Card>
+      <Panel className="px-6 py-5">
+        <MistakeLabels mistake={mistake} editable />
+      </Panel>
 
-      <Card>
-        <CardContent>
-          <ConceptTags mistake={mistake} />
-        </CardContent>
-      </Card>
+      <Panel className="px-6 py-5">
+        <ConceptTags mistake={mistake} />
+      </Panel>
 
-      <Card>
-        <CardContent className="space-y-4">
-          <h2 className="text-sm font-medium">Review schedule</h2>
+      <Section
+        title="Review schedule"
+        description={`Logged ${format(new Date(mistake.created_at), "d MMM yyyy, HH:mm")}.`}
+      >
+        <Panel className="px-6 py-5">
           <Ladder reviews={mistake.reviews} />
-          <p className="text-xs text-muted-foreground">
-            Logged {format(new Date(mistake.created_at), "d MMM yyyy, HH:mm")}.
-          </p>
-        </CardContent>
-      </Card>
+        </Panel>
+      </Section>
 
       <Button
         variant="ghost"
