@@ -100,7 +100,7 @@ export default function DashboardPage() {
           <Recurring />
 
           <section>
-            <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
+            <h2 className="text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">
               What to fix first
             </h2>
             <div className="mt-3 grid gap-2 sm:grid-cols-3">
@@ -127,7 +127,7 @@ export default function DashboardPage() {
           </section>
 
           <section>
-            <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
+            <h2 className="text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">
               Why you&rsquo;re losing points
             </h2>
             <div className="mt-3 grid gap-2 sm:grid-cols-2">
@@ -152,7 +152,7 @@ export default function DashboardPage() {
           </section>
 
           <section>
-            <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
+            <h2 className="text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">
               Latest
             </h2>
             <div className="mt-3 space-y-3">

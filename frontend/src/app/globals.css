@@ -49,24 +49,29 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
+  /* Mistake Bank palette. Names mirror the Figma "Colour" collection one-for-one
+     (bg/page, text/secondary, accent/base …) so the two cannot quietly drift.
+     Warm paper rather than pure white: this is a study notebook, and hours of
+     staring at it should not feel like staring at a spreadsheet. */
+  --background: oklch(0.986 0.003 85);      /* bg/page    #FBFAF9 */
+  --foreground: oklch(0.198 0.006 60);      /* text/primary #1A1917 */
+  --card: oklch(1 0 0);                     /* bg/surface #FFFFFF */
+  --card-foreground: oklch(0.198 0.006 60);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --popover-foreground: oklch(0.198 0.006 60);
+  --primary: oklch(0.386 0.144 283);        /* accent/base #3F3D9E */
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.958 0.005 80);       /* bg/sunken  #F4F2F0 */
+  --secondary-foreground: oklch(0.30 0.01 70);
+  --muted: oklch(0.958 0.005 80);
+  --muted-foreground: oklch(0.505 0.010 70); /* text/secondary #6B6862 */
+  --accent: oklch(0.949 0.017 285);          /* accent/soft #EEEDFB */
+  --accent-foreground: oklch(0.386 0.144 283);
+  --destructive: oklch(0.505 0.187 27);      /* urgency/fundamental #B3261E */
+  --border: oklch(0.930 0.006 75);           /* border/subtle #E9E6E2 */
+  --input: oklch(0.930 0.006 75);
+  --ring: oklch(0.386 0.144 283 / 45%);
+  --radius: 0.75rem;
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -84,24 +89,24 @@
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  --background: oklch(0.176 0.005 285);
+  --foreground: oklch(0.960 0.003 80);
+  --card: oklch(0.216 0.006 285);
+  --card-foreground: oklch(0.960 0.003 80);
+  --popover: oklch(0.216 0.006 285);
+  --popover-foreground: oklch(0.960 0.003 80);
+  --primary: oklch(0.688 0.148 285);
+  --primary-foreground: oklch(0.150 0.010 285);
+  --secondary: oklch(0.262 0.006 285);
+  --secondary-foreground: oklch(0.960 0.003 80);
+  --muted: oklch(0.262 0.006 285);
+  --muted-foreground: oklch(0.660 0.008 80);
+  --accent: oklch(0.290 0.045 285);
+  --accent-foreground: oklch(0.820 0.100 285);
+  --destructive: oklch(0.700 0.150 25);
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 16%);
+  --ring: oklch(0.688 0.148 285 / 50%);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -121,8 +126,17 @@
   * {
     @apply border-border outline-ring/50;
   }
+  h1,
+  h2,
+  h3 {
+    /* Headings sit tighter than body text; at 30px the default leading reads as a
+       gap rather than a heading. */
+    letter-spacing: -0.018em;
+  }
   body {
     @apply bg-background text-foreground;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
   }
   html {
     @apply font-sans;

@@ -93,6 +93,20 @@ moment an unrelated spec logged a fundamental math question.
   it was already on. It surfaced as a Playwright strict-mode violation; the fix was the
   UI, not the selector.
 
+## Design
+
+The palette lives in `frontend/src/app/globals.css`, and its names mirror the Figma file's
+"Colour" collection one-for-one (`bg/page`, `text/secondary`, `accent/base`, `urgency/*`)
+so the two cannot quietly drift. Figma file:
+https://www.figma.com/design/vMy6YVeJtHlUwdUSFUDLOF
+
+Two things the palette is deliberately doing: warm paper rather than pure white, because
+this is a study notebook someone stares at for hours; and one colour per urgency level, so
+Fundamental / Very important / Important read as a scale instead of three identical chips.
+
+The Figma plan is Starter, which allows **one mode per variable collection** — dark values
+therefore live only in the CSS, under `.dark`. Change both together.
+
 ## Conventions
 
 - **A model change needs a migration in the same commit.** The API migrates on startup

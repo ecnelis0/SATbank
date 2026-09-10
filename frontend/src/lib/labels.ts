@@ -43,11 +43,13 @@ export const URGENCY_BLURBS: Record<Urgency, string> = {
   important: "Worth coming back to, but not what is costing you the most.",
 };
 
-/** Loud to quiet, so the list reads as a priority order at a glance. */
+/** One colour per level, loud to quiet, so the three read as a scale rather than
+ *  three identical chips. Mirrors the Figma "urgency/*" tokens. */
 export const URGENCY_STYLES: Record<Urgency, string> = {
-  fundamental: "border-destructive/40 bg-destructive/10 text-destructive",
-  very_important: "border-foreground/25 bg-foreground/5 text-foreground",
-  important: "border-border bg-transparent text-muted-foreground",
+  fundamental: "border-transparent bg-destructive/10 text-destructive",
+  very_important:
+    "border-transparent bg-amber-500/12 text-amber-800 dark:text-amber-300",
+  important: "border-border bg-muted text-muted-foreground",
 };
 
 export const SECTION_LABELS: Record<Section, string> = {
