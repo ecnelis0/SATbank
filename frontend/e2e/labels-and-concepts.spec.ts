@@ -117,3 +117,34 @@ test("labels can be added and removed from a question already in the bank", asyn
   await expect(page.getByText("WHY YOU GOT IT WRONG")).toBeVisible({ timeout: 15_000 });
   await expect(page.getByRole("button", { name: `Remove label invented ${stamp}` })).toBeVisible();
 });
+
+
+test("a section in the rail expands to its own concepts and topics", async ({ page }) => {
+  const stamp = Date.now() % 100000;
+  const mathConcept = `Rail math concept ${stamp}`;
+  const englishConcept = `Rail english concept ${stamp}`;
+
+  await writeConcept(page, mathConcept, "math");
+  await writeConcept(page, englishConcept, "reading_writing");
+
+  await page.goto("/bank");
+  await page.getByRole("button", { name: "Ask the bank" }).click();
+  const panel = page.getByRole("complementary", { name: "Ask the bank" });
+  await panel.getByRole("tab", { name: "Categories" }).click();
+
+  // Folded away until the section is opened.
+  await expect(panel.getByText(mathConcept)).toBeHidden();
+
+  await panel.getByRole("button", { name: "Expand Math" }).click();
+  await expect(panel.getByText(mathConcept)).toBeVisible();
+  // And only that section's - the other stays shut.
+  await expect(panel.getByText(englishConcept)).toBeHidden();
+
+  await panel.getByRole("button", { name: "Expand Reading & Writing" }).click();
+  await expect(panel.getByText(englishConcept)).toBeVisible();
+
+  // Selecting one still filters the bank by that concept.
+  await panel.getByRole("checkbox", { name: new RegExp(mathConcept) }).click();
+  await panel.getByRole("button", { name: "Show 1 filter" }).click();
+  await expect(page).toHaveURL(/concept=/);
+});

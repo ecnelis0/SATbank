@@ -70,7 +70,7 @@ test("the categories tab lists the bank and filters it", async ({ page }) => {
   await panel.getByRole("tab", { name: "Categories" }).click();
 
   await expect(panel.getByText("How urgent")).toBeVisible();
-  await expect(panel.getByText("Section & topic")).toBeVisible();
+  await expect(panel.getByText("Sections")).toBeVisible();
   await expect(panel.getByText("Why you missed it")).toBeVisible();
 
   await panel.getByRole("checkbox", { name: /Reading & Writing/ }).click();

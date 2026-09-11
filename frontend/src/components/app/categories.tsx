@@ -137,11 +137,17 @@ export function Categories() {
         ))}
       </Group>
 
-      <Group title="Section & topic">
+      <Group title="Sections">
         {sections.map((section) => {
           const topics = data.topics.filter(
             (entry) => entry.section === section,
           );
+          // Concepts belong to a section too, so they expand here rather than living
+          // in a separate list you have to go and find.
+          const sectionConcepts = (concepts ?? []).filter(
+            (concept) => concept.section === section,
+          );
+          const hasChildren = topics.length > 0 || sectionConcepts.length > 0;
           const open = expanded.includes(section);
           return (
             <div key={section}>
@@ -150,7 +156,7 @@ export function Categories() {
                   type="button"
                   aria-label={`${open ? "Collapse" : "Expand"} ${SECTION_LABELS[section]}`}
                   aria-expanded={open}
-                  disabled={topics.length === 0}
+                  disabled={!hasChildren}
                   onClick={() =>
                     setExpanded(
                       open
@@ -174,27 +180,74 @@ export function Categories() {
                 </div>
               </div>
 
-              {open &&
-                topics.map((entry) => (
-                  <Item
-                    key={`${entry.section}:${entry.topic}`}
-                    label={entry.topic}
-                    count={entry.count}
-                    indent
-                    selected={has(facets, "topics", entry.topic)}
-                    onToggle={() =>
-                      setFacets(toggle(facets, "topics", entry.topic))
-                    }
-                  />
-                ))}
+              {open && (
+                <>
+                  {sectionConcepts.length > 0 && (
+                    <p className="mt-1 pl-7 text-[10px] font-medium tracking-[0.08em] text-muted-foreground uppercase">
+                      Concepts
+                    </p>
+                  )}
+                  {sectionConcepts.map((concept) => (
+                    <div key={concept.id} className="flex items-center gap-1">
+                      <div className="min-w-0 flex-1">
+                        <Item
+                          label={
+                            <span className="flex items-center gap-1.5">
+                              <span className="truncate">{concept.title}</span>
+                              {concept.question_count === 0 && (
+                                <span className="shrink-0 text-[10px] text-muted-foreground">
+                                  nothing tagged
+                                </span>
+                              )}
+                            </span>
+                          }
+                          count={concept.question_count}
+                          indent
+                          selected={has(facets, "concept_ids", concept.id)}
+                          onToggle={() =>
+                            setFacets(toggle(facets, "concept_ids", concept.id))
+                          }
+                        />
+                      </div>
+                      <Link
+                        href={`/concepts/${concept.id}`}
+                        aria-label={`Open ${concept.title}`}
+                        className="flex size-6 shrink-0 items-center justify-center rounded text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                      >
+                        ↗
+                      </Link>
+                    </div>
+                  ))}
+
+                  {topics.length > 0 && (
+                    <p className="mt-2 pl-7 text-[10px] font-medium tracking-[0.08em] text-muted-foreground uppercase">
+                      Topics
+                    </p>
+                  )}
+                  {topics.map((entry) => (
+                    <Item
+                      key={`${entry.section}:${entry.topic}`}
+                      label={entry.topic}
+                      count={entry.count}
+                      indent
+                      selected={has(facets, "topics", entry.topic)}
+                      onToggle={() =>
+                        setFacets(toggle(facets, "topics", entry.topic))
+                      }
+                    />
+                  ))}
+                </>
+              )}
             </div>
           );
         })}
       </Group>
 
-      {concepts && concepts.length > 0 && (
-        <Group title="Concepts">
-          {concepts.map((concept) => (
+      {concepts && concepts.some((concept) => concept.section === null) && (
+        <Group title="Concepts in neither section">
+          {concepts
+            .filter((concept) => concept.section === null)
+            .map((concept) => (
             <div key={concept.id} className="flex items-center gap-1">
               <div className="min-w-0 flex-1">
                 <Item

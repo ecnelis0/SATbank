@@ -58,6 +58,11 @@ const STATS: Stats = {
   ],
 };
 
+/** Expands Math, where the sectioned concepts now live. */
+async function openMath(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(await screen.findByRole("button", { name: "Expand Math" }));
+}
+
 async function open() {
   vi.spyOn(api, "stats").mockResolvedValue(STATS);
   vi.spyOn(api, "listConcepts").mockResolvedValue(CONCEPTS);
@@ -172,12 +177,13 @@ describe("Categories concepts", () => {
   });
 
   it("warns that a concept has nothing tagged, rather than letting you find out by clicking", async () => {
-    await open();
+    const user = await open();
 
+    // This one belongs to no section, so it sits in its own group.
     const empty = await screen.findByRole("checkbox", { name: /inverse trig/ });
     expect(within(empty).getByText("nothing tagged")).toBeInTheDocument();
 
-    // The one that does have questions is not marked.
+    await openMath(user);
     const full = screen.getByRole("checkbox", { name: /Circumference gives the radius/ });
     expect(within(full).queryByText("nothing tagged")).not.toBeInTheDocument();
   });
@@ -194,9 +200,10 @@ describe("Categories concepts", () => {
 
   it("filters by a concept id, not by its title", async () => {
     const user = await open();
+    await openMath(user);
 
     await user.click(
-      await screen.findByRole("checkbox", { name: /Circumference gives the radius/ }),
+      screen.getByRole("checkbox", { name: /Circumference gives the radius/ }),
     );
     await user.click(screen.getByRole("button", { name: "Show 1 filter" }));
 
@@ -213,7 +220,8 @@ describe("Categories concept links", () => {
   });
 
   it("offers a way to open the concept itself, not only to filter by it", async () => {
-    await open();
+    const user = await open();
+    await openMath(user);
 
     const link = await screen.findByRole("link", {
       name: "Open Circumference gives the radius",
@@ -221,8 +229,25 @@ describe("Categories concept links", () => {
     expect(link).toHaveAttribute("href", "/concepts/c1");
   });
 
+  it("keeps a section's concepts folded away until the section is opened", async () => {
+    const user = await open();
+
+    expect(
+      screen.queryByRole("checkbox", { name: /Circumference gives the radius/ }),
+    ).not.toBeInTheDocument();
+
+    await openMath(user);
+
+    expect(
+      screen.getByRole("checkbox", { name: /Circumference gives the radius/ }),
+    ).toBeInTheDocument();
+    // Labelled, so a concept is not mistaken for a topic.
+    expect(screen.getByText("Concepts")).toBeInTheDocument();
+  });
+
   it("keeps that link out of the checkbox rather than nested inside it", async () => {
-    await open();
+    const user = await open();
+    await openMath(user);
 
     const box = await screen.findByRole("checkbox", {
       name: /Circumference gives the radius/,
