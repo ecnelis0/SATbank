@@ -93,6 +93,18 @@ moment an unrelated spec logged a fundamental math question.
   it was already on. It surfaced as a Playwright strict-mode violation; the fix was the
   UI, not the selector.
 
+## Component registries
+
+`components.json` wires **Watermelon UI** (`ui.watermelon.sh`, ~780 shadcn-schema
+components) as `@watermelon`, so `npx shadcn@latest add @watermelon/<name>` works. The
+per-item URL is `https://ui.watermelon.sh/r/{name}.json` — pointing the registry at the
+aggregate `registry.json` is rejected as invalid configuration.
+
+Adopt from it where a component genuinely beats what is here, not because it exists. Its
+`labeled-progress-indicator`, for instance, cycles labels on a timer and takes progress as
+a string: a loading animation, not progress tied to state, and worse than the ten lines it
+would have replaced.
+
 ## Design
 
 The palette lives in `frontend/src/app/globals.css`, and its names mirror the Figma file's

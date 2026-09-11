@@ -13,6 +13,7 @@ async function writeConcept(page: Page, title: string) {
   await page.goto("/concepts");
   await page.getByRole("button", { name: /Write (a|your first) concept/ }).first().click();
   await page.getByLabel("The concept").fill(title);
+  await page.getByRole("button", { name: "Math", exact: true }).click();
   await page.getByRole("button", { name: "Add concept" }).click();
   await expect(page.getByText(title)).toBeVisible();
 }
@@ -29,6 +30,7 @@ test("a concept with nothing tagged says so, rather than looking broken", async 
   await page.getByRole("button", { name: "Ask the bank" }).click();
   const panel = page.getByRole("complementary", { name: "Ask the bank" });
   await panel.getByRole("tab", { name: "Categories" }).click();
+  await panel.getByRole("button", { name: "Expand Math" }).click();
 
   // The rail warns before you click it.
   const row = panel.getByRole("checkbox", { name: new RegExp(title) });

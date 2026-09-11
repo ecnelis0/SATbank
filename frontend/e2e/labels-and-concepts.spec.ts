@@ -1,10 +1,19 @@
 import { expect, test, type Page } from "@playwright/test";
 
+const SECTION_LABEL = {
+  math: "Math",
+  reading_writing: "Reading & Writing",
+} as const;
+
+
 async function writeConcept(page: Page, title: string, section?: "math" | "reading_writing") {
   await page.goto("/concepts");
   await page.getByRole("button", { name: /Write (a|your first) concept/ }).first().click();
   await page.getByLabel("The concept").fill(title);
-  if (section) await page.getByLabel("Section").selectOption(section);
+  await page.getByRole("button", {
+    name: section ? SECTION_LABEL[section] : "Neither",
+    exact: true,
+  }).click();
   await page.getByRole("button", { name: "Add concept" }).click();
   await expect(page.getByText(title)).toBeVisible();
 }

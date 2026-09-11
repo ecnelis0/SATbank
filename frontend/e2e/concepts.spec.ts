@@ -24,7 +24,7 @@ test("a concept is written once, then questions are tagged onto it afterwards", 
   await page
     .getByLabel("In your own words")
     .fill("C = 2πr, so r = C / 2π. Do that step before anything else.");
-  await page.getByLabel("Section").selectOption("math");
+  await page.getByRole("button", { name: "Math", exact: true }).click();
   await page.getByRole("button", { name: "Add concept" }).click();
   await expect(page.getByText(title)).toBeVisible();
 
@@ -57,6 +57,7 @@ test("a concept filters the bank, and untagging removes only the tag", async ({ 
   await page.goto("/concepts");
   await page.getByRole("button", { name: "Write a concept" }).click();
   await page.getByLabel("The concept").fill(title);
+  await page.getByRole("button", { name: "Math", exact: true }).click();
   await page.getByRole("button", { name: "Add concept" }).click();
   await expect(page.getByText(title)).toBeVisible();
 
@@ -70,6 +71,7 @@ test("a concept filters the bank, and untagging removes only the tag", async ({ 
   await page.getByRole("button", { name: "Ask the bank" }).click();
   const panel = page.getByRole("complementary", { name: "Ask the bank" });
   await panel.getByRole("tab", { name: "Categories" }).click();
+  await panel.getByRole("button", { name: "Expand Math" }).click();
   await panel.getByRole("checkbox", { name: new RegExp(title) }).click();
   await panel.getByRole("button", { name: "Show 1 filter" }).click();
 
@@ -94,6 +96,7 @@ test("deleting a concept keeps the questions", async ({ page }) => {
   await page.goto("/concepts");
   await page.getByRole("button", { name: "Write a concept" }).click();
   await page.getByLabel("The concept").fill(title);
+  await page.getByRole("button", { name: "Math", exact: true }).click();
   await page.getByRole("button", { name: "Add concept" }).click();
   await expect(page.getByText(title)).toBeVisible();
 
@@ -125,6 +128,7 @@ test("questions can be tagged from the concept's own page, and show up there", a
   await page.goto("/concepts");
   await page.getByRole("button", { name: /Write (a|your first) concept/ }).first().click();
   await page.getByLabel("The concept").fill(title);
+  await page.getByRole("button", { name: "Math", exact: true }).click();
   await page.getByRole("button", { name: "Add concept" }).click();
   await expect(page.getByText(title)).toBeVisible();
   await page.getByText(title).click();

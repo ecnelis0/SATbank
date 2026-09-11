@@ -26,6 +26,7 @@ test("clicking a concept shows the concept itself, then its questions", async ({
   await page.getByRole("button", { name: /Write (a|your first) concept/ }).first().click();
   await page.getByLabel("The concept").fill(title);
   await page.getByLabel("In your own words").fill(`C = 2πr, so r = C / 2π. [${stamp}]`);
+  await page.getByRole("button", { name: "Math", exact: true }).click();
   await page.getByRole("button", { name: "Add concept" }).click();
   await expect(page.getByText(title)).toBeVisible();
 
@@ -39,6 +40,7 @@ test("clicking a concept shows the concept itself, then its questions", async ({
   await page.getByRole("button", { name: "Ask the bank" }).click();
   const panel = page.getByRole("complementary", { name: "Ask the bank" });
   await panel.getByRole("tab", { name: "Categories" }).click();
+  await panel.getByRole("button", { name: "Expand Math" }).click();
   await panel.getByRole("checkbox", { name: new RegExp(title) }).click();
   await panel.getByRole("button", { name: "Show 1 filter" }).click();
 
@@ -59,12 +61,15 @@ test("the rail can open a concept's own page, not only filter by it", async ({ p
   await page.goto("/concepts");
   await page.getByRole("button", { name: /Write (a|your first) concept/ }).first().click();
   await page.getByLabel("The concept").fill(title);
+  await page.getByRole("button", { name: "Math", exact: true }).click();
   await page.getByRole("button", { name: "Add concept" }).click();
   await expect(page.getByText(title)).toBeVisible();
 
   await page.getByRole("button", { name: "Ask the bank" }).click();
   const panel = page.getByRole("complementary", { name: "Ask the bank" });
   await panel.getByRole("tab", { name: "Categories" }).click();
+  // Concepts live under their section now, so open it first.
+  await panel.getByRole("button", { name: "Expand Math" }).click();
   await panel.getByRole("link", { name: `Open ${title}` }).click();
 
   await expect(page).toHaveURL(/\/concepts\/[0-9a-f]{32}/);
@@ -88,6 +93,7 @@ test("tagging finds a question by its source, its answer, or words in any order"
   await page.goto("/concepts");
   await page.getByRole("button", { name: /Write (a|your first) concept/ }).first().click();
   await page.getByLabel("The concept").fill(title);
+  await page.getByRole("button", { name: "Math", exact: true }).click();
   await page.getByRole("button", { name: "Add concept" }).click();
   await expect(page.getByText(title)).toBeVisible();
   await page.getByText(title).click();

@@ -76,6 +76,7 @@ test("a diagram can be dragged onto a new concept", async ({ page }) => {
   await dropFile(page, zone, "e2e/fixtures/working.png", "figure.png");
   await expect(page.getByRole("img", { name: "Picture 1 to upload" })).toBeVisible();
 
+  await page.getByRole("button", { name: "Math", exact: true }).click();
   await page.getByRole("button", { name: "Add concept" }).click();
   await expect(page.getByText(title)).toBeVisible();
 
@@ -98,6 +99,7 @@ test("a diagram can be dragged onto an existing concept, and zoomed", async ({ p
   await page.goto("/concepts");
   await page.getByRole("button", { name: /Write (a|your first) concept/ }).first().click();
   await page.getByLabel("The concept").fill(title);
+  await page.getByRole("button", { name: "Math", exact: true }).click();
   await page.getByRole("button", { name: "Add concept" }).click();
   await expect(page.getByText(title)).toBeVisible();
 
