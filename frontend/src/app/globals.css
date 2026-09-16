@@ -146,3 +146,25 @@
     @apply font-sans;
   }
 }
+/* Scattered decoration from a dropped picture (the Theme tab).
+   `translate` rather than `transform`, because each sprite's own rotation is
+   set inline on the independent `rotate` property and animating `transform`
+   here would wipe it out. */
+@keyframes decor-drift {
+  0%   { translate: 0 0; }
+  50%  { translate: 0 -10px; }
+  100% { translate: 0 0; }
+}
+
+.decor-float {
+  animation-name: decor-drift;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  will-change: translate;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .decor-float {
+    animation: none;
+  }
+}

@@ -3,6 +3,7 @@ import { Fraunces, Geist, Geist_Mono } from "next/font/google";
 
 import { Assistant } from "@/components/app/assistant";
 import { Nav } from "@/components/app/nav";
+import { PageDecor, PageThemeProvider } from "@/components/app/page-theme";
 import { MainArea, SidePanelProvider } from "@/components/app/side-panel";
 import { Providers } from "@/components/providers";
 import { Toaster } from "@/components/ui/sonner";
@@ -32,11 +33,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable} antialiased`}>
         <Providers>
-          <SidePanelProvider>
-            <Nav />
-            <MainArea>{children}</MainArea>
-            <Assistant />
-          </SidePanelProvider>
+          <PageThemeProvider>
+            {/* Wallpaper first and at z-0; everything real sits in the z-10
+                wrapper above it, so the picture can never cover the app. */}
+            <PageDecor />
+            <div className="relative z-10">
+              <SidePanelProvider>
+                <Nav />
+                <MainArea>{children}</MainArea>
+                <Assistant />
+              </SidePanelProvider>
+            </div>
+          </PageThemeProvider>
           <Toaster position="top-center" />
         </Providers>
       </body>
