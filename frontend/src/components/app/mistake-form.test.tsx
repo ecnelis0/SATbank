@@ -22,10 +22,18 @@ async function fillTheQuestion(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText("The answer was"), "5");
 }
 
-/** The dropzone's file input is hidden from the accessibility tree by react-dropzone. */
-function dropzoneInput(): HTMLInputElement {
-  const input = document.querySelector<HTMLInputElement>('input[type="file"]');
-  if (!input) throw new Error("no file input rendered");
+/** The dropzone's file input is hidden from the accessibility tree by react-dropzone,
+ *  so it is reached by its aria-label rather than by role.
+ *
+ *  By label and not by position: the form has two file inputs — the scanner at
+ *  the top and the pictures further down — and `querySelector` returning
+ *  whichever comes first silently moved every picture test onto the scanner the
+ *  moment the scanner was added. */
+function dropzoneInput(label = "Add a picture"): HTMLInputElement {
+  const input = document.querySelector<HTMLInputElement>(
+    `input[type="file"][aria-label="${label}"]`,
+  );
+  if (!input) throw new Error(`no file input labelled "${label}"`);
   return input;
 }
 
@@ -132,5 +140,109 @@ describe("MistakeForm pictures", () => {
 
     expect(await screen.findByText("What did you put?")).toBeInTheDocument();
     expect(log).not.toHaveBeenCalled();
+  });
+});
+
+describe("MistakeForm scanning a question", () => {
+  const scanned = {
+    question_text: "Which finding, if true, would most directly support the hypothesis?",
+    choices: ["The LINE transposon is active in an octopus brain structure.", "The human genome contains multiple transposons."],
+    correct_answer: "A",
+    answer_source: "worked" as const,
+    section: "reading_writing" as const,
+    source: "SAT Question Bank, ID 22e4d633",
+    note: null,
+  };
+
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    push.mockClear();
+  });
+
+  it("fills the form from what was read, and leaves your answer to you", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(api, "scanQuestion").mockResolvedValue(scanned);
+    renderWithQuery(<MistakeForm />);
+
+    await user.upload(dropzoneInput("Scan a screenshot"), png("q.png"));
+
+    expect(await screen.findByDisplayValue(scanned.question_text)).toBeInTheDocument();
+    expect(screen.getByLabelText("The answer was")).toHaveValue("A");
+    expect(screen.getByLabelText("Where it came from")).toHaveValue(scanned.source);
+    // One per line, which is how the form hands them back to the API.
+    expect(screen.getByLabelText("Answer choices")).toHaveValue(scanned.choices.join("\n"));
+    // The one box a picture cannot fill, and the reason the bank exists.
+    expect(screen.getByLabelText("You put")).toHaveValue("");
+    // The section it read wins over the form's default of Math.
+    expect(screen.getByRole("button", { name: "Reading & Writing" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+  });
+
+  it("warns when the answer was worked out rather than printed on the page", async () => {
+    const user = userEvent.setup();
+    const { toast } = await import("sonner");
+    vi.spyOn(api, "scanQuestion").mockResolvedValue(scanned);
+    renderWithQuery(<MistakeForm />);
+
+    await user.upload(dropzoneInput("Scan a screenshot"), png("q.png"));
+
+    await waitFor(() =>
+      expect(toast.success).toHaveBeenCalledWith(expect.stringContaining("worked out")),
+    );
+  });
+
+  it("does not warn when the page stated the answer", async () => {
+    const user = userEvent.setup();
+    const { toast } = await import("sonner");
+    vi.spyOn(api, "scanQuestion").mockResolvedValue({ ...scanned, answer_source: "stated" });
+    renderWithQuery(<MistakeForm />);
+
+    await user.upload(dropzoneInput("Scan a screenshot"), png("q.png"));
+
+    await waitFor(() => expect(toast.success).toHaveBeenCalled());
+    expect(toast.success).not.toHaveBeenCalledWith(expect.stringContaining("worked out"));
+  });
+
+  it("keeps the picture it read, so it is attached to the question", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(api, "scanQuestion").mockResolvedValue(scanned);
+    renderWithQuery(<MistakeForm />);
+
+    await user.upload(dropzoneInput("Scan a screenshot"), png("q.png"));
+
+    expect(await screen.findByRole("img", { name: "Picture 1 to upload" })).toBeInTheDocument();
+  });
+
+  it("logs nothing on its own — scanning only fills the form", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(api, "scanQuestion").mockResolvedValue(scanned);
+    const log = vi.spyOn(api, "logMistake").mockResolvedValue(makeMistake());
+    renderWithQuery(<MistakeForm />);
+
+    await user.upload(dropzoneInput("Scan a screenshot"), png("q.png"));
+    await screen.findByDisplayValue(scanned.question_text);
+
+    expect(log).not.toHaveBeenCalled();
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  it("says so rather than filling the form with blanks when nothing was read", async () => {
+    const user = userEvent.setup();
+    const { toast } = await import("sonner");
+    vi.spyOn(api, "scanQuestion").mockResolvedValue({
+      question_text: "",
+      answer_source: "unknown",
+      note: "The offline reader cannot see pictures.",
+    });
+    renderWithQuery(<MistakeForm />);
+
+    await user.upload(dropzoneInput("Scan a screenshot"), png("q.png"));
+
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith("The offline reader cannot see pictures."),
+    );
+    expect(screen.getByLabelText("The question")).toHaveValue("");
   });
 });

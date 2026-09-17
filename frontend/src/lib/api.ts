@@ -10,6 +10,7 @@ import type {
   MistakeDraft,
   MistakeEdit,
   ReviewCompleteResult,
+  ScannedQuestion,
   Section,
   Stats,
   StudentOutcome,
@@ -53,6 +54,22 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   }
 
   return response.status === 204 ? (undefined as T) : ((await response.json()) as T);
+}
+
+/** Multipart POST. No Content-Type header: the browser writes its own boundary. */
+async function postForm<T>(path: string, body: FormData): Promise<T> {
+  const response = await fetch(`${API_URL}${path}`, { method: "POST", body });
+  if (!response.ok) {
+    const detail = await response
+      .json()
+      .then((parsed) => parsed?.detail)
+      .catch(() => null);
+    throw new ApiError(
+      typeof detail === "string" ? detail : response.statusText,
+      response.status,
+    );
+  }
+  return (await response.json()) as T;
 }
 
 export interface MistakeFilters {
@@ -113,6 +130,14 @@ export const api = {
 
   /** Multipart, so the JSON Content-Type this client normally sets must not apply:
    *  the browser has to write its own boundary. */
+  /** Read a picture of a question and get the log form back, filled in. Writes
+   *  nothing: the student checks it and logs it themselves. */
+  scanQuestion: (file: File) => {
+    const body = new FormData();
+    body.append("file", file);
+    return postForm<ScannedQuestion>("/mistakes/scan", body);
+  },
+
   uploadImage: async (mistakeId: string, file: File) => {
     const body = new FormData();
     body.append("file", file);

@@ -10,6 +10,7 @@ import { z } from "zod";
 
 import { ConceptPicker } from "@/components/app/concept-picker";
 import { PendingImages, usePendingImages } from "@/components/app/pending-images";
+import { ScanQuestion } from "@/components/app/scan-question";
 import { TagPicker } from "@/components/app/tag-picker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,7 +18,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { api, keys } from "@/lib/api";
 import { SECTION_LABELS, URGENCY_LABELS } from "@/lib/labels";
-import type { MistakeDraft, Section } from "@/lib/types";
+import type { MistakeDraft, ScannedQuestion, Section } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const schema = z.object({
@@ -61,6 +62,7 @@ export function MistakeForm() {
     register,
     handleSubmit,
     setValue,
+    setFocus,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -71,6 +73,25 @@ export function MistakeForm() {
   // render, which opts this component out of the React Compiler's memoization.
   const section = useWatch({ control, name: "section" });
   const urgency = useWatch({ control, name: "urgency" });
+
+  /** Fill the form from a picture the AI has read.
+
+      Only fields the reader actually returned are written, so a null in the
+      scan never wipes something typed first. `your_answer` is never among them
+      - a picture cannot know it - so the cursor goes there, which is both the
+      next thing to do and the whole point of the bank. */
+  const fillFromPicture = (scanned: ScannedQuestion, file: File) => {
+    setValue("question_text", scanned.question_text, { shouldValidate: true });
+    if (scanned.choices?.length) setValue("choicesText", scanned.choices.join("\n"));
+    if (scanned.correct_answer)
+      setValue("correct_answer", scanned.correct_answer, { shouldValidate: true });
+    if (scanned.section) setValue("section", scanned.section);
+    if (scanned.source) setValue("source", scanned.source);
+    // Attached to the question too, so the original sits beside the AI's reading
+    // of it rather than being thrown away once the fields are filled.
+    pictures.add([file]);
+    setFocus("your_answer");
+  };
 
   const log = useMutation({
     mutationFn: async ({ draft, analyze }: { draft: MistakeDraft; analyze: boolean }) => {
@@ -130,6 +151,8 @@ export function MistakeForm() {
 
   return (
     <form onSubmit={submitWith(true)} className="space-y-6" noValidate>
+      <ScanQuestion onScanned={fillFromPicture} disabled={log.isPending} />
+
       <fieldset>
         <legend className="text-sm font-medium">Section</legend>
         <div className="mt-2 flex gap-2">

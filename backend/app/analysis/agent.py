@@ -14,14 +14,48 @@ a real key.
 
 from __future__ import annotations
 
+import io
+import tempfile
+from collections.abc import Callable
 from datetime import date
+from pathlib import Path
 from typing import Any
 
+from PIL import Image
 from pydantic import BaseModel, ValidationError
 
 from ..query import BankQuery, Vocabulary
 from .base import AnalysisFailed, MistakeAnalysis, MistakeInput
 from .claude import INTERPRET_PROMPT, SUMMARISE_PROMPT, SYSTEM_PROMPT, _render
+from .scan import SCAN_PROMPT, ScanInput, ScannedQuestion
+
+# Where a PDF or image lands before the agent reads it. The extension matters:
+# the CLI decides how to open a file from its suffix.
+_SUFFIX = {
+    "image/png": ".png",
+    "image/jpeg": ".jpg",
+    "image/gif": ".gif",
+    "image/webp": ".webp",
+    "application/pdf": ".pdf",
+}
+
+# Longest side of a picture handed to the agent. A phone photo is 4000px and
+# 5MB; a question is still legible at this size and the read is seconds faster.
+MAX_EDGE = 1800
+
+
+def _shrink(data: bytes, suffix: str) -> tuple[bytes, str]:
+    """Downscale a large photo and re-encode it as JPEG. Small ones pass through."""
+    try:
+        with Image.open(io.BytesIO(data)) as image:
+            if max(image.size) <= MAX_EDGE and len(data) <= 1_500_000:
+                return data, suffix
+            image.thumbnail((MAX_EDGE, MAX_EDGE))
+            out = io.BytesIO()
+            image.convert("RGB").save(out, format="JPEG", quality=85)
+            return out.getvalue(), ".jpg"
+    except OSError:
+        return data, suffix
 
 
 async def _run(
@@ -30,6 +64,8 @@ async def _run(
     system: str,
     model: str,
     schema: type[BaseModel] | None,
+    cwd: str | None = None,
+    allowed_tools: list[str] | None = None,
     # Structured output arrives through an internal tool turn, so even a no-tool
     # call needs more than one: max_turns=1 fails intermittently with "Reached
     # maximum number of turns (1)".
@@ -53,10 +89,17 @@ async def _run(
     options = ClaudeAgentOptions(
         model=model,
         system_prompt=system,
-        # No tools at all: this provider only ever reasons about text it was
-        # handed, and a permission prompt would hang a headless subprocess.
-        allowed_tools=[],
+        # Only ever the Read tool, and only on a directory this process created.
+        # Nothing to approve, and a permission prompt would hang a headless
+        # subprocess.
+        allowed_tools=allowed_tools or [],
+        permission_mode="bypassPermissions" if allowed_tools else "default",
         max_turns=max_turns,
+        cwd=cwd,
+        # Reading a picture streams it back as base64 inside one JSON line. The
+        # SDK's default 1MB line buffer rejects anything bigger than a small
+        # screenshot with CLIJSONDecodeError.
+        max_buffer_size=64 * 1024 * 1024,
         **(
             {"output_format": {"type": "json_schema", "schema": schema.model_json_schema()}}
             if schema
@@ -126,3 +169,49 @@ class AgentAnalyzer:
             model=self._model,
             schema=None,
         )
+
+
+class AgentScanner:
+    """Reads one question out of a picture or a PDF page.
+
+    Pictures are not sent inline. They are written to a temporary directory and
+    the agent is told to `Read` them, which is what the CLI's Read tool is for -
+    it handles images and PDFs natively.
+    """
+
+    name = "agent"
+
+    def __init__(self, model: str, mkdtemp: Callable[[], str] = tempfile.mkdtemp) -> None:
+        self._model = model
+        self._mkdtemp = mkdtemp
+
+    async def read(self, scan: ScanInput) -> ScannedQuestion:
+        suffix = _SUFFIX.get(scan.media_type)
+        if suffix is None:
+            raise AnalysisFailed(f"cannot hand a {scan.media_type} to the agent")
+
+        data = scan.data
+        if scan.kind == "image":
+            data, suffix = _shrink(data, suffix)
+
+        directory = self._mkdtemp()
+        path = Path(directory) / f"question{suffix}"
+        path.write_bytes(data)
+        try:
+            return await _run(
+                prompt=(
+                    f"The question is in the file at {path}. Read it with the Read "
+                    "tool, then return the question, its answer choices, and the "
+                    "correct answer - from the page if it states one, worked out "
+                    "yourself if it does not."
+                ),
+                system=SCAN_PROMPT,
+                model=self._model,
+                schema=ScannedQuestion,
+                cwd=directory,
+                allowed_tools=["Read"],
+                max_turns=12,
+            )
+        finally:
+            path.unlink(missing_ok=True)
+            Path(directory).rmdir()

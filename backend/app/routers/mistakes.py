@@ -2,11 +2,18 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
+import io
+from typing import Annotated
+
+from fastapi import APIRouter, BackgroundTasks, File, HTTPException, Query, UploadFile
+from PIL import Image, UnidentifiedImageError
 from sqlalchemy import select
 
+from ..analysis.base import AnalysisFailed
+from ..analysis.scan import ScanInput, ScanKind, ScannedQuestion, get_scanner
 from ..config import get_settings
 from ..deps import SessionDep, UserDep
+from ..images import ALLOWED_FORMATS, MAX_BYTES
 from ..images import delete as delete_file
 from ..models import (
     AnalysisStatus,
@@ -25,6 +32,49 @@ from ..schemas import MistakeCreate, MistakeRead, MistakeUpdate
 from ..services import analyze_in_background, analyze_mistake
 
 router = APIRouter(prefix="/mistakes", tags=["mistakes"])
+
+# A page of a practice test is a bigger PDF than a screenshot is a PNG, so the
+# two limits differ. The read cap is the larger; the kind is checked after.
+MAX_SCAN_PDF_BYTES = 32 * 1024 * 1024
+MAX_SCAN_BYTES = MAX_SCAN_PDF_BYTES
+
+
+def _sniff_scan(data: bytes) -> tuple[ScanKind, str, bytes]:
+    """Decide what was uploaded from the bytes, never the filename or declared type.
+
+    Returns the bytes back because HEIC is re-encoded on the way through: Claude
+    reads PNG, JPEG, GIF and WebP, and an iPhone screenshot is none of those.
+    """
+    if not data:
+        raise HTTPException(status_code=422, detail="That file is empty.")
+
+    if data.startswith(b"%PDF"):
+        if len(data) > MAX_SCAN_PDF_BYTES:
+            raise HTTPException(status_code=422, detail="That PDF is over the 32MB limit.")
+        return "pdf", "application/pdf", data
+
+    try:
+        with Image.open(io.BytesIO(data)) as image:
+            image_format = image.format
+    except (UnidentifiedImageError, OSError, ValueError):
+        image_format = None
+
+    if image_format not in ALLOWED_FORMATS:
+        raise HTTPException(
+            status_code=415,
+            detail="That is not a picture we can read. Send a PNG, JPEG, WebP, HEIC or PDF.",
+        )
+    if len(data) > MAX_BYTES:
+        raise HTTPException(status_code=422, detail="That image is over the 10MB limit.")
+
+    media_type = ALLOWED_FORMATS[image_format][0]
+    if media_type == "image/heic":
+        with Image.open(io.BytesIO(data)) as image:
+            out = io.BytesIO()
+            image.convert("RGB").save(out, format="JPEG", quality=90)
+        return "image", "image/jpeg", out.getvalue()
+    return "image", media_type, data
+
 
 
 @router.post("", response_model=MistakeRead, status_code=201)
@@ -137,6 +187,28 @@ async def search(body: BankQuery, session: SessionDep, user_id: UserDep) -> list
     assistant produces, so the panel and the bank page cannot drift apart.
     """
     return await run_query(session, user_id, body)
+
+
+
+@router.post("/scan", response_model=ScannedQuestion)
+async def scan_question(file: Annotated[UploadFile, File()]) -> ScannedQuestion:
+    """Read a picture of a question and return the log form, filled in.
+
+    Sits above `/{mistake_id}` next to `/search`, for reading order rather than
+    correctness: no POST is declared on `/{mistake_id}`, so a method mismatch
+    there is only a partial match and the router keeps looking regardless.
+
+    Nothing is written and nothing is stored - the endpoint takes no session at
+    all. It answers with what the model read; the student corrects whatever it
+    got wrong and logs it themselves.
+    """
+    data = await file.read(MAX_SCAN_BYTES + 1)
+    kind, media_type, data = _sniff_scan(data)
+
+    try:
+        return await get_scanner().read(ScanInput(kind=kind, media_type=media_type, data=data))
+    except AnalysisFailed as exc:
+        raise HTTPException(status_code=502, detail=f"Could not read that picture: {exc}") from exc
 
 
 @router.get("/{mistake_id}", response_model=MistakeRead)

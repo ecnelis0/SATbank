@@ -7,12 +7,16 @@ Uses structured outputs (`messages.parse`) so the response is a validated
 from __future__ import annotations
 
 from datetime import date
+from typing import TYPE_CHECKING
 
 import anthropic
 import httpx2
 
 from ..query import BankQuery, Vocabulary
 from .base import AnalysisFailed, MistakeAnalysis, MistakeInput
+
+if TYPE_CHECKING:
+    from .scan import ScanInput, ScannedQuestion
 
 SYSTEM_PROMPT = """\
 You are an SAT tutor reviewing a question a student got wrong, so it can be filed in \
@@ -179,3 +183,60 @@ class ClaudeAnalyzer:
         if response.stop_reason == "refusal":
             raise AnalysisFailed("the model declined to answer")
         return "".join(block.text for block in response.content if block.type == "text")
+
+
+class ClaudeScanner:
+    """Reads one question out of a picture, over the API. Mirrors `AgentScanner`."""
+
+    name = "claude"
+
+    def __init__(
+        self,
+        api_key: str | None,
+        model: str,
+        http_client: httpx2.AsyncClient | None = None,
+        base_url: str | None = None,
+    ) -> None:
+        self._client = anthropic.AsyncAnthropic(
+            api_key=api_key,
+            **({"http_client": http_client} if http_client else {}),
+            **({"base_url": base_url} if base_url else {}),
+        )
+        self._model = model
+
+    async def read(self, scan: ScanInput) -> ScannedQuestion:
+        import base64
+
+        from .scan import SCAN_PROMPT
+        from .scan import ScannedQuestion as Schema
+
+        blocks: list[dict] = [
+            {
+                "type": "image" if scan.kind == "image" else "document",
+                "source": {
+                    "type": "base64",
+                    "media_type": scan.media_type,
+                    "data": base64.standard_b64encode(scan.data).decode("ascii"),
+                },
+            },
+            {"type": "text", "text": "Read the question in this picture and return its fields."},
+        ]
+
+        try:
+            response = await self._client.messages.parse(
+                model=self._model,
+                max_tokens=8000,
+                system=SCAN_PROMPT,
+                thinking={"type": "adaptive"},
+                messages=[{"role": "user", "content": blocks}],
+                output_format=Schema,
+            )
+        except anthropic.APIError as exc:
+            raise AnalysisFailed(f"{type(exc).__name__}: {exc}") from exc
+
+        if response.stop_reason == "refusal":
+            raise AnalysisFailed("the model declined to read that picture")
+        parsed = response.parsed_output
+        if parsed is None:
+            raise AnalysisFailed("model returned no structured output")
+        return parsed
