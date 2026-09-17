@@ -122,7 +122,7 @@ export default function ConceptPage() {
         <TagQuestions concept={concept} />
 
         {concept.mistakes.length === 0 ? (
-          <div className="rounded-xl border border-dashed px-6 py-10 text-center">
+          <div className="rounded-xl border border-dashed bg-card/70 px-6 py-10 text-center">
             <p className="text-sm font-medium">Nothing tagged yet.</p>
             <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
               Use the button above to tag questions with this concept, or tag from a

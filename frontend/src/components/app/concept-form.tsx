@@ -120,9 +120,6 @@ export function ConceptForm({
       {!concept && (
         <div>
           <Label htmlFor="concept-diagrams">Diagrams</Label>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            Optional. A figure, a worked example, a photo of the rule.
-          </p>
           <div id="concept-diagrams" className="mt-1.5">
             <PendingImages
               images={diagrams.images}
@@ -136,10 +133,6 @@ export function ConceptForm({
 
       <fieldset>
         <legend className="text-sm font-medium">Which section?</legend>
-        <p className="mt-0.5 text-xs text-muted-foreground">
-          Concepts are filed under their section, and the side rail expands to show
-          them there.
-        </p>
         <div className="mt-2 flex flex-wrap gap-2">
           {SECTION_OPTIONS.map((option) => (
             <button

@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState } from "react";
 
+import { usePageTheme } from "@/components/app/page-theme";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -42,6 +43,7 @@ export function SidePanelToggle() {
 /** Makes room for the rail on a wide screen instead of covering the page with it. */
 export function MainArea({ children }: { children: React.ReactNode }) {
   const { open } = useSidePanel();
+  const themed = usePageTheme().theme !== null;
 
   return (
     <main
@@ -50,7 +52,15 @@ export function MainArea({ children }: { children: React.ReactNode }) {
         open && "lg:mr-[26rem]",
       )}
     >
-      {children}
+      {/* A sheet under the reading column, and only once a picture has been
+          dropped: a small grey heading sitting straight on the wallpaper is not
+          readable, and part-transparency was not enough - a pale cat behind the
+          question box still showed through. Opaque, so everything you actually
+          use is unambiguous, and the cut-outs keep both margins to themselves.
+          Off by default, so the untouched app looks exactly as it did. */}
+      <div className={cn(themed && "rounded-2xl border bg-background p-4 shadow-sm sm:p-6")}>
+        {children}
+      </div>
     </main>
   );
 }

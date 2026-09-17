@@ -103,7 +103,6 @@ function BankList() {
     <div className="space-y-6">
       <PageHeader
         title="The bank"
-        lede="Every question you have missed, filed by what went wrong. Filters narrow each other."
       />
 
       <Input

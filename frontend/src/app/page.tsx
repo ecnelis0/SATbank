@@ -11,7 +11,7 @@ import { UrgencyBadge } from "@/components/app/urgency-badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api, keys } from "@/lib/api";
-import { ERROR_TYPE_LABELS, URGENCY_BLURBS } from "@/lib/labels";
+import { ERROR_TYPE_LABELS } from "@/lib/labels";
 import { URGENCIES, type ErrorType, type Urgency } from "@/lib/types";
 
 export default function DashboardPage() {
@@ -42,9 +42,6 @@ export default function DashboardPage() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Your mistakes</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Every miss comes back at 1 hour, 24 hours, 72 hours, 1 week and 1 month.
-          </p>
         </div>
         <Link href="/log" className={buttonVariants({ variant: "secondary" })}>
           Log a miss
@@ -106,15 +103,12 @@ export default function DashboardPage() {
                   <Link
                     key={urgency}
                     href={`/bank?urgency=${urgency}`}
-                    className="rounded-lg border px-4 py-3 transition-colors hover:bg-muted/50"
+                    className="rounded-lg border bg-card px-4 py-3 transition-colors hover:bg-muted/50"
                   >
                     <div className="flex items-center justify-between gap-2">
                       <UrgencyBadge urgency={urgency as Urgency} />
                       <span className="text-sm font-medium tabular-nums">{count}</span>
                     </div>
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      {URGENCY_BLURBS[urgency as Urgency]}
-                    </p>
                   </Link>
                 );
               })}

@@ -21,9 +21,7 @@ export function ThemeStudio() {
       <div>
         <h2 className="font-display text-lg">Dress the page</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Drop a picture. The bank takes its colours, cuts the separate things out of
-          it, and strews them across the page at different sizes and angles. Drop ten
-          cats and you get ten cats, not ten copies of the same square.
+          The bank takes its colours and strews the things in it across the page.
         </p>
       </div>
 
@@ -68,9 +66,6 @@ export function ThemeStudio() {
               onChange={(event) => setIntensity(Number(event.target.value))}
               className="mt-2 w-full accent-primary"
             />
-            <p className="mt-1 text-xs text-muted-foreground">
-              All the way down hides the cut-outs and keeps just the colours.
-            </p>
           </div>
 
           <fieldset>
@@ -102,7 +97,7 @@ export function ThemeStudio() {
             </div>
           </fieldset>
 
-          <div className="rounded-lg border p-3">
+          <div className="rounded-lg border bg-card p-3">
             <label className="flex items-start gap-3 text-sm">
               <input
                 type="checkbox"
@@ -110,14 +105,7 @@ export function ThemeStudio() {
                 onChange={(event) => setPlay(event.target.checked)}
                 className="mt-0.5 size-4 accent-primary"
               />
-              <span>
-                <span className="font-medium">Let me grab them</span>
-                <span className="mt-0.5 block text-xs text-muted-foreground">
-                  Drag them anywhere, and fling them to throw. Off by default, because
-                  while it is on the cut-outs take the click instead of the page
-                  underneath.
-                </span>
-              </span>
+              <span className="font-medium">Drag and throw them</span>
             </label>
           </div>
 
@@ -127,8 +115,7 @@ export function ThemeStudio() {
         </>
       ) : (
         <p className="text-xs text-muted-foreground">
-          Nothing applied — this is the bank&rsquo;s own palette. Whatever you drop is
-          kept until you reset it, and survives a refresh.
+          Nothing applied yet.
         </p>
       )}
     </div>

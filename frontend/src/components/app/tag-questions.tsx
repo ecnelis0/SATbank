@@ -79,7 +79,7 @@ export function TagQuestions({ concept }: { concept: ConceptDetail }) {
       </Button>
 
       {open && (
-        <div className="space-y-2 rounded-lg border p-3">
+        <div className="space-y-2 rounded-lg border bg-card p-3">
           <Input
             value={search}
             onChange={(event) => setSearch(event.target.value)}

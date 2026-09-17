@@ -6,7 +6,6 @@ export default function ReviewPage() {
     <div className="mx-auto max-w-2xl space-y-7">
       <PageHeader
         title="Review"
-        lede="Answer it in your head, then check. Getting it wrong sends it back to the start of the ladder."
       />
       <ReviewSession />
     </div>

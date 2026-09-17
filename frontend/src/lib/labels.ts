@@ -37,12 +37,6 @@ export const URGENCY_LABELS: Record<Urgency, string> = {
   important: "Important",
 };
 
-export const URGENCY_BLURBS: Record<Urgency, string> = {
-  fundamental: "This is holding up everything built on top of it. Fix it first.",
-  very_important: "A skill or trap you will meet again. Worth real attention.",
-  important: "Worth coming back to, but not what is costing you the most.",
-};
-
 /** One colour per level, loud to quiet, so the three read as a scale rather than
  *  three identical chips. Mirrors the Figma "urgency/*" tokens. */
 export const URGENCY_STYLES: Record<Urgency, string> = {

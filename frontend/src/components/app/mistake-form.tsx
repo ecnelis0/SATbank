@@ -200,10 +200,6 @@ export function MistakeForm() {
 
       <fieldset>
         <legend className="text-sm font-medium">How urgent is this?</legend>
-        <p className="mt-0.5 text-xs text-muted-foreground">
-          Say now while you still remember. Leave it to the AI and it will judge from
-          the miss.
-        </p>
         <div className="mt-2 flex flex-wrap gap-2">
           {(
             [
@@ -233,10 +229,6 @@ export function MistakeForm() {
 
       <div>
         <Label htmlFor="labels">Your labels</Label>
-        <p className="mt-0.5 text-xs text-muted-foreground">
-          Optional. How it went wrong in your own words — &ldquo;by mistake&rdquo;,
-          &ldquo;ran out of time&rdquo;. Reuse one or invent your own.
-        </p>
         <div id="labels" className="mt-1.5">
           <TagPicker selected={tags} onChange={setTags} disabled={log.isPending} />
         </div>
@@ -244,9 +236,6 @@ export function MistakeForm() {
 
       <div>
         <Label htmlFor="concepts">File under a concept</Label>
-        <p className="mt-0.5 text-xs text-muted-foreground">
-          Optional. Tag it now, or from the question later.
-        </p>
         <div id="concepts" className="mt-1.5">
           <ConceptPicker
             selected={conceptIds}
@@ -258,9 +247,6 @@ export function MistakeForm() {
 
       <div>
         <Label htmlFor="pictures">Pictures</Label>
-        <p className="mt-0.5 text-xs text-muted-foreground">
-          Optional. A screenshot of the question, or a photo of your working.
-        </p>
         <div id="pictures" className="mt-1.5">
           <PendingImages
             images={pictures.images}

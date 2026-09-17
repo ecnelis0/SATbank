@@ -45,7 +45,7 @@ export function ImageDropzone({
       {...getRootProps()}
       aria-label={label}
       className={cn(
-        "flex cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed px-4 py-6 text-center transition-colors",
+        "flex cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed bg-card/60 px-4 py-6 text-center transition-colors",
         isDragActive ? "border-primary bg-primary/5" : "hover:bg-muted/50",
         disabled && "pointer-events-none opacity-50",
         className,

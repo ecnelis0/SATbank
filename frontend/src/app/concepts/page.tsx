@@ -42,7 +42,6 @@ export default function ConceptsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Concepts"
-        lede="The thing behind a family of misses — the rule you keep forgetting, not the question you got wrong."
         actions={
           <Button variant={writing ? "ghost" : "default"} onClick={() => setWriting(!writing)}>
             {writing ? "Cancel" : "Write a concept"}
@@ -77,7 +76,7 @@ export default function ConceptsPage() {
             const open = expanded.includes(group.key);
 
             return (
-              <section key={group.key} className="rounded-xl border">
+              <section key={group.key} className="rounded-xl border bg-card">
                 <button
                   type="button"
                   aria-expanded={open}

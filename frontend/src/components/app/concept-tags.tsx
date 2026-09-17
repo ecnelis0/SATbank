@@ -92,7 +92,7 @@ export function ConceptTags({ mistake }: { mistake: Mistake }) {
       )}
 
       {picking && (
-        <div className="space-y-1.5 rounded-lg border p-2">
+        <div className="space-y-1.5 rounded-lg border bg-card p-2">
           {untagged.length === 0 ? (
             <p className="px-2 py-1.5 text-sm text-muted-foreground">
               {concepts && concepts.length > 0
