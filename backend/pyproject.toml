@@ -16,6 +16,7 @@ dependencies = [
     "python-multipart>=0.0.32",
     "pillow>=12.3.0",
     "alembic>=1.19.2",
+    "claude-agent-sdk>=0.2.154",
 ]
 
 [dependency-groups]

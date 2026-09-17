@@ -6,13 +6,15 @@ import { ImageDropzone } from "@/components/app/image-dropzone";
 import { usePageTheme } from "@/components/app/page-theme";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 
 /** Drop a picture, and the whole app takes its colours and its wallpaper.
  *
  *  No API call: the palette comes out of the pixels in the browser, so this is
  *  instant, works with no key configured, and cannot fail on a network. */
 export function ThemeStudio() {
-  const { theme, intensity, setIntensity, applyFile, reset, busy } = usePageTheme();
+  const { theme, intensity, setIntensity, mode, setMode, play, setPlay, applyFile, reset, busy } =
+    usePageTheme();
 
   return (
     <div className="space-y-5">
@@ -69,6 +71,54 @@ export function ThemeStudio() {
             <p className="mt-1 text-xs text-muted-foreground">
               All the way down hides the cut-outs and keeps just the colours.
             </p>
+          </div>
+
+          <fieldset>
+            <legend className="text-sm font-medium">How they move</legend>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              {(
+                [
+                  ["still", "Stay put"],
+                  ["drift", "Drift"],
+                  ["bounce", "Bounce around"],
+                  ["gravity", "Drop them"],
+                ] as const
+              ).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  aria-pressed={mode === value}
+                  onClick={() => setMode(value)}
+                  className={cn(
+                    "rounded-md border px-3 py-1.5 text-sm transition-colors",
+                    mode === value
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "hover:bg-muted",
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </fieldset>
+
+          <div className="rounded-lg border p-3">
+            <label className="flex items-start gap-3 text-sm">
+              <input
+                type="checkbox"
+                checked={play}
+                onChange={(event) => setPlay(event.target.checked)}
+                className="mt-0.5 size-4 accent-primary"
+              />
+              <span>
+                <span className="font-medium">Let me grab them</span>
+                <span className="mt-0.5 block text-xs text-muted-foreground">
+                  Drag them anywhere, and fling them to throw. Off by default, because
+                  while it is on the cut-outs take the click instead of the page
+                  underneath.
+                </span>
+              </span>
+            </label>
           </div>
 
           <Button type="button" variant="secondary" onClick={reset} className="w-full">

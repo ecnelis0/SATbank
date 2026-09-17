@@ -11,6 +11,7 @@ from ..analysis import get_analyzer
 from ..config import get_settings
 from ..deps import SessionDep, UserDep
 from ..query import BankQuery, describe, digest, run_query, vocabulary
+from ..readiness import analyzer_ready
 from ..schemas import MistakeRead
 
 router = APIRouter(prefix="/ask", tags=["ask"])
@@ -46,7 +47,7 @@ async def ask(body: Ask, session: SessionDep, user_id: UserDep) -> Answer:
     """
     settings = get_settings()
     provider = settings.ai_provider.lower()
-    ready = provider == "stub" or (provider == "claude" and bool(settings.anthropic_api_key))
+    ready = analyzer_ready(settings)
 
     analyzer = get_analyzer()
     today = datetime.now(UTC).date()

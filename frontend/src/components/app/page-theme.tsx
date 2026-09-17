@@ -10,7 +10,8 @@ import {
   useSyncExternalStore,
 } from "react";
 
-import { scatterLayout, segmentSprites, type SpriteRegion } from "@/lib/sprites";
+import { type DecorMode } from "@/lib/decor-physics";
+import { segmentSprites, type SpriteRegion } from "@/lib/sprites";
 import {
   buildTheme,
   extractPalette,
@@ -49,9 +50,17 @@ export interface PageTheme {
 interface Stored {
   theme: PageTheme | null;
   intensity: number;
+  mode: DecorMode;
+  /** Whether the cut-outs take the pointer so they can be dragged. */
+  play: boolean;
 }
 
-const EMPTY: Stored = { theme: null, intensity: DEFAULT_INTENSITY };
+const EMPTY: Stored = {
+  theme: null,
+  intensity: DEFAULT_INTENSITY,
+  mode: "drift",
+  play: false,
+};
 
 // --- the stored theme, as an external store -----------------------------------
 //
@@ -80,6 +89,8 @@ function readStore(): Stored {
     cachedValue = {
       theme: parsed.theme ?? null,
       intensity: typeof parsed.intensity === "number" ? parsed.intensity : DEFAULT_INTENSITY,
+      mode: parsed.mode ?? "drift",
+      play: parsed.play ?? false,
     };
   } catch {
     // A corrupt entry must not take the app down with it.
@@ -229,6 +240,10 @@ interface PageThemeApi {
   theme: PageTheme | null;
   intensity: number;
   setIntensity: (value: number) => void;
+  mode: DecorMode;
+  setMode: (value: DecorMode) => void;
+  play: boolean;
+  setPlay: (value: boolean) => void;
   applyFile: (file: File) => Promise<void>;
   reset: () => void;
   busy: boolean;
@@ -244,7 +259,7 @@ export function usePageTheme(): PageThemeApi {
 
 export function PageThemeProvider({ children }: { children: React.ReactNode }) {
   const stored = useSyncExternalStore(subscribe, readStore, () => EMPTY);
-  const { theme, intensity } = stored;
+  const { theme, intensity, mode, play } = stored;
   const [busy, setBusy] = useState(false);
 
   // Pushing the tokens at the DOM is exactly what an effect is for: syncing an
@@ -287,78 +302,51 @@ export function PageThemeProvider({ children }: { children: React.ReactNode }) {
             swatches: palette.swatches.map(toHex),
           },
           intensity,
+          mode,
+          play,
         });
       } finally {
         setBusy(false);
       }
     },
-    [intensity],
+    [intensity, mode, play],
   );
 
-  const reset = useCallback(() => writeStore({ theme: null, intensity }), [intensity]);
+  const reset = useCallback(
+    () => writeStore({ theme: null, intensity, mode, play }),
+    [intensity, mode, play],
+  );
 
   const setIntensity = useCallback(
-    (value: number) => writeStore({ theme, intensity: value }),
-    [theme],
+    (value: number) => writeStore({ theme, intensity: value, mode, play }),
+    [theme, mode, play],
+  );
+
+  const setMode = useCallback(
+    (value: DecorMode) => writeStore({ theme, intensity, mode: value, play }),
+    [theme, intensity, play],
+  );
+
+  const setPlay = useCallback(
+    (value: boolean) => writeStore({ theme, intensity, mode, play: value }),
+    [theme, intensity, mode],
   );
 
   const api = useMemo(
-    () => ({ theme, intensity, setIntensity, applyFile, reset, busy }),
-    [theme, intensity, setIntensity, applyFile, reset, busy],
+    () => ({
+      theme,
+      intensity,
+      setIntensity,
+      mode,
+      setMode,
+      play,
+      setPlay,
+      applyFile,
+      reset,
+      busy,
+    }),
+    [theme, intensity, setIntensity, mode, setMode, play, setPlay, applyFile, reset, busy],
   );
 
   return <Context.Provider value={api}>{children}</Context.Provider>;
-}
-
-/** The things cut out of the picture, strewn across the page.
- *
- *  `fixed`, `aria-hidden` and `pointer-events-none`: it is decoration, so it
- *  must not scroll, must not be read aloud, and must never eat a click. The
- *  content above it carries `z-10`. */
-export function PageDecor() {
-  const { theme, intensity } = usePageTheme();
-
-  // Same seed, same layout — including across a reload, which is what stops the
-  // cats jumping to new places every time a page re-renders.
-  const placements = useMemo(
-    () => (theme ? scatterLayout(theme.sprites.length, { seed: theme.seed }) : []),
-    [theme],
-  );
-
-  if (!theme || theme.sprites.length === 0) return null;
-
-  return (
-    <div
-      aria-hidden
-      data-testid="page-decor"
-      className="pointer-events-none fixed inset-0 z-0 overflow-hidden"
-      style={{ opacity: intensity }}
-    >
-      {placements.map((placement, index) => (
-        // next/image has nothing to optimise here: these are base64 data URLs
-        // generated in the browser and already scaled to 150px.
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          key={index}
-          src={theme.sprites[placement.sprite]}
-          alt=""
-          data-testid="decor-sprite"
-          className="decor-float absolute"
-          style={{
-            left: `${placement.left}%`,
-            top: `${placement.top}%`,
-            width: `calc(clamp(2.5rem, 7vw, 6.5rem) * ${placement.scale})`,
-            opacity: placement.opacity,
-            // The independent `rotate` property, not `transform`: the drift
-            // animation owns `translate`, and the two would overwrite each
-            // other if both went through `transform`.
-            rotate: `${placement.rotate}deg`,
-            // Staggered so they drift independently rather than pulsing as one.
-            animationDelay: `${(index % 7) * -1.9}s`,
-            animationDuration: `${11 + (index % 5) * 2.5}s`,
-          }}
-        />
-      ))}
-    </div>
-  );
 }

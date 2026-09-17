@@ -32,4 +32,13 @@ def get_analyzer() -> Analyzer:
 
         return ClaudeAnalyzer(settings.anthropic_api_key, settings.anthropic_model)
 
-    raise ValueError(f"Unknown AI_PROVIDER {settings.ai_provider!r}; expected 'stub' or 'claude'")
+    if provider == "agent":
+        # Claude Agent SDK: drives the Claude Code CLI, paid for by the plan you
+        # are logged into with `claude auth login`. No API key.
+        from .agent import AgentAnalyzer
+
+        return AgentAnalyzer(settings.anthropic_model)
+
+    raise ValueError(
+        f"Unknown AI_PROVIDER {settings.ai_provider!r}; expected 'stub', 'claude' or 'agent'"
+    )

@@ -3,7 +3,8 @@ import { Fraunces, Geist, Geist_Mono } from "next/font/google";
 
 import { Assistant } from "@/components/app/assistant";
 import { Nav } from "@/components/app/nav";
-import { PageDecor, PageThemeProvider } from "@/components/app/page-theme";
+import { PageDecor } from "@/components/app/page-decor";
+import { PageThemeProvider } from "@/components/app/page-theme";
 import { MainArea, SidePanelProvider } from "@/components/app/side-panel";
 import { Providers } from "@/components/providers";
 import { Toaster } from "@/components/ui/sonner";

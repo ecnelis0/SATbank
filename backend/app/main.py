@@ -12,6 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from .config import get_settings
 from .images import upload_dir
 from .migrate import upgrade
+from .readiness import analyzer_ready
 from .review import LADDER_LABELS
 from .routers import ask, concepts, images, mistakes, reviews, stats, tags
 
@@ -64,13 +65,13 @@ async def health() -> dict:
     """
     settings = get_settings()
     provider = settings.ai_provider.lower()
-    ready = provider == "stub" or (provider == "claude" and bool(settings.anthropic_api_key))
+    ready = analyzer_ready(settings)
 
     return {
         "status": "ok",
         "analyzer": settings.ai_provider,
         "analyzer_ready": ready,
-        "model": settings.anthropic_model if provider == "claude" else None,
+        "model": settings.anthropic_model if provider in ("claude", "agent") else None,
         "ladder": list(LADDER_LABELS),
     }
 
