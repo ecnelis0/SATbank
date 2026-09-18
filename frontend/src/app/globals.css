@@ -27,6 +27,7 @@
   --color-field: var(--field);
   --color-field-border: var(--field-border);
   --color-field-ring: var(--field-ring);
+  --color-field-placeholder: var(--field-placeholder);
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
@@ -80,9 +81,15 @@
      (hue ~118-139) rather than a cool mint, and low chroma, so it reads as a
      writeable surface instead of a highlight. The three are the pale centre of
      that wash, its mid tone, and a leaf green for focus. */
-  --field: oklch(0.927 0.025 118);
+  --field: oklch(0.951 0.021 118);
   --field-border: oklch(0.793 0.051 133);
   --field-ring: oklch(0.621 0.077 139);
+  /* Placeholders get their own colour rather than the app-wide grey.
+     That grey is tuned for near-white cards; over a sage wash it came
+     out at 3.9:1, and lightening the wash until it passed would have
+     bleached the watercolour away. A deep olive sits on the wash at
+     better than 7:1 and looks like it belongs there. */
+  --field-placeholder: oklch(0.455 0.030 133);
   --radius: 0.75rem;
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
@@ -122,6 +129,7 @@
   --field: oklch(0.272 0.024 125);
   --field-border: oklch(0.392 0.038 130);
   --field-ring: oklch(0.660 0.072 139);
+  --field-placeholder: oklch(0.720 0.036 133);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -181,5 +189,80 @@
 @media (prefers-reduced-motion: reduce) {
   .decor-float {
     animation: none;
+  }
+}
+
+/* --- The watercolour field ------------------------------------------------
+   Every box you can type into wears the sage wash from the reference: soft
+   blooms pooling at the edges, a botanical sprig in the top-right, and a faint
+   grain over the top.
+
+   Built from gradients and two inline SVGs rather than a picture, so it is
+   sharp at any field height, costs no request, and re-tints from the same
+   tokens in dark mode.
+
+   The blooms are deliberately pushed to the right and the corners. Text starts
+   at the left and runs across, so that is the one region kept near the pale
+   base - the wash decorates the field without ever sitting under a sentence. */
+
+[data-slot="input"],
+[data-slot="textarea"] {
+  background-color: var(--field);
+  background-image:
+    url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%20140%2096%27%3E%3Cg%20fill%3D%27none%27%20stroke%3D%27%232C3A26%27%20stroke-width%3D%271.1%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%20opacity%3D%27.30%27%3E%3Cpath%20d%3D%27M6%2090C34%2078%2062%2056%2096%2026%20108%2015%20120%208%20134%204%27%2F%3E%3Cpath%20d%3D%27M30%2074c-9-6-11-17-5-25%209%203%2014%2013%2011%2022%27%2F%3E%3Cpath%20d%3D%27M38%2068c2-11%2011-18%2021-17-2%2011-11%2018-21%2017%27%2F%3E%3Cpath%20d%3D%27M58%2054c-8-7-9-18-2-25%208%205%2011%2015%206%2023%27%2F%3E%3Cpath%20d%3D%27M66%2047c3-11%2013-17%2023-15-4%2011-13%2017-23%2015%27%2F%3E%3Cpath%20d%3D%27M88%2031c-7-8-6-19%202-25%207%206%208%2017%202%2024%27%2F%3E%3Cpath%20d%3D%27M96%2025c5-10%2016-14%2025-10-6%2010-16%2014-25%2010%27%2F%3E%3Cpath%20d%3D%27M118%2092c-10-6-16-17-15-28%2010%206%2016%2017%2015%2028%27%2F%3E%3Cpath%20d%3D%27M120%2086c7-7%2018-8%2026-2-8%207-19%208-26%202%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E"),
+    url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%20120%20120%27%3E%3Cfilter%20id%3D%27g%27%3E%3CfeTurbulence%20type%3D%27fractalNoise%27%20baseFrequency%3D%27.85%27%20numOctaves%3D%273%27%20stitchTiles%3D%27stitch%27%2F%3E%3CfeColorMatrix%20type%3D%27saturate%27%20values%3D%270%27%2F%3E%3C%2Ffilter%3E%3Crect%20width%3D%27120%27%20height%3D%27120%27%20filter%3D%27url%28%2523g%29%27%20opacity%3D%27.055%27%2F%3E%3C%2Fsvg%3E"),
+    radial-gradient(34% 120% at 100% 8%, color-mix(in oklab, var(--field-border) 58%, transparent), transparent 68%),
+    radial-gradient(26% 105% at 93% 100%, color-mix(in oklab, var(--field-border) 42%, transparent), transparent 66%),
+    radial-gradient(20% 80% at 72% 100%, color-mix(in oklab, var(--field-border) 20%, transparent), transparent 68%);
+  background-repeat: no-repeat, repeat, no-repeat, no-repeat, no-repeat;
+  background-size: 6.5rem 4.5rem, 7.5rem 7.5rem, auto, auto, auto;
+  background-position: right -0.5rem top -0.25rem, 0 0, 0 0, 0 0, 0 0;
+  /* A gutter for the sprig. Without it a long line wraps straight over the
+     line art, and ink at 30% on a wash leaves text at 2.9:1. Fading the
+     drawing until text could sit on it would have erased it, so the text
+     stops short of it instead - which is what the reference does too, its
+     leaves sit in the margin rather than under the writing. */
+  padding-right: 5.75rem;
+  /* Everything that can actually tween. Gradients cannot, so the movement on
+     focus comes from the colour, the border and the ring instead. */
+  transition:
+    background-color 260ms cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 260ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* A single-line input is too short for the sprig to read as anything but
+   clutter, so it keeps the washes and drops the drawing. */
+[data-slot="input"] {
+  background-image:
+    url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%20120%20120%27%3E%3Cfilter%20id%3D%27g%27%3E%3CfeTurbulence%20type%3D%27fractalNoise%27%20baseFrequency%3D%27.85%27%20numOctaves%3D%273%27%20stitchTiles%3D%27stitch%27%2F%3E%3CfeColorMatrix%20type%3D%27saturate%27%20values%3D%270%27%2F%3E%3C%2Ffilter%3E%3Crect%20width%3D%27120%27%20height%3D%27120%27%20filter%3D%27url%28%2523g%29%27%20opacity%3D%27.055%27%2F%3E%3C%2Fsvg%3E"),
+    radial-gradient(22% 140% at 100% 6%, color-mix(in oklab, var(--field-border) 52%, transparent), transparent 70%),
+    radial-gradient(16% 120% at 95% 100%, color-mix(in oklab, var(--field-border) 34%, transparent), transparent 68%),
+    radial-gradient(14% 90% at 78% 100%, color-mix(in oklab, var(--field-border) 18%, transparent), transparent 70%);
+  background-repeat: repeat, no-repeat, no-repeat, no-repeat;
+  background-size: 7.5rem 7.5rem, auto, auto, auto;
+}
+
+[data-slot="input"]::placeholder,
+[data-slot="textarea"]::placeholder {
+  color: var(--field-placeholder);
+}
+
+[data-slot="input"]:hover:not(:disabled),
+[data-slot="textarea"]:hover:not(:disabled) {
+  background-color: color-mix(in oklab, var(--field) 92%, var(--field-border));
+}
+
+[data-slot="input"]:focus-visible,
+[data-slot="textarea"]:focus-visible {
+  /* The paper lightens under the cursor as the green ring comes up, so
+     focusing reads as the field waking rather than as a box being outlined. */
+  background-color: color-mix(in oklab, var(--field) 72%, white);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-slot="input"],
+  [data-slot="textarea"] {
+    transition: none;
   }
 }
