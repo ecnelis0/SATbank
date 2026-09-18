@@ -24,6 +24,9 @@
   --color-chart-2: var(--chart-2);
   --color-chart-1: var(--chart-1);
   --color-ring: var(--ring);
+  --color-field: var(--field);
+  --color-field-border: var(--field-border);
+  --color-field-ring: var(--field-ring);
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
@@ -71,6 +74,12 @@
   --border: oklch(0.930 0.006 75);           /* border/subtle #E9E6E2 */
   --input: oklch(0.930 0.006 75);
   --ring: oklch(0.386 0.144 283 / 45%);
+  /* Anything you can type into. The page is warm paper and the cards are
+     near-white, so a transparent field was invisible between them; a pale
+     mint reads as "this one is yours to fill in" at a glance. */
+  --field: oklch(0.948 0.038 158);
+  --field-border: oklch(0.845 0.070 158);
+  --field-ring: oklch(0.615 0.118 158);
   --radius: 0.75rem;
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
@@ -107,6 +116,9 @@
   --border: oklch(1 0 0 / 12%);
   --input: oklch(1 0 0 / 16%);
   --ring: oklch(0.688 0.148 285 / 50%);
+  --field: oklch(0.262 0.030 158);
+  --field-border: oklch(0.372 0.045 158);
+  --field-ring: oklch(0.680 0.110 158);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
