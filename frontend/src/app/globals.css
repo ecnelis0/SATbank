@@ -193,54 +193,65 @@
 }
 
 /* --- The watercolour field ------------------------------------------------
-   Every box you can type into wears the sage wash from the reference: soft
-   blooms pooling at the edges, a botanical sprig in the top-right, and a faint
-   grain over the top.
+   Sage pigment blooming in from the right, speckle settling through it, a
+   botanical sprig in its own gutter, and the wash pooling darker as it meets
+   the border - which is how watercolour actually behaves, and what makes the
+   edge read as the same material as the middle rather than a line drawn round
+   it.
 
-   Built from gradients and two inline SVGs rather than a picture, so it is
-   sharp at any field height, costs no request, and re-tints from the same
-   tokens in dark mode.
+   Built from gradients and three inline SVGs rather than a picture: sharp at
+   any field height, no request, and it re-tints from the tokens in dark mode.
 
-   The blooms are deliberately pushed to the right and the corners. Text starts
-   at the left and runs across, so that is the one region kept near the pale
-   base - the wash decorates the field without ever sitting under a sentence. */
+   The centre-left stays near the pale base on purpose. Text starts there and
+   runs across, and every tonal decision below was checked against rendered
+   pixels rather than judged by eye. */
 
 [data-slot="input"],
 [data-slot="textarea"] {
   background-color: var(--field);
+  /* Top layer first, as CSS stacks them. Four lists follow in this order and
+     have to stay in step - getting them out of step stretched the line drawing
+     across the whole field and dropped text to 2.2:1. */
   background-image:
-    url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%20140%2096%27%3E%3Cg%20fill%3D%27none%27%20stroke%3D%27%232C3A26%27%20stroke-width%3D%271.1%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%20opacity%3D%27.30%27%3E%3Cpath%20d%3D%27M6%2090C34%2078%2062%2056%2096%2026%20108%2015%20120%208%20134%204%27%2F%3E%3Cpath%20d%3D%27M30%2074c-9-6-11-17-5-25%209%203%2014%2013%2011%2022%27%2F%3E%3Cpath%20d%3D%27M38%2068c2-11%2011-18%2021-17-2%2011-11%2018-21%2017%27%2F%3E%3Cpath%20d%3D%27M58%2054c-8-7-9-18-2-25%208%205%2011%2015%206%2023%27%2F%3E%3Cpath%20d%3D%27M66%2047c3-11%2013-17%2023-15-4%2011-13%2017-23%2015%27%2F%3E%3Cpath%20d%3D%27M88%2031c-7-8-6-19%202-25%207%206%208%2017%202%2024%27%2F%3E%3Cpath%20d%3D%27M96%2025c5-10%2016-14%2025-10-6%2010-16%2014-25%2010%27%2F%3E%3Cpath%20d%3D%27M118%2092c-10-6-16-17-15-28%2010%206%2016%2017%2015%2028%27%2F%3E%3Cpath%20d%3D%27M120%2086c7-7%2018-8%2026-2-8%207-19%208-26%202%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E"),
-    url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%20120%20120%27%3E%3Cfilter%20id%3D%27g%27%3E%3CfeTurbulence%20type%3D%27fractalNoise%27%20baseFrequency%3D%27.85%27%20numOctaves%3D%273%27%20stitchTiles%3D%27stitch%27%2F%3E%3CfeColorMatrix%20type%3D%27saturate%27%20values%3D%270%27%2F%3E%3C%2Ffilter%3E%3Crect%20width%3D%27120%27%20height%3D%27120%27%20filter%3D%27url%28%2523g%29%27%20opacity%3D%27.055%27%2F%3E%3C%2Fsvg%3E"),
-    radial-gradient(34% 120% at 100% 8%, color-mix(in oklab, var(--field-border) 58%, transparent), transparent 68%),
-    radial-gradient(26% 105% at 93% 100%, color-mix(in oklab, var(--field-border) 42%, transparent), transparent 66%),
-    radial-gradient(20% 80% at 72% 100%, color-mix(in oklab, var(--field-border) 20%, transparent), transparent 68%);
-  background-repeat: no-repeat, repeat, no-repeat, no-repeat, no-repeat;
-  background-size: 6.5rem 4.5rem, 7.5rem 7.5rem, auto, auto, auto;
-  background-position: right -0.5rem top -0.25rem, 0 0, 0 0, 0 0, 0 0;
-  /* A gutter for the sprig. Without it a long line wraps straight over the
-     line art, and ink at 30% on a wash leaves text at 2.9:1. Fading the
-     drawing until text could sit on it would have erased it, so the text
-     stops short of it instead - which is what the reference does too, its
-     leaves sit in the margin rather than under the writing. */
-  padding-right: 5.75rem;
-  /* Everything that can actually tween. Gradients cannot, so the movement on
-     focus comes from the colour, the border and the ring instead. */
+    url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%20140%2096%27%3E%3Cg%20fill%3D%27none%27%20stroke%3D%27%232C3A26%27%20stroke-width%3D%271.25%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%20opacity%3D%27.52%27%3E%3Cpath%20d%3D%27M6%2090C34%2078%2062%2056%2096%2026%20108%2015%20120%208%20134%204%27%2F%3E%3Cpath%20d%3D%27M30%2074c-9-6-11-17-5-25%209%203%2014%2013%2011%2022%27%2F%3E%3Cpath%20d%3D%27M38%2068c2-11%2011-18%2021-17-2%2011-11%2018-21%2017%27%2F%3E%3Cpath%20d%3D%27M58%2054c-8-7-9-18-2-25%208%205%2011%2015%206%2023%27%2F%3E%3Cpath%20d%3D%27M66%2047c3-11%2013-17%2023-15-4%2011-13%2017-23%2015%27%2F%3E%3Cpath%20d%3D%27M88%2031c-7-8-6-19%202-25%207%206%208%2017%202%2024%27%2F%3E%3Cpath%20d%3D%27M96%2025c5-10%2016-14%2025-10-6%2010-16%2014-25%2010%27%2F%3E%3Cpath%20d%3D%27M118%2092c-10-6-16-17-15-28%2010%206%2016%2017%2015%2028%27%2F%3E%3Cpath%20d%3D%27M120%2086c7-7%2018-8%2026-2-8%207-19%208-26%202%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E"),
+    url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%20160%20110%27%3E%3Cg%20fill%3D%27%23FFFFFF%27%20fill-opacity%3D%270.55%27%3E%3Ccircle%20cx%3D%2722%27%20cy%3D%2718%27%20r%3D%272.1%27%2F%3E%3Ccircle%20cx%3D%2758%27%20cy%3D%279%27%20r%3D%271.3%27%2F%3E%3Ccircle%20cx%3D%2796%27%20cy%3D%2727%27%20r%3D%272.6%27%2F%3E%3Ccircle%20cx%3D%27131%27%20cy%3D%2714%27%20r%3D%271.6%27%2F%3E%3Ccircle%20cx%3D%2744%27%20cy%3D%2762%27%20r%3D%271.8%27%2F%3E%3Ccircle%20cx%3D%27118%27%20cy%3D%2771%27%20r%3D%272.3%27%2F%3E%3Ccircle%20cx%3D%27150%27%20cy%3D%2747%27%20r%3D%271.4%27%2F%3E%3Ccircle%20cx%3D%2778%27%20cy%3D%2795%27%20r%3D%271.9%27%2F%3E%3C%2Fg%3E%3Cg%20fill%3D%27%233E5136%27%20fill-opacity%3D%270.34%27%3E%3Ccircle%20cx%3D%2736%27%20cy%3D%2733%27%20r%3D%271.1%27%2F%3E%3Ccircle%20cx%3D%2772%27%20cy%3D%2720%27%20r%3D%270.9%27%2F%3E%3Ccircle%20cx%3D%27109%27%20cy%3D%2752%27%20r%3D%271.2%27%2F%3E%3Ccircle%20cx%3D%27142%27%20cy%3D%2788%27%20r%3D%271%27%2F%3E%3Ccircle%20cx%3D%2720%27%20cy%3D%2784%27%20r%3D%270.9%27%2F%3E%3Ccircle%20cx%3D%2790%27%20cy%3D%2768%27%20r%3D%271.1%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E"),
+    url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%20240%20120%27%20preserveAspectRatio%3D%27none%27%3E%3Cdefs%3E%3Cfilter%20id%3D%27l%27%20x%3D%27-30%25%27%20y%3D%27-40%25%27%20width%3D%27160%25%27%20height%3D%27180%25%27%3E%3CfeTurbulence%20type%3D%27fractalNoise%27%20baseFrequency%3D%270.016%200.028%27%20numOctaves%3D%273%27%20seed%3D%274%27%20result%3D%27n%27%2F%3E%3CfeDisplacementMap%20in%3D%27SourceGraphic%27%20in2%3D%27n%27%20scale%3D%2726%27%20xChannelSelector%3D%27R%27%20yChannelSelector%3D%27G%27%2F%3E%3CfeGaussianBlur%20stdDeviation%3D%271.4%27%2F%3E%3C%2Ffilter%3E%3CradialGradient%20id%3D%27c%27%20cx%3D%270.4%27%20cy%3D%270.42%27%20r%3D%270.66%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%23FCFDF6%27%20stop-opacity%3D%270.92%27%2F%3E%3Cstop%20offset%3D%270.5%27%20stop-color%3D%27%23F3F6E6%27%20stop-opacity%3D%270.55%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%23F3F6E6%27%20stop-opacity%3D%270%27%2F%3E%3C%2FradialGradient%3E%3CradialGradient%20id%3D%27d%27%20cx%3D%270.68%27%20cy%3D%270.8%27%20r%3D%270.4%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%23FFFFFF%27%20stop-opacity%3D%270.5%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%23FFFFFF%27%20stop-opacity%3D%270%27%2F%3E%3C%2FradialGradient%3E%3C%2Fdefs%3E%3Cg%20filter%3D%27url%28%23l%29%27%3E%3Cellipse%20cx%3D%2796%27%20cy%3D%2750%27%20rx%3D%2792%27%20ry%3D%2746%27%20fill%3D%27url%28%23c%29%27%2F%3E%3Cellipse%20cx%3D%27163%27%20cy%3D%2796%27%20rx%3D%2752%27%20ry%3D%2726%27%20fill%3D%27url%28%23d%29%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E"),
+    url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%20220%20130%27%20preserveAspectRatio%3D%27none%27%3E%3Cdefs%3E%3Cfilter%20id%3D%27w%27%20x%3D%27-25%25%27%20y%3D%27-35%25%27%20width%3D%27150%25%27%20height%3D%27170%25%27%3E%3CfeTurbulence%20type%3D%27fractalNoise%27%20baseFrequency%3D%270.013%200.022%27%20numOctaves%3D%274%27%20seed%3D%279%27%20result%3D%27n%27%2F%3E%3CfeDisplacementMap%20in%3D%27SourceGraphic%27%20in2%3D%27n%27%20scale%3D%2730%27%20xChannelSelector%3D%27R%27%20yChannelSelector%3D%27G%27%2F%3E%3CfeGaussianBlur%20stdDeviation%3D%271.1%27%2F%3E%3C%2Ffilter%3E%3CradialGradient%20id%3D%27a%27%20cx%3D%270.74%27%20cy%3D%270.34%27%20r%3D%270.74%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%234F7347%27%20stop-opacity%3D%270.78%27%2F%3E%3Cstop%20offset%3D%270.42%27%20stop-color%3D%27%236F9265%27%20stop-opacity%3D%270.52%27%2F%3E%3Cstop%20offset%3D%270.74%27%20stop-color%3D%27%23AFC3A2%27%20stop-opacity%3D%270.22%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%23AFC3A2%27%20stop-opacity%3D%270%27%2F%3E%3C%2FradialGradient%3E%3CradialGradient%20id%3D%27b%27%20cx%3D%270.34%27%20cy%3D%270.78%27%20r%3D%270.56%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%236F9265%27%20stop-opacity%3D%270.46%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%236F9265%27%20stop-opacity%3D%270%27%2F%3E%3C%2FradialGradient%3E%3C%2Fdefs%3E%3Cg%20filter%3D%27url%28%23w%29%27%3E%3Cellipse%20cx%3D%27152%27%20cy%3D%2744%27%20rx%3D%2780%27%20ry%3D%2752%27%20fill%3D%27url%28%23a%29%27%2F%3E%3Cellipse%20cx%3D%2786%27%20cy%3D%2798%27%20rx%3D%2756%27%20ry%3D%2732%27%20fill%3D%27url%28%23b%29%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E"),
+    radial-gradient(118% 320% at 50% 50%,
+      transparent 56%,
+      color-mix(in oklab, var(--field-border) 30%, transparent) 86%,
+      color-mix(in oklab, var(--field-border) 58%, transparent) 100%),
+    radial-gradient(22% 150% at 100% 26%, color-mix(in oklab, var(--field-ring) 46%, transparent), transparent 74%);
+  background-repeat: no-repeat, repeat, no-repeat, no-repeat, no-repeat, no-repeat;
+  background-size: 6.5rem 4.5rem, 10rem 6.875rem, 82% 165%, 30% 300%, auto, auto;
+  background-position: right -0.5rem top -0.25rem, 0 0, left -8% center, right center, 0 0, 0 0;
+  background-blend-mode: normal, soft-light, normal, normal, normal, normal;
+  /* A gutter for the sprig. A long line otherwise wraps over the line art,
+     and ink on a wash leaves text near 2.9:1. The reference keeps its leaves
+     in the margin too. */
+  padding-right: 6.5rem;
   transition:
     background-color 260ms cubic-bezier(0.22, 1, 0.36, 1),
     border-color 260ms cubic-bezier(0.22, 1, 0.36, 1),
     box-shadow 260ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-/* A single-line input is too short for the sprig to read as anything but
-   clutter, so it keeps the washes and drops the drawing. */
+/* A single line is too short for the sprig to be anything but clutter, and its
+   top and bottom edges sit close to the text, so it takes the bloom and the
+   pooling only, both gentler. */
 [data-slot="input"] {
   background-image:
-    url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%20120%20120%27%3E%3Cfilter%20id%3D%27g%27%3E%3CfeTurbulence%20type%3D%27fractalNoise%27%20baseFrequency%3D%27.85%27%20numOctaves%3D%273%27%20stitchTiles%3D%27stitch%27%2F%3E%3CfeColorMatrix%20type%3D%27saturate%27%20values%3D%270%27%2F%3E%3C%2Ffilter%3E%3Crect%20width%3D%27120%27%20height%3D%27120%27%20filter%3D%27url%28%2523g%29%27%20opacity%3D%27.055%27%2F%3E%3C%2Fsvg%3E"),
-    radial-gradient(22% 140% at 100% 6%, color-mix(in oklab, var(--field-border) 52%, transparent), transparent 70%),
-    radial-gradient(16% 120% at 95% 100%, color-mix(in oklab, var(--field-border) 34%, transparent), transparent 68%),
-    radial-gradient(14% 90% at 78% 100%, color-mix(in oklab, var(--field-border) 18%, transparent), transparent 70%);
-  background-repeat: repeat, no-repeat, no-repeat, no-repeat;
-  background-size: 7.5rem 7.5rem, auto, auto, auto;
+    url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%20160%20110%27%3E%3Cg%20fill%3D%27%23FFFFFF%27%20fill-opacity%3D%270.55%27%3E%3Ccircle%20cx%3D%2722%27%20cy%3D%2718%27%20r%3D%272.1%27%2F%3E%3Ccircle%20cx%3D%2758%27%20cy%3D%279%27%20r%3D%271.3%27%2F%3E%3Ccircle%20cx%3D%2796%27%20cy%3D%2727%27%20r%3D%272.6%27%2F%3E%3Ccircle%20cx%3D%27131%27%20cy%3D%2714%27%20r%3D%271.6%27%2F%3E%3Ccircle%20cx%3D%2744%27%20cy%3D%2762%27%20r%3D%271.8%27%2F%3E%3Ccircle%20cx%3D%27118%27%20cy%3D%2771%27%20r%3D%272.3%27%2F%3E%3Ccircle%20cx%3D%27150%27%20cy%3D%2747%27%20r%3D%271.4%27%2F%3E%3Ccircle%20cx%3D%2778%27%20cy%3D%2795%27%20r%3D%271.9%27%2F%3E%3C%2Fg%3E%3Cg%20fill%3D%27%233E5136%27%20fill-opacity%3D%270.34%27%3E%3Ccircle%20cx%3D%2736%27%20cy%3D%2733%27%20r%3D%271.1%27%2F%3E%3Ccircle%20cx%3D%2772%27%20cy%3D%2720%27%20r%3D%270.9%27%2F%3E%3Ccircle%20cx%3D%27109%27%20cy%3D%2752%27%20r%3D%271.2%27%2F%3E%3Ccircle%20cx%3D%27142%27%20cy%3D%2788%27%20r%3D%271%27%2F%3E%3Ccircle%20cx%3D%2720%27%20cy%3D%2784%27%20r%3D%270.9%27%2F%3E%3Ccircle%20cx%3D%2790%27%20cy%3D%2768%27%20r%3D%271.1%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E"),
+    url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%20220%20130%27%20preserveAspectRatio%3D%27none%27%3E%3Cdefs%3E%3Cfilter%20id%3D%27w%27%20x%3D%27-25%25%27%20y%3D%27-35%25%27%20width%3D%27150%25%27%20height%3D%27170%25%27%3E%3CfeTurbulence%20type%3D%27fractalNoise%27%20baseFrequency%3D%270.013%200.022%27%20numOctaves%3D%274%27%20seed%3D%279%27%20result%3D%27n%27%2F%3E%3CfeDisplacementMap%20in%3D%27SourceGraphic%27%20in2%3D%27n%27%20scale%3D%2730%27%20xChannelSelector%3D%27R%27%20yChannelSelector%3D%27G%27%2F%3E%3CfeGaussianBlur%20stdDeviation%3D%271.1%27%2F%3E%3C%2Ffilter%3E%3CradialGradient%20id%3D%27a%27%20cx%3D%270.74%27%20cy%3D%270.34%27%20r%3D%270.74%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%234F7347%27%20stop-opacity%3D%270.78%27%2F%3E%3Cstop%20offset%3D%270.42%27%20stop-color%3D%27%236F9265%27%20stop-opacity%3D%270.52%27%2F%3E%3Cstop%20offset%3D%270.74%27%20stop-color%3D%27%23AFC3A2%27%20stop-opacity%3D%270.22%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%23AFC3A2%27%20stop-opacity%3D%270%27%2F%3E%3C%2FradialGradient%3E%3CradialGradient%20id%3D%27b%27%20cx%3D%270.34%27%20cy%3D%270.78%27%20r%3D%270.56%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%236F9265%27%20stop-opacity%3D%270.46%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%236F9265%27%20stop-opacity%3D%270%27%2F%3E%3C%2FradialGradient%3E%3C%2Fdefs%3E%3Cg%20filter%3D%27url%28%23w%29%27%3E%3Cellipse%20cx%3D%27152%27%20cy%3D%2744%27%20rx%3D%2780%27%20ry%3D%2752%27%20fill%3D%27url%28%23a%29%27%2F%3E%3Cellipse%20cx%3D%2786%27%20cy%3D%2798%27%20rx%3D%2756%27%20ry%3D%2732%27%20fill%3D%27url%28%23b%29%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E"),
+    radial-gradient(150% 190% at 50% 50%,
+      transparent 46%,
+      color-mix(in oklab, var(--field-border) 26%, transparent) 84%,
+      color-mix(in oklab, var(--field-border) 52%, transparent) 100%);
+  background-repeat: repeat, no-repeat, no-repeat;
+  background-size: 10rem 6.875rem, 3.25rem 340%, auto;
+  background-position: 0 0, right -0.25rem center, 0 0;
+  background-blend-mode: soft-light, normal, normal;
+  padding-right: 3.25rem;
 }
 
 [data-slot="input"]::placeholder,
@@ -251,13 +262,14 @@
 [data-slot="input"]:hover:not(:disabled),
 [data-slot="textarea"]:hover:not(:disabled) {
   background-color: color-mix(in oklab, var(--field) 92%, var(--field-border));
+  border-color: color-mix(in oklab, var(--field-border) 70%, var(--field-ring));
 }
 
 [data-slot="input"]:focus-visible,
 [data-slot="textarea"]:focus-visible {
   /* The paper lightens under the cursor as the green ring comes up, so
-     focusing reads as the field waking rather than as a box being outlined. */
-  background-color: color-mix(in oklab, var(--field) 72%, white);
+     focusing reads as the field waking rather than a box being outlined. */
+  background-color: color-mix(in oklab, var(--field) 74%, white);
 }
 
 @media (prefers-reduced-motion: reduce) {
