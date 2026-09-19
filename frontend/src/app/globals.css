@@ -58,19 +58,19 @@
      Warm paper rather than pure white: this is a study notebook, and hours of
      staring at it should not feel like staring at a spreadsheet. */
   --background: oklch(0.986 0.003 85);      /* bg/page    #FBFAF9 */
-  --foreground: oklch(0.198 0.006 60);      /* text/primary #1A1917 */
+  --foreground: oklch(0 0 0);               /* pure black, everywhere text sits on a light surface */
   --card: oklch(1 0 0);                     /* bg/surface #FFFFFF */
-  --card-foreground: oklch(0.198 0.006 60);
+  --card-foreground: oklch(0 0 0);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.198 0.006 60);
+  --popover-foreground: oklch(0 0 0);
   --primary: oklch(0.386 0.144 283);        /* accent/base #3F3D9E */
   --primary-foreground: oklch(1 0 0);
   --secondary: oklch(0.958 0.005 80);       /* bg/sunken  #F4F2F0 */
-  --secondary-foreground: oklch(0.30 0.01 70);
+  --secondary-foreground: oklch(0 0 0);
   --muted: oklch(0.958 0.005 80);
-  --muted-foreground: oklch(0.505 0.010 70); /* text/secondary #6B6862 */
+  --muted-foreground: oklch(0 0 0);         /* was the grey for supporting text */
   --accent: oklch(0.949 0.017 285);          /* accent/soft #EEEDFB */
-  --accent-foreground: oklch(0.386 0.144 283);
+  --accent-foreground: oklch(0 0 0);
   --destructive: oklch(0.505 0.187 27);      /* urgency/fundamental #B3261E */
   --border: oklch(0.930 0.006 75);           /* border/subtle #E9E6E2 */
   --input: oklch(0.930 0.006 75);
@@ -89,7 +89,7 @@
      out at 3.9:1, and lightening the wash until it passed would have
      bleached the watercolour away. A deep olive sits on the wash at
      better than 7:1 and looks like it belongs there. */
-  --field-placeholder: oklch(0.455 0.030 133);
+  --field-placeholder: oklch(0 0 0);
   --radius: 0.75rem;
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
@@ -98,11 +98,11 @@
   --chart-5: oklch(0.269 0 0);
   --radius: 0.625rem;
   --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-foreground: oklch(0 0 0);
   --sidebar-primary: oklch(0.205 0 0);
   --sidebar-primary-foreground: oklch(0.985 0 0);
   --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-accent-foreground: oklch(0 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
 }
