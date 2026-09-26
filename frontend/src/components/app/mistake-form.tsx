@@ -3,12 +3,21 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 
 import { ConceptPicker } from "@/components/app/concept-picker";
+import {
+  clearDraft,
+  getDraft,
+  getServerDraft,
+  isWorthKeeping,
+  saveChoicesOfFiling,
+  saveValues,
+  subscribe as subscribeToDraft,
+} from "@/components/app/log-draft";
 import { PendingImages, usePendingImages } from "@/components/app/pending-images";
 import { ScanQuestion } from "@/components/app/scan-question";
 import { TagPicker } from "@/components/app/tag-picker";
@@ -36,13 +45,37 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>;
 
-/** One choice per line; blank lines are the student's formatting, not data. */
+/** A label the page printed in front of a choice: "A)", "(B)", "C.", "D:".
+ *
+ *  Deliberately narrow. It has to have a separator *and* something after it, so a
+ *  question whose choices are the bare letters A-D keeps them, and it stops at H so
+ *  roman-numeral choices ("I)", "II)") are never mistaken for a label. */
+const CHOICE_LABEL = /^\(?([A-Ha-h])[).:\]]\s*(.+)$/;
+
+/** One choice per line, labelled or not; blank lines are spacing, not data.
+ *
+ *  The label is stripped because the app draws its own A/B/C/D everywhere it shows
+ *  a question — keeping the typed one renders "A. A. The LINE transposon…". */
 export function parseChoices(text: string | undefined): string[] | null {
   const lines = (text ?? "")
     .split("\n")
     .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const labelled = CHOICE_LABEL.exec(line);
+      return labelled ? labelled[2].trim() : line;
+    })
     .filter(Boolean);
   return lines.length > 0 ? lines : null;
+}
+
+/** The other direction: bare choices laid out the way the box shows them, one
+ *  labelled choice per block with a blank line between, so four options are four
+ *  things to read rather than a wall. */
+export function formatChoices(choices: string[]): string {
+  return choices
+    .map((choice, index) => `${String.fromCharCode(65 + index)}) ${choice.trim()}`)
+    .join("\n\n");
 }
 
 function FieldError({ message }: { message?: string }) {
@@ -50,12 +83,28 @@ function FieldError({ message }: { message?: string }) {
   return <p className="mt-1 text-sm text-destructive">{message}</p>;
 }
 
+const EMPTY_FORM: FormValues = {
+  section: "math",
+  urgency: "ai",
+  question_text: "",
+  choicesText: "",
+  your_answer: "",
+  correct_answer: "",
+  source: "",
+  student_note: "",
+};
+
 export function MistakeForm() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const pictures = usePendingImages();
-  const [tags, setTags] = useState<string[]>([]);
-  const [conceptIds, setConceptIds] = useState<string[]>([]);
+  // Tags and concepts are rendered straight from the draft store, so picking one
+  // is a write and never a piece of component state to keep in step with it.
+  const stored = useSyncExternalStore(subscribeToDraft, getDraft, getServerDraft);
+  const tags = stored.tags;
+  const conceptIds = stored.conceptIds;
+  const setTags = (next: string[]) => saveChoicesOfFiling({ tags: next });
+  const setConceptIds = (next: string[]) => saveChoicesOfFiling({ conceptIds: next });
 
   const {
     control,
@@ -63,16 +112,54 @@ export function MistakeForm() {
     handleSubmit,
     setValue,
     setFocus,
+    reset,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { section: "math", urgency: "ai" },
+    defaultValues: EMPTY_FORM,
   });
 
-  // `useWatch` rather than `watch()`: the latter returns a fresh function each
-  // render, which opts this component out of the React Compiler's memoization.
+  // Put the typed fields back, once, after mount. Reading localStorage during
+  // render instead would hand the server one set of values and the browser
+  // another, and hydration would throw the restored draft away again. `reset` is
+  // react-hook-form's own API rather than component state, which is what keeps
+  // this out of the set-state-in-an-effect rule.
+  useEffect(() => {
+    const saved = getDraft();
+    if (isWorthKeeping(saved)) {
+      reset({ ...EMPTY_FORM, ...(saved.values as Partial<FormValues>) });
+    }
+  }, [reset]);
+
+  const clearEverything = () => {
+    reset(EMPTY_FORM);
+    pictures.clear();
+    clearDraft();
+  };
+
+  // `useWatch` rather than `watch()` for rendering: the latter returns a fresh
+  // function each render, which opts this component out of the React Compiler's
+  // memoization. The subscription form of `watch` above is a different thing —
+  // it never reads into the render.
   const section = useWatch({ control, name: "section" });
+  const draftValues = useWatch({ control });
   const urgency = useWatch({ control, name: "urgency" });
+
+  // Every change, straight to storage. Debouncing would mean the last few
+  // characters typed are the ones lost, which is the case the draft exists for.
+  //
+  // The guard is about ordering, not about saving effort: on the first commit
+  // this effect runs with the empty values the form rendered with, a beat before
+  // the restore above has taken effect, and without it that empty form would be
+  // written straight over the draft it is in the middle of restoring. An empty
+  // form never replaces a draft that has something in it — clearing is what the
+  // Clear everything button is for.
+  useEffect(() => {
+    const next = { values: draftValues as Record<string, unknown>, tags, conceptIds };
+    if (!isWorthKeeping(next) && isWorthKeeping(getDraft())) return;
+    saveValues(next.values);
+  }, [draftValues, tags, conceptIds]);
+
 
   /** Fill the form from a picture the AI has read.
 
@@ -82,7 +169,7 @@ export function MistakeForm() {
       next thing to do and the whole point of the bank. */
   const fillFromPicture = (scanned: ScannedQuestion, file: File) => {
     setValue("question_text", scanned.question_text, { shouldValidate: true });
-    if (scanned.choices?.length) setValue("choicesText", scanned.choices.join("\n"));
+    if (scanned.choices?.length) setValue("choicesText", formatChoices(scanned.choices));
     if (scanned.correct_answer)
       setValue("correct_answer", scanned.correct_answer, { shouldValidate: true });
     if (scanned.section) setValue("section", scanned.section);
@@ -115,8 +202,8 @@ export function MistakeForm() {
       queryClient.invalidateQueries({ queryKey: keys.stats() });
       queryClient.invalidateQueries({ queryKey: ["reviews"] });
       pictures.clear();
-      setTags([]);
-      setConceptIds([]);
+      reset(EMPTY_FORM);
+      clearDraft();
       if (failed > 0) {
         toast.error(
           `Logged, but ${failed} picture${failed === 1 ? "" : "s"} would not upload. ` +
@@ -201,8 +288,8 @@ export function MistakeForm() {
         <Label htmlFor="choicesText">Answer choices</Label>
         <Textarea
           id="choicesText"
-          rows={4}
-          placeholder={"One per line — optional\n3\n5\n7\n15"}
+          rows={7}
+          placeholder={"Optional — one per line, a blank line between\n\nA) 3\n\nB) 5\n\nC) 7\n\nD) 15"}
           className="mt-1.5"
           {...register("choicesText")}
         />
@@ -307,9 +394,20 @@ export function MistakeForm() {
         >
           Just log it
         </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          disabled={log.isPending}
+          onClick={clearEverything}
+          className="text-muted-foreground"
+        >
+          Clear everything
+        </Button>
         <p className="text-xs text-muted-foreground">
-          Either way the review ladder starts now. You can ask for the debrief, or write
-          your own, at any point.
+          Either way the review ladder starts now. What you type is kept if you leave the
+          page — screenshots excepted, they are too big to hold. You can ask for the
+          debrief, or write your own, at any point.
         </p>
       </div>
     </form>

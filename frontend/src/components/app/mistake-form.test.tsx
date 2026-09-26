@@ -2,7 +2,7 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { MistakeForm } from "@/components/app/mistake-form";
+import { formatChoices, MistakeForm } from "@/components/app/mistake-form";
 import { api } from "@/lib/api";
 import { makeMistake } from "@/test/fixtures";
 import { renderWithQuery } from "@/test/render";
@@ -169,8 +169,11 @@ describe("MistakeForm scanning a question", () => {
     expect(await screen.findByDisplayValue(scanned.question_text)).toBeInTheDocument();
     expect(screen.getByLabelText("The answer was")).toHaveValue("A");
     expect(screen.getByLabelText("Where it came from")).toHaveValue(scanned.source);
-    // One per line, which is how the form hands them back to the API.
-    expect(screen.getByLabelText("Answer choices")).toHaveValue(scanned.choices.join("\n"));
+    // Labelled, with a blank line between, so four options read as four things.
+    // parseChoices strips the labels again on the way back to the API.
+    expect(screen.getByLabelText("Answer choices")).toHaveValue(
+      formatChoices(scanned.choices),
+    );
     // The one box a picture cannot fill, and the reason the bank exists.
     expect(screen.getByLabelText("You put")).toHaveValue("");
     // The section it read wins over the form's default of Math.
@@ -243,6 +246,63 @@ describe("MistakeForm scanning a question", () => {
     await waitFor(() =>
       expect(toast.error).toHaveBeenCalledWith("The offline reader cannot see pictures."),
     );
+    expect(screen.getByLabelText("The question")).toHaveValue("");
+  });
+});
+
+describe("MistakeForm the draft", () => {
+  it("still has what you typed after you leave the page and come back", async () => {
+    const user = userEvent.setup();
+    const first = renderWithQuery(<MistakeForm />);
+
+    await user.type(screen.getByLabelText("The question"), "If 3x + 7 = 22, what is x?");
+    await user.type(screen.getByLabelText("You put"), "15");
+    await waitFor(() =>
+      expect(screen.getByLabelText("You put")).toHaveValue("15"),
+    );
+
+    // Leaving the tab is an unmount, which is the case this exists for.
+    first.unmount();
+    renderWithQuery(<MistakeForm />);
+
+    expect(await screen.findByDisplayValue("If 3x + 7 = 22, what is x?")).toBeInTheDocument();
+    expect(screen.getByLabelText("You put")).toHaveValue("15");
+  });
+
+  it("comes back empty when nothing was typed", async () => {
+    const first = renderWithQuery(<MistakeForm />);
+    first.unmount();
+    renderWithQuery(<MistakeForm />);
+
+    expect(screen.getByLabelText("The question")).toHaveValue("");
+  });
+
+  it("throws it away on Clear everything, and keeps it thrown away", async () => {
+    const user = userEvent.setup();
+    const first = renderWithQuery(<MistakeForm />);
+    await user.type(screen.getByLabelText("The question"), "Something I typed");
+
+    await user.click(screen.getByRole("button", { name: "Clear everything" }));
+    expect(screen.getByLabelText("The question")).toHaveValue("");
+
+    // The clear has to outlive the page too: the first version of the store
+    // handed the cleared draft straight back on the next visit.
+    first.unmount();
+    renderWithQuery(<MistakeForm />);
+    expect(screen.getByLabelText("The question")).toHaveValue("");
+  });
+
+  it("is gone once the question is actually logged", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(api, "logMistake").mockResolvedValue(makeMistake());
+    const first = renderWithQuery(<MistakeForm />);
+
+    await fillTheQuestion(user);
+    await user.click(screen.getByRole("button", { name: "Log it and ask the AI" }));
+    await waitFor(() => expect(push).toHaveBeenCalled());
+
+    first.unmount();
+    renderWithQuery(<MistakeForm />);
     expect(screen.getByLabelText("The question")).toHaveValue("");
   });
 });
