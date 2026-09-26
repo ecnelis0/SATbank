@@ -13,7 +13,7 @@ import anthropic
 import httpx2
 
 from ..query import BankQuery, Vocabulary
-from .base import AnalysisFailed, MistakeAnalysis, MistakeInput
+from .base import AnalysisFailed, MistakeAnalysis, MistakeInput, Turn
 
 if TYPE_CHECKING:
     from .scan import ScanInput, ScannedQuestion
@@ -55,6 +55,32 @@ everything - the counts are computed separately and you will get them.
 nothing else: set logged_after and leave every other field empty. Narrowing it to one \
 topic would hide the very pattern they are asking you to find.\
 """
+
+DISCUSS_PROMPT = """\
+You are a patient SAT tutor talking to a student about one question they got \
+wrong. You are given the question, what they answered, the correct answer, \
+anything they wrote about what happened, and the debrief already written for \
+them. The conversation so far follows.
+
+Answer the question they actually asked. Three kinds come up and they want \
+different things:
+
+* "What does this mean?" - a word in the debrief, a term, a piece of notation. \
+  Define it in plain language and point at where it shows up in *their* \
+  question. Do not re-explain the whole thing.
+* "Why is my answer wrong?" or "where did I go wrong?" - walk the step they \
+  missed, using their own answer as the starting point, not the correct one.
+* "How do I do this next time?" - give the method, then apply it to this \
+  question so it is concrete.
+
+Stay on this question. If they ask something the question cannot answer - about \
+the rest of their bank, or about another topic entirely - say so in a sentence \
+and answer what you can.
+
+Be brief. Two or three short paragraphs at most, no headings, no bullet lists \
+unless you are genuinely enumerating steps. You are talking, not writing a \
+worksheet. Never tell them the debrief is wrong without saying what is right."""
+
 
 SUMMARISE_PROMPT = """\
 You are answering a student's question about their own SAT mistake bank.
@@ -183,6 +209,38 @@ class ClaudeAnalyzer:
         if response.stop_reason == "refusal":
             raise AnalysisFailed("the model declined to answer")
         return "".join(block.text for block in response.content if block.type == "text")
+
+    async def discuss(self, context: str, conversation: list[Turn]) -> str:
+        try:
+            response = await self._client.messages.create(
+                model=self._model,
+                max_tokens=2048,
+                system=DISCUSS_PROMPT,
+                messages=_Discuss.messages(context, conversation),
+            )
+        except anthropic.APIError as exc:
+            raise AnalysisFailed(f"{type(exc).__name__}: {exc}") from exc
+
+        if response.stop_reason == "refusal":
+            raise AnalysisFailed("the model declined to answer")
+        return "".join(block.text for block in response.content if block.type == "text")
+
+
+class _Discuss:
+    """Mixin: the conversation turned into messages, for the API provider."""
+
+    @staticmethod
+    def messages(context: str, conversation: list[Turn]) -> list[dict[str, str]]:
+        head = f"The question, and the debrief already written for it:\n\n{context}"
+        messages = [{"role": "user", "content": head}]
+        for turn in conversation:
+            messages.append(
+                {
+                    "role": "user" if turn.role == "student" else "assistant",
+                    "content": turn.text,
+                }
+            )
+        return messages
 
 
 class ClaudeScanner:

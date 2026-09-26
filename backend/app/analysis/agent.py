@@ -25,8 +25,8 @@ from PIL import Image
 from pydantic import BaseModel, ValidationError
 
 from ..query import BankQuery, Vocabulary
-from .base import AnalysisFailed, MistakeAnalysis, MistakeInput
-from .claude import INTERPRET_PROMPT, SUMMARISE_PROMPT, SYSTEM_PROMPT, _render
+from .base import AnalysisFailed, MistakeAnalysis, MistakeInput, Turn
+from .claude import DISCUSS_PROMPT, INTERPRET_PROMPT, SUMMARISE_PROMPT, SYSTEM_PROMPT, _render
 from .scan import SCAN_PROMPT, ScanInput, ScannedQuestion
 
 # Where a PDF or image lands before the agent reads it. The extension matters:
@@ -166,6 +166,23 @@ class AgentAnalyzer:
         return await _run(
             prompt=f"The student asked: {question}\n\nMatching rows:\n{digest}",
             system=SUMMARISE_PROMPT,
+            model=self._model,
+            schema=None,
+        )
+
+    async def discuss(self, context: str, conversation: list[Turn]) -> str:
+        # One prompt rather than a message list: this provider drives the agent
+        # CLI, which takes a single turn, so the thread is written into the text.
+        spoken = "\n\n".join(
+            f"{'Student' if turn.role == 'student' else 'You'}: {turn.text}"
+            for turn in conversation
+        )
+        return await _run(
+            prompt=(
+                f"The question, and the debrief already written for it:\n\n{context}"
+                f"\n\nThe conversation so far:\n\n{spoken}"
+            ),
+            system=DISCUSS_PROMPT,
             model=self._model,
             schema=None,
         )

@@ -9,12 +9,14 @@ import type {
   Mistake,
   MistakeDraft,
   MistakeEdit,
+  Reply,
   ReviewCompleteResult,
   ScannedQuestion,
   Section,
   Stats,
   StudentOutcome,
   TagCount,
+  Turn,
   Urgency,
 } from "./types";
 
@@ -216,6 +218,14 @@ export const api = {
   /** Ask a question about the bank. The model writes the filter; the rows are real. */
   ask: (question: string) =>
     request<Answer>("/ask", { method: "POST", body: JSON.stringify({ question }) }),
+
+  /** A follow-up about one question, with everything said about it so far. The
+   *  thread travels with the request; the API keeps no conversation of its own. */
+  askAboutMistake: (id: string, question: string, history: Turn[]) =>
+    request<Reply>(`/mistakes/${id}/ask`, {
+      method: "POST",
+      body: JSON.stringify({ question, history }),
+    }),
 };
 
 /** Query keys, in one place so mutations can invalidate precisely. */

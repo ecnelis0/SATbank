@@ -5,7 +5,7 @@ from __future__ import annotations
 from functools import lru_cache
 
 from ..config import get_settings
-from .base import AnalysisFailed, Analyzer, MistakeAnalysis, MistakeInput
+from .base import AnalysisFailed, Analyzer, MistakeAnalysis, MistakeInput, Turn
 from .stub import StubAnalyzer
 
 __all__ = [
@@ -14,6 +14,7 @@ __all__ = [
     "MistakeAnalysis",
     "MistakeInput",
     "StubAnalyzer",
+    "Turn",
     "get_analyzer",
 ]
 

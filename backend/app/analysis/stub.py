@@ -12,7 +12,7 @@ from datetime import date, timedelta
 
 from ..models import Difficulty, ErrorType, Section, Urgency
 from ..query import BankQuery, Vocabulary
-from .base import MistakeAnalysis, MistakeInput
+from .base import MistakeAnalysis, MistakeInput, Turn
 
 _MATH_HINTS = {
     "equation": "linear equations",
@@ -124,6 +124,31 @@ class StubAnalyzer:
             if repeats:
                 return "\n".join([head[0], *repeats])
         return "\n".join(head)
+
+    async def discuss(self, context: str, conversation: list[Turn]) -> str:
+        """Says what it is rather than pretending to tutor.
+
+        The offline stub cannot answer a follow-up, and a plausible-sounding
+        non-answer about the student's own mistake is the worst thing it could
+        produce - they would revise from it. So it hands back the part of the
+        debrief that is most likely to hold the answer and names itself.
+        """
+        asked = next(
+            (turn.text for turn in reversed(conversation) if turn.role == "student"),
+            "",
+        )
+        wanted = "takeaway" if "takeaway" in asked.lower() else "why"
+        lines = [line for line in context.splitlines() if line.strip()]
+        picked = [line for line in lines if line.lower().startswith(wanted)]
+        return "\n".join(
+            [
+                "The offline reader cannot answer follow-up questions - it has no "
+                "model behind it. Set AI_PROVIDER to use a real one.",
+                "",
+                "From the debrief already written for this question:",
+                *(picked or lines[:4]),
+            ]
+        )
 
 
 # --- Asking the bank, offline -------------------------------------------------

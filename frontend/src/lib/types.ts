@@ -227,3 +227,16 @@ export interface ScannedQuestion {
   source?: string | null;
   note?: string | null;
 }
+
+/** One thing said in a conversation about a single question. */
+export interface Turn {
+  role: "student" | "assistant";
+  text: string;
+}
+
+export interface Reply {
+  answer: string;
+  analyzer: string;
+  analyzer_ready: boolean;
+  error: string | null;
+}

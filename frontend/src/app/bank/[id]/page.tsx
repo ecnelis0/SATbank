@@ -7,6 +7,7 @@ import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { AnalysisPanel } from "@/components/app/analysis";
+import { AskAboutQuestion } from "@/components/app/ask-about-question";
 import { ConceptTags } from "@/components/app/concept-tags";
 import { MistakeImages } from "@/components/app/images";
 import { MistakeLabels } from "@/components/app/mistake-labels";
@@ -81,6 +82,17 @@ export default function MistakePage() {
       <Section title="The debrief">
         <Panel className="px-6 py-5">
           <AnalysisPanel mistake={mistake} editable />
+        </Panel>
+      </Section>
+
+      {/* Straight under the debrief, because that is what the follow-up is
+          usually about — a word in it, or the step it skipped. */}
+      <Section
+        title="Ask about this question"
+        description="The AI has this question, your answer and the debrief in front of it."
+      >
+        <Panel className="px-6 py-5">
+          <AskAboutQuestion mistake={mistake} />
         </Panel>
       </Section>
 

@@ -7,8 +7,10 @@ from typing import Annotated
 
 from fastapi import APIRouter, BackgroundTasks, File, HTTPException, Query, UploadFile
 from PIL import Image, UnidentifiedImageError
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 
+from ..analysis import Turn, get_analyzer
 from ..analysis.base import AnalysisFailed
 from ..analysis.scan import ScanInput, ScanKind, ScannedQuestion, get_scanner
 from ..config import get_settings
@@ -27,6 +29,7 @@ from ..models import (
     utcnow,
 )
 from ..query import BankQuery, run_query, text_filter
+from ..readiness import analyzer_ready
 from ..review import build_ladder
 from ..schemas import MistakeCreate, MistakeRead, MistakeUpdate
 from ..services import analyze_in_background, analyze_mistake
@@ -121,6 +124,86 @@ async def log_mistake(
     if analyze:
         background.add_task(analyze_in_background, mistake.id)
     return mistake
+
+
+class Discussion(BaseModel):
+    """A follow-up about one question, with everything said about it so far."""
+
+    question: str = Field(min_length=1, max_length=1000)
+    history: list[Turn] = Field(default_factory=list, max_length=40)
+
+
+class Reply(BaseModel):
+    answer: str
+    analyzer: str
+    analyzer_ready: bool
+    error: str | None = None
+
+
+def render_for_discussion(mistake: Mistake) -> str:
+    """Everything the tutor is allowed to know about this question.
+
+    Built here rather than handing over the ORM object, for the same reason
+    `MistakeInput` exists: what goes to a model should be a decision, not a
+    side effect of what happens to be on the row.
+    """
+    parts = [f"Section: {mistake.section}"]
+    if mistake.source:
+        parts.append(f"Source: {mistake.source}")
+    parts.append(f"Question: {mistake.question_text}")
+    if mistake.choices:
+        rendered = "; ".join(
+            f"{chr(65 + i)}) {choice}" for i, choice in enumerate(mistake.choices)
+        )
+        parts.append(f"Choices: {rendered}")
+    parts.append(f"The student answered: {mistake.your_answer}")
+    parts.append(f"The correct answer: {mistake.correct_answer}")
+    if mistake.student_note:
+        parts.append(f"What the student said happened: {mistake.student_note}")
+    if mistake.topic:
+        parts.append(f"Topic: {mistake.topic}")
+    if mistake.error_type:
+        parts.append(f"Diagnosis: {mistake.error_type}")
+    if mistake.why_wrong:
+        parts.append(f"Why it was wrong: {mistake.why_wrong}")
+    if mistake.correct_reasoning:
+        parts.append(f"Correct reasoning: {mistake.correct_reasoning}")
+    if mistake.trap:
+        parts.append(f"The trap: {mistake.trap}")
+    if mistake.takeaway:
+        parts.append(f"Takeaway: {mistake.takeaway}")
+    return "\n".join(parts)
+
+
+@router.post("/{mistake_id}/ask", response_model=Reply)
+async def ask_about_mistake(
+    mistake_id: str, body: Discussion, session: SessionDep, user_id: UserDep
+) -> Reply:
+    """Ask the AI about this one question - what a word in the debrief means, why
+    the answer given was wrong, how to do it next time.
+
+    Scoped to the question on purpose. The side panel answers about the whole
+    bank; this one has the question in front of it and may explain and re-word,
+    which is the thing a debrief alone cannot do.
+    """
+    mistake = await _load(session, user_id, mistake_id)
+    settings = get_settings()
+
+    conversation = [*body.history, Turn(role="student", text=body.question)]
+    try:
+        answer = await get_analyzer().discuss(render_for_discussion(mistake), conversation)
+        error = None
+    except Exception as exc:
+        # The debrief is still on the page; losing the follow-up is survivable.
+        answer = "That could not be answered just now. The debrief above is unchanged."
+        error = f"{type(exc).__name__}: {exc}"[:500]
+
+    return Reply(
+        answer=answer,
+        analyzer=settings.ai_provider.lower(),
+        analyzer_ready=analyzer_ready(settings),
+        error=error,
+    )
 
 
 @router.get("", response_model=list[MistakeRead])

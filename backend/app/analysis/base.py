@@ -7,7 +7,7 @@ The app never hand-authors that text; it only stores and organises what comes ba
 from __future__ import annotations
 
 from datetime import date
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING, Literal, Protocol
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -65,6 +65,18 @@ class MistakeAnalysis(BaseModel):
     )
 
 
+class Turn(BaseModel):
+    """One thing said, in a conversation about a single question.
+
+    The history travels with each request rather than living on the server: a
+    follow-up is only meaningful next to what was already said, and a chat whose
+    thread the API has quietly forgotten is worse than one that never offered it.
+    """
+
+    role: Literal["student", "assistant"]
+    text: str = Field(min_length=1, max_length=4000)
+
+
 class AnalysisFailed(RuntimeError):
     """The analyzer could not produce an analysis. The mistake is still saved."""
 
@@ -84,4 +96,14 @@ class Analyzer(Protocol):
 
     async def summarise(self, question: str, digest: str) -> str:
         """Answer in a sentence or two, using only the rows it is given."""
+        ...
+
+    async def discuss(self, context: str, conversation: list[Turn]) -> str:
+        """Answer a follow-up about one question, given that question and its debrief.
+
+        Separate from `summarise` because the two are asked different things: this
+        one is a tutor talking about a single question the student has in front of
+        them, and it may explain, re-word and work through - `summarise` may only
+        report the rows it was handed.
+        """
         ...
