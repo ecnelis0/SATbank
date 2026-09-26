@@ -17,6 +17,7 @@ dependencies = [
     "pillow>=12.3.0",
     "alembic>=1.19.2",
     "claude-agent-sdk>=0.2.154",
+    "reportlab>=5.0.1",
 ]
 
 [dependency-groups]

@@ -14,7 +14,7 @@ from .images import upload_dir
 from .migrate import upgrade
 from .readiness import analyzer_ready
 from .review import LADDER_LABELS
-from .routers import ask, concepts, images, mistakes, reviews, stats, tags
+from .routers import ask, concepts, images, mistakes, reports, reviews, stats, tags
 
 
 @asynccontextmanager
@@ -53,6 +53,7 @@ app.include_router(tags.router)
 app.include_router(images.router)
 app.include_router(concepts.router)
 app.include_router(ask.router)
+app.include_router(reports.router)
 
 
 @app.get("/health", tags=["meta"])
