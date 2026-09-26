@@ -24,6 +24,14 @@
   --color-chart-2: var(--chart-2);
   --color-chart-1: var(--chart-1);
   --color-ring: var(--ring);
+  --color-peak: var(--peak);
+  --color-malachite: var(--malachite);
+  --color-malachite-deep: var(--malachite-deep);
+  --color-azurite: var(--azurite);
+  --color-azurite-deep: var(--azurite-deep);
+  --color-mist: var(--mist);
+  --color-ochre: var(--ochre);
+  --color-seal: var(--seal);
   --color-field: var(--field);
   --color-field-border: var(--field-border);
   --color-field-ring: var(--field-ring);
@@ -53,96 +61,137 @@
 }
 
 :root {
-  /* Mistake Bank palette. Names mirror the Figma "Colour" collection one-for-one
-     (bg/page, text/secondary, accent/base …) so the two cannot quietly drift.
-     Warm paper rather than pure white: this is a study notebook, and hours of
-     staring at it should not feel like staring at a spreadsheet. */
-  --background: oklch(0.986 0.003 85);      /* bg/page    #FBFAF9 */
-  --foreground: oklch(0 0 0);               /* pure black, everywhere text sits on a light surface */
-  --card: oklch(1 0 0);                     /* bg/surface #FFFFFF */
-  --card-foreground: oklch(0 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0 0 0);
-  --primary: oklch(0.386 0.144 283);        /* accent/base #3F3D9E */
-  --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.958 0.005 80);       /* bg/sunken  #F4F2F0 */
-  --secondary-foreground: oklch(0 0 0);
-  --muted: oklch(0.958 0.005 80);
-  --muted-foreground: oklch(0 0 0);         /* was the grey for supporting text */
-  --accent: oklch(0.949 0.017 285);          /* accent/soft #EEEDFB */
-  --accent-foreground: oklch(0 0 0);
-  --destructive: oklch(0.505 0.187 27);      /* urgency/fundamental #B3261E */
-  --border: oklch(0.930 0.006 75);           /* border/subtle #E9E6E2 */
-  --input: oklch(0.930 0.006 75);
-  --ring: oklch(0.386 0.144 283 / 45%);
-  /* Anything you can type into. The page is warm paper and the cards are
-     near-white, so a transparent field was invisible between them.
-     Sampled from the watercolour sage reference: a warm, olive-leaning green
-     (hue ~118-139) rather than a cool mint, and low chroma, so it reads as a
-     writeable surface instead of a highlight. The three are the pale centre of
-     that wash, its mid tone, and a leaf green for focus. */
-  --field: oklch(0.951 0.021 118);
-  --field-border: oklch(0.793 0.051 133);
-  --field-ring: oklch(0.621 0.077 139);
-  /* Placeholders get their own colour rather than the app-wide grey.
-     That grey is tuned for near-white cards; over a sage wash it came
-     out at 3.9:1, and lightening the wash until it passed would have
-     bleached the watercolour away. A deep olive sits on the wash at
-     better than 7:1 and looks like it belongs there. */
-  --field-placeholder: oklch(0 0 0);
-  --radius: 0.75rem;
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
+  /* --- 青绿山水 ------------------------------------------------------------
+     The palette is read off a blue-green landscape scroll: aged silk ground,
+     mineral pigment laid in flat layers, ink outlines, one cinnabar seal.
+
+     The point of the style is that it is NOT one green. The mountains recede
+     through four distinct hues - pale peak yellow-green, malachite, deep
+     malachite shadow, and an azurite blue-green for the rocks nearest the
+     water - and the architecture is ochre. A single green flattens all of that
+     into a wash. Every pairing below was checked against rendered pixels:
+     ink on silk is 13:1, azurite 6.9:1, cinnabar 6.2:1, ochre 6.9:1. */
+
+  /* Ground: aged silk, not paper and not white. Warm, faintly yellow-green. */
+  --background: oklch(0.951 0.026 102.2);   /* silk          #F2F0DC */
+  --card: oklch(0.977 0.019 100.1);         /* silk, lit     #FAF8EA */
+  --secondary: oklch(0.911 0.036 101.9);    /* silk, sunken  #E6E3C8 */
+  --muted: oklch(0.911 0.036 101.9);
+  --popover: oklch(0.977 0.019 100.1);
+
+  /* Ink. Not black - a pine-soot black carries green, which is why ink on a
+     green scroll never looks like text printed on top of it. */
+  --foreground: oklch(0.268 0.028 154.9);        /* 墨        #1B2A20 */
+  --card-foreground: oklch(0.268 0.028 154.9);
+  --popover-foreground: oklch(0.268 0.028 154.9);
+  --secondary-foreground: oklch(0.268 0.028 154.9);
+  --muted-foreground: oklch(0.452 0.030 137.9);  /* stone     #4E5A4A, 6.3:1 */
+
+  /* The five pigments, exposed as their own tokens so a component can reach
+     for "malachite" rather than approximating it out of primary/accent. */
+  --peak: oklch(0.908 0.063 118.4);         /* lit ridge     #DCE7B8 */
+  --malachite: oklch(0.655 0.104 138.9);    /* 石绿          #6FA061 */
+  --malachite-deep: oklch(0.485 0.078 147.5); /* shadow      #3F6B45 */
+  --azurite: oklch(0.537 0.080 178.3);      /* 石青          #2E7D6E */
+  --azurite-deep: oklch(0.426 0.064 183.2); /* the near rocks #1C5A52 */
+  --mist: oklch(0.904 0.035 117.7);         /* cloud band    #DDE3C9 */
+  --ochre: oklch(0.440 0.078 69.6);         /* 赭石, the pavilion #6E4A1C */
+  --seal: oklch(0.480 0.155 29.7);          /* 朱砂 cinnabar #A32E22 */
+
+  /* Primary is the azurite, deliberately the bluest thing here: it has to be
+     picked out from a page of greens at a glance. */
+  --primary: oklch(0.426 0.064 183.2);
+  --primary-foreground: oklch(0.977 0.019 100.1);
+  --accent: oklch(0.936 0.037 150);          /* the palest malachite wash */
+  --accent-foreground: oklch(0.335 0.050 165);
+  --destructive: oklch(0.480 0.155 29.7);    /* the seal doubles as the alarm */
+
+  /* Borders are laid-down ink, not grey: the scroll outlines every form. */
+  --border: oklch(0.842 0.040 104.1);        /* #CFCDAF */
+  --input: oklch(0.842 0.040 104.1);
+  --ring: oklch(0.426 0.064 183.2 / 45%);
+
+  /* Anything you can type into is a panel of wet mineral pigment. Pale
+     malachite centre so ink sits on it at 12.3:1, a leaf-green edge, and an
+     azurite focus ring - the wash goes bluer as it deepens, which is the one
+     move that makes the whole palette read as this style and not as sage. */
+  --field: oklch(0.929 0.036 122.7);         /* #E3ECD2 */
+  --field-border: oklch(0.765 0.070 139.2);  /* #9CBE93 */
+  --field-ring: oklch(0.549 0.072 174.1);    /* #3F7F6E */
+  --field-placeholder: oklch(0.416 0.036 142.0);
+
   --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+
+  /* Charts walk the recession: peak, malachite, azurite, deep shadow, ochre.
+     Five hues, ordered the way the mountains are ordered. */
+  --chart-1: oklch(0.655 0.104 138.9);
+  --chart-2: oklch(0.537 0.080 178.3);
+  --chart-3: oklch(0.854 0.083 121.5);
+  --chart-4: oklch(0.426 0.064 183.2);
+  --chart-5: oklch(0.440 0.078 69.6);
+
+  --sidebar: oklch(0.936 0.030 103);
+  --sidebar-foreground: oklch(0.268 0.028 154.9);
+  --sidebar-primary: oklch(0.426 0.064 183.2);
+  --sidebar-primary-foreground: oklch(0.977 0.019 100.1);
+  --sidebar-accent: oklch(0.936 0.037 150);
+  --sidebar-accent-foreground: oklch(0.335 0.050 165);
+  --sidebar-border: oklch(0.842 0.040 104.1);
+  --sidebar-ring: oklch(0.549 0.072 174.1);
 }
 
 .dark {
-  --background: oklch(0.176 0.005 285);
-  --foreground: oklch(0.960 0.003 80);
-  --card: oklch(0.216 0.006 285);
-  --card-foreground: oklch(0.960 0.003 80);
-  --popover: oklch(0.216 0.006 285);
-  --popover-foreground: oklch(0.960 0.003 80);
-  --primary: oklch(0.688 0.148 285);
-  --primary-foreground: oklch(0.150 0.010 285);
-  --secondary: oklch(0.262 0.006 285);
-  --secondary-foreground: oklch(0.960 0.003 80);
-  --muted: oklch(0.262 0.006 285);
-  --muted-foreground: oklch(0.660 0.008 80);
-  --accent: oklch(0.290 0.045 285);
-  --accent-foreground: oklch(0.820 0.100 285);
-  --destructive: oklch(0.700 0.150 25);
-  --border: oklch(1 0 0 / 12%);
-  --input: oklch(1 0 0 / 16%);
-  --ring: oklch(0.688 0.148 285 / 50%);
-  --field: oklch(0.272 0.024 125);
-  --field-border: oklch(0.392 0.038 130);
-  --field-ring: oklch(0.660 0.072 139);
-  --field-placeholder: oklch(0.720 0.036 133);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  /* Night silk: the same scroll under a lamp. The ground goes to a deep
+     pine-ink, the pigments stay mineral but lift, and the seal stays red -
+     cinnabar is opaque and does not darken with the rest of the picture. */
+  --background: oklch(0.216 0.021 160);
+  --foreground: oklch(0.936 0.022 105);
+  --card: oklch(0.262 0.024 162);
+  --card-foreground: oklch(0.936 0.022 105);
+  --popover: oklch(0.262 0.024 162);
+  --popover-foreground: oklch(0.936 0.022 105);
+  --secondary: oklch(0.302 0.026 165);
+  --secondary-foreground: oklch(0.936 0.022 105);
+  --muted: oklch(0.302 0.026 165);
+  --muted-foreground: oklch(0.752 0.032 118);
+
+  --peak: oklch(0.780 0.070 120);
+  --malachite: oklch(0.700 0.098 139);
+  --malachite-deep: oklch(0.560 0.080 147);
+  --azurite: oklch(0.660 0.082 178);
+  --azurite-deep: oklch(0.540 0.070 182);
+  --mist: oklch(0.420 0.028 140);
+  --ochre: oklch(0.740 0.086 72);
+  --seal: oklch(0.660 0.160 30);
+
+  --primary: oklch(0.520 0.072 180);
+  --primary-foreground: oklch(0.952 0.020 104);
+  --accent: oklch(0.330 0.042 160);
+  --accent-foreground: oklch(0.860 0.062 135);
+  --destructive: oklch(0.660 0.160 30);
+  --border: oklch(0.936 0.022 105 / 14%);
+  --input: oklch(0.936 0.022 105 / 18%);
+  --ring: oklch(0.660 0.082 178 / 50%);
+
+  --field: oklch(0.312 0.034 140);
+  --field-border: oklch(0.432 0.048 143);
+  --field-ring: oklch(0.660 0.082 178);
+  --field-placeholder: oklch(0.762 0.036 128);
+
+  --chart-1: oklch(0.700 0.098 139);
+  --chart-2: oklch(0.660 0.082 178);
+  --chart-3: oklch(0.800 0.072 120);
+  --chart-4: oklch(0.540 0.070 182);
+  --chart-5: oklch(0.740 0.086 72);
+
+  --sidebar: oklch(0.242 0.022 161);
+  --sidebar-foreground: oklch(0.936 0.022 105);
+  --sidebar-primary: oklch(0.520 0.072 180);
+  --sidebar-primary-foreground: oklch(0.952 0.020 104);
+  --sidebar-accent: oklch(0.330 0.042 160);
+  --sidebar-accent-foreground: oklch(0.860 0.062 135);
+  --sidebar-border: oklch(0.936 0.022 105 / 12%);
+  --sidebar-ring: oklch(0.660 0.082 178);
 }
 
 @layer base {
@@ -193,7 +242,7 @@
 }
 
 /* --- The watercolour field ------------------------------------------------
-   Sage pigment blooming in from the right, speckle settling through it, a
+   Mineral pigment blooming in from the right, speckle settling through it, a
    botanical sprig in its own gutter, and the wash pooling darker as it meets
    the border - which is how watercolour actually behaves, and what makes the
    edge read as the same material as the middle rather than a line drawn round
@@ -213,10 +262,10 @@
      have to stay in step - getting them out of step stretched the line drawing
      across the whole field and dropped text to 2.2:1. */
   background-image:
-    url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%20140%2096%27%3E%3Cg%20fill%3D%27none%27%20stroke%3D%27%232C3A26%27%20stroke-width%3D%271.25%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%20opacity%3D%27.52%27%3E%3Cpath%20d%3D%27M6%2090C34%2078%2062%2056%2096%2026%20108%2015%20120%208%20134%204%27%2F%3E%3Cpath%20d%3D%27M30%2074c-9-6-11-17-5-25%209%203%2014%2013%2011%2022%27%2F%3E%3Cpath%20d%3D%27M38%2068c2-11%2011-18%2021-17-2%2011-11%2018-21%2017%27%2F%3E%3Cpath%20d%3D%27M58%2054c-8-7-9-18-2-25%208%205%2011%2015%206%2023%27%2F%3E%3Cpath%20d%3D%27M66%2047c3-11%2013-17%2023-15-4%2011-13%2017-23%2015%27%2F%3E%3Cpath%20d%3D%27M88%2031c-7-8-6-19%202-25%207%206%208%2017%202%2024%27%2F%3E%3Cpath%20d%3D%27M96%2025c5-10%2016-14%2025-10-6%2010-16%2014-25%2010%27%2F%3E%3Cpath%20d%3D%27M118%2092c-10-6-16-17-15-28%2010%206%2016%2017%2015%2028%27%2F%3E%3Cpath%20d%3D%27M120%2086c7-7%2018-8%2026-2-8%207-19%208-26%202%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E"),
-    url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%20160%20110%27%3E%3Cg%20fill%3D%27%23FFFFFF%27%20fill-opacity%3D%270.55%27%3E%3Ccircle%20cx%3D%2722%27%20cy%3D%2718%27%20r%3D%272.1%27%2F%3E%3Ccircle%20cx%3D%2758%27%20cy%3D%279%27%20r%3D%271.3%27%2F%3E%3Ccircle%20cx%3D%2796%27%20cy%3D%2727%27%20r%3D%272.6%27%2F%3E%3Ccircle%20cx%3D%27131%27%20cy%3D%2714%27%20r%3D%271.6%27%2F%3E%3Ccircle%20cx%3D%2744%27%20cy%3D%2762%27%20r%3D%271.8%27%2F%3E%3Ccircle%20cx%3D%27118%27%20cy%3D%2771%27%20r%3D%272.3%27%2F%3E%3Ccircle%20cx%3D%27150%27%20cy%3D%2747%27%20r%3D%271.4%27%2F%3E%3Ccircle%20cx%3D%2778%27%20cy%3D%2795%27%20r%3D%271.9%27%2F%3E%3C%2Fg%3E%3Cg%20fill%3D%27%233E5136%27%20fill-opacity%3D%270.34%27%3E%3Ccircle%20cx%3D%2736%27%20cy%3D%2733%27%20r%3D%271.1%27%2F%3E%3Ccircle%20cx%3D%2772%27%20cy%3D%2720%27%20r%3D%270.9%27%2F%3E%3Ccircle%20cx%3D%27109%27%20cy%3D%2752%27%20r%3D%271.2%27%2F%3E%3Ccircle%20cx%3D%27142%27%20cy%3D%2788%27%20r%3D%271%27%2F%3E%3Ccircle%20cx%3D%2720%27%20cy%3D%2784%27%20r%3D%270.9%27%2F%3E%3Ccircle%20cx%3D%2790%27%20cy%3D%2768%27%20r%3D%271.1%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E"),
-    url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%20240%20120%27%20preserveAspectRatio%3D%27none%27%3E%3Cdefs%3E%3Cfilter%20id%3D%27l%27%20x%3D%27-30%25%27%20y%3D%27-40%25%27%20width%3D%27160%25%27%20height%3D%27180%25%27%3E%3CfeTurbulence%20type%3D%27fractalNoise%27%20baseFrequency%3D%270.016%200.028%27%20numOctaves%3D%273%27%20seed%3D%274%27%20result%3D%27n%27%2F%3E%3CfeDisplacementMap%20in%3D%27SourceGraphic%27%20in2%3D%27n%27%20scale%3D%2726%27%20xChannelSelector%3D%27R%27%20yChannelSelector%3D%27G%27%2F%3E%3CfeGaussianBlur%20stdDeviation%3D%271.4%27%2F%3E%3C%2Ffilter%3E%3CradialGradient%20id%3D%27c%27%20cx%3D%270.4%27%20cy%3D%270.42%27%20r%3D%270.66%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%23FCFDF6%27%20stop-opacity%3D%270.92%27%2F%3E%3Cstop%20offset%3D%270.5%27%20stop-color%3D%27%23F3F6E6%27%20stop-opacity%3D%270.55%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%23F3F6E6%27%20stop-opacity%3D%270%27%2F%3E%3C%2FradialGradient%3E%3CradialGradient%20id%3D%27d%27%20cx%3D%270.68%27%20cy%3D%270.8%27%20r%3D%270.4%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%23FFFFFF%27%20stop-opacity%3D%270.5%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%23FFFFFF%27%20stop-opacity%3D%270%27%2F%3E%3C%2FradialGradient%3E%3C%2Fdefs%3E%3Cg%20filter%3D%27url%28%23l%29%27%3E%3Cellipse%20cx%3D%2796%27%20cy%3D%2750%27%20rx%3D%2792%27%20ry%3D%2746%27%20fill%3D%27url%28%23c%29%27%2F%3E%3Cellipse%20cx%3D%27163%27%20cy%3D%2796%27%20rx%3D%2752%27%20ry%3D%2726%27%20fill%3D%27url%28%23d%29%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E"),
-    url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%20220%20130%27%20preserveAspectRatio%3D%27none%27%3E%3Cdefs%3E%3Cfilter%20id%3D%27w%27%20x%3D%27-25%25%27%20y%3D%27-35%25%27%20width%3D%27150%25%27%20height%3D%27170%25%27%3E%3CfeTurbulence%20type%3D%27fractalNoise%27%20baseFrequency%3D%270.013%200.022%27%20numOctaves%3D%274%27%20seed%3D%279%27%20result%3D%27n%27%2F%3E%3CfeDisplacementMap%20in%3D%27SourceGraphic%27%20in2%3D%27n%27%20scale%3D%2730%27%20xChannelSelector%3D%27R%27%20yChannelSelector%3D%27G%27%2F%3E%3CfeGaussianBlur%20stdDeviation%3D%271.1%27%2F%3E%3C%2Ffilter%3E%3CradialGradient%20id%3D%27a%27%20cx%3D%270.74%27%20cy%3D%270.34%27%20r%3D%270.74%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%234F7347%27%20stop-opacity%3D%270.78%27%2F%3E%3Cstop%20offset%3D%270.42%27%20stop-color%3D%27%236F9265%27%20stop-opacity%3D%270.52%27%2F%3E%3Cstop%20offset%3D%270.74%27%20stop-color%3D%27%23AFC3A2%27%20stop-opacity%3D%270.22%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%23AFC3A2%27%20stop-opacity%3D%270%27%2F%3E%3C%2FradialGradient%3E%3CradialGradient%20id%3D%27b%27%20cx%3D%270.34%27%20cy%3D%270.78%27%20r%3D%270.56%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%236F9265%27%20stop-opacity%3D%270.46%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%236F9265%27%20stop-opacity%3D%270%27%2F%3E%3C%2FradialGradient%3E%3C%2Fdefs%3E%3Cg%20filter%3D%27url%28%23w%29%27%3E%3Cellipse%20cx%3D%27152%27%20cy%3D%2744%27%20rx%3D%2780%27%20ry%3D%2752%27%20fill%3D%27url%28%23a%29%27%2F%3E%3Cellipse%20cx%3D%2786%27%20cy%3D%2798%27%20rx%3D%2756%27%20ry%3D%2732%27%20fill%3D%27url%28%23b%29%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E"),
+    url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%20140%2096%27%3E%20%3Cg%20fill%3D%27none%27%20stroke%3D%27%231B2A20%27%20stroke-width%3D%271.25%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%20opacity%3D%27.46%27%3E%20%3Cpath%20d%3D%27M4%2040%20L24%2014%20L36%2027%20L52%206%20L68%2025%20L84%2012%20L102%2030%20L136%208%27%2F%3E%20%3Cpath%20d%3D%27M2%2066%20L26%2042%20L42%2056%20L62%2034%20L86%2058%20L108%2044%20L138%2060%27%2F%3E%20%3C%2Fg%3E%20%3Cg%20fill%3D%27none%27%20stroke%3D%27%231B2A20%27%20stroke-width%3D%271.1%27%20stroke-linecap%3D%27round%27%20opacity%3D%27.62%27%3E%20%3Cpath%20d%3D%27M54%2094%20L54%2062%27%2F%3E%20%3Cpath%20d%3D%27M54%2070%20L38%2060%20M54%2070%20L70%2060%20M54%2080%20L34%2072%20M54%2080%20L74%2072%20M54%2062%20L44%2052%20M54%2062%20L64%2052%27%2F%3E%20%3C%2Fg%3E%20%3Cg%20fill%3D%27%233F6B45%27%20opacity%3D%27.34%27%3E%20%3Cellipse%20cx%3D%2740%27%20cy%3D%2758%27%20rx%3D%279%27%20ry%3D%273.4%27%2F%3E%3Cellipse%20cx%3D%2769%27%20cy%3D%2758%27%20rx%3D%279%27%20ry%3D%273.4%27%2F%3E%20%3Cellipse%20cx%3D%2736%27%20cy%3D%2770%27%20rx%3D%2710%27%20ry%3D%273.6%27%2F%3E%3Cellipse%20cx%3D%2773%27%20cy%3D%2770%27%20rx%3D%2710%27%20ry%3D%273.6%27%2F%3E%20%3Cellipse%20cx%3D%2747%27%20cy%3D%2750%27%20rx%3D%277%27%20ry%3D%273%27%2F%3E%3Cellipse%20cx%3D%2762%27%20cy%3D%2750%27%20rx%3D%277%27%20ry%3D%273%27%2F%3E%20%3C%2Fg%3E%3C%2Fsvg%3E"),
+    url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%20160%20110%27%3E%3Cg%20fill%3D%27%23FFFFFF%27%20fill-opacity%3D%270.55%27%3E%3Ccircle%20cx%3D%2722%27%20cy%3D%2718%27%20r%3D%272.1%27%2F%3E%3Ccircle%20cx%3D%2758%27%20cy%3D%279%27%20r%3D%271.3%27%2F%3E%3Ccircle%20cx%3D%2796%27%20cy%3D%2727%27%20r%3D%272.6%27%2F%3E%3Ccircle%20cx%3D%27131%27%20cy%3D%2714%27%20r%3D%271.6%27%2F%3E%3Ccircle%20cx%3D%2744%27%20cy%3D%2762%27%20r%3D%271.8%27%2F%3E%3Ccircle%20cx%3D%27118%27%20cy%3D%2771%27%20r%3D%272.3%27%2F%3E%3Ccircle%20cx%3D%27150%27%20cy%3D%2747%27%20r%3D%271.4%27%2F%3E%3Ccircle%20cx%3D%2778%27%20cy%3D%2795%27%20r%3D%271.9%27%2F%3E%3C%2Fg%3E%3Cg%20fill%3D%27%233F6B45%27%20fill-opacity%3D%270.34%27%3E%3Ccircle%20cx%3D%2736%27%20cy%3D%2733%27%20r%3D%271.1%27%2F%3E%3Ccircle%20cx%3D%2772%27%20cy%3D%2720%27%20r%3D%270.9%27%2F%3E%3Ccircle%20cx%3D%27109%27%20cy%3D%2752%27%20r%3D%271.2%27%2F%3E%3Ccircle%20cx%3D%27142%27%20cy%3D%2788%27%20r%3D%271%27%2F%3E%3Ccircle%20cx%3D%2720%27%20cy%3D%2784%27%20r%3D%270.9%27%2F%3E%3Ccircle%20cx%3D%2790%27%20cy%3D%2768%27%20r%3D%271.1%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E"),
+    url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%20240%20120%27%20preserveAspectRatio%3D%27none%27%3E%3Cdefs%3E%3Cfilter%20id%3D%27l%27%20x%3D%27-30%25%27%20y%3D%27-40%25%27%20width%3D%27160%25%27%20height%3D%27180%25%27%3E%3CfeTurbulence%20type%3D%27fractalNoise%27%20baseFrequency%3D%270.016%200.028%27%20numOctaves%3D%273%27%20seed%3D%274%27%20result%3D%27n%27%2F%3E%3CfeDisplacementMap%20in%3D%27SourceGraphic%27%20in2%3D%27n%27%20scale%3D%2726%27%20xChannelSelector%3D%27R%27%20yChannelSelector%3D%27G%27%2F%3E%3CfeGaussianBlur%20stdDeviation%3D%271.4%27%2F%3E%3C%2Ffilter%3E%3CradialGradient%20id%3D%27c%27%20cx%3D%270.4%27%20cy%3D%270.42%27%20r%3D%270.66%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%23FCFDF6%27%20stop-opacity%3D%270.92%27%2F%3E%3Cstop%20offset%3D%270.5%27%20stop-color%3D%27%23F2F0DC%27%20stop-opacity%3D%270.55%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%23F2F0DC%27%20stop-opacity%3D%270%27%2F%3E%3C%2FradialGradient%3E%3CradialGradient%20id%3D%27d%27%20cx%3D%270.68%27%20cy%3D%270.8%27%20r%3D%270.4%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%23FFFFFF%27%20stop-opacity%3D%270.5%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%23FFFFFF%27%20stop-opacity%3D%270%27%2F%3E%3C%2FradialGradient%3E%3C%2Fdefs%3E%3Cg%20filter%3D%27url%28%23l%29%27%3E%3Cellipse%20cx%3D%2796%27%20cy%3D%2750%27%20rx%3D%2792%27%20ry%3D%2746%27%20fill%3D%27url%28%23c%29%27%2F%3E%3Cellipse%20cx%3D%27163%27%20cy%3D%2796%27%20rx%3D%2752%27%20ry%3D%2726%27%20fill%3D%27url%28%23d%29%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E"),
+    url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%20220%20130%27%20preserveAspectRatio%3D%27none%27%3E%3Cdefs%3E%3Cfilter%20id%3D%27w%27%20x%3D%27-25%25%27%20y%3D%27-35%25%27%20width%3D%27150%25%27%20height%3D%27170%25%27%3E%3CfeTurbulence%20type%3D%27fractalNoise%27%20baseFrequency%3D%270.013%200.022%27%20numOctaves%3D%274%27%20seed%3D%279%27%20result%3D%27n%27%2F%3E%3CfeDisplacementMap%20in%3D%27SourceGraphic%27%20in2%3D%27n%27%20scale%3D%2730%27%20xChannelSelector%3D%27R%27%20yChannelSelector%3D%27G%27%2F%3E%3CfeGaussianBlur%20stdDeviation%3D%271.1%27%2F%3E%3C%2Ffilter%3E%3CradialGradient%20id%3D%27a%27%20cx%3D%270.74%27%20cy%3D%270.34%27%20r%3D%270.74%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%231C5A52%27%20stop-opacity%3D%270.78%27%2F%3E%3Cstop%20offset%3D%270.42%27%20stop-color%3D%27%236FA061%27%20stop-opacity%3D%270.52%27%2F%3E%3Cstop%20offset%3D%270.74%27%20stop-color%3D%27%23DCE7B8%27%20stop-opacity%3D%270.22%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%23DCE7B8%27%20stop-opacity%3D%270%27%2F%3E%3C%2FradialGradient%3E%3CradialGradient%20id%3D%27b%27%20cx%3D%270.34%27%20cy%3D%270.78%27%20r%3D%270.56%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%236FA061%27%20stop-opacity%3D%270.46%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%236FA061%27%20stop-opacity%3D%270%27%2F%3E%3C%2FradialGradient%3E%3C%2Fdefs%3E%3Cg%20filter%3D%27url%28%23w%29%27%3E%3Cellipse%20cx%3D%27152%27%20cy%3D%2744%27%20rx%3D%2780%27%20ry%3D%2752%27%20fill%3D%27url%28%23a%29%27%2F%3E%3Cellipse%20cx%3D%2786%27%20cy%3D%2798%27%20rx%3D%2756%27%20ry%3D%2732%27%20fill%3D%27url%28%23b%29%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E"),
     radial-gradient(118% 320% at 50% 50%,
       transparent 56%,
       color-mix(in oklab, var(--field-border) 30%, transparent) 86%,
@@ -241,8 +290,8 @@
    pooling only, both gentler. */
 [data-slot="input"] {
   background-image:
-    url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%20160%20110%27%3E%3Cg%20fill%3D%27%23FFFFFF%27%20fill-opacity%3D%270.55%27%3E%3Ccircle%20cx%3D%2722%27%20cy%3D%2718%27%20r%3D%272.1%27%2F%3E%3Ccircle%20cx%3D%2758%27%20cy%3D%279%27%20r%3D%271.3%27%2F%3E%3Ccircle%20cx%3D%2796%27%20cy%3D%2727%27%20r%3D%272.6%27%2F%3E%3Ccircle%20cx%3D%27131%27%20cy%3D%2714%27%20r%3D%271.6%27%2F%3E%3Ccircle%20cx%3D%2744%27%20cy%3D%2762%27%20r%3D%271.8%27%2F%3E%3Ccircle%20cx%3D%27118%27%20cy%3D%2771%27%20r%3D%272.3%27%2F%3E%3Ccircle%20cx%3D%27150%27%20cy%3D%2747%27%20r%3D%271.4%27%2F%3E%3Ccircle%20cx%3D%2778%27%20cy%3D%2795%27%20r%3D%271.9%27%2F%3E%3C%2Fg%3E%3Cg%20fill%3D%27%233E5136%27%20fill-opacity%3D%270.34%27%3E%3Ccircle%20cx%3D%2736%27%20cy%3D%2733%27%20r%3D%271.1%27%2F%3E%3Ccircle%20cx%3D%2772%27%20cy%3D%2720%27%20r%3D%270.9%27%2F%3E%3Ccircle%20cx%3D%27109%27%20cy%3D%2752%27%20r%3D%271.2%27%2F%3E%3Ccircle%20cx%3D%27142%27%20cy%3D%2788%27%20r%3D%271%27%2F%3E%3Ccircle%20cx%3D%2720%27%20cy%3D%2784%27%20r%3D%270.9%27%2F%3E%3Ccircle%20cx%3D%2790%27%20cy%3D%2768%27%20r%3D%271.1%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E"),
-    url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%20220%20130%27%20preserveAspectRatio%3D%27none%27%3E%3Cdefs%3E%3Cfilter%20id%3D%27w%27%20x%3D%27-25%25%27%20y%3D%27-35%25%27%20width%3D%27150%25%27%20height%3D%27170%25%27%3E%3CfeTurbulence%20type%3D%27fractalNoise%27%20baseFrequency%3D%270.013%200.022%27%20numOctaves%3D%274%27%20seed%3D%279%27%20result%3D%27n%27%2F%3E%3CfeDisplacementMap%20in%3D%27SourceGraphic%27%20in2%3D%27n%27%20scale%3D%2730%27%20xChannelSelector%3D%27R%27%20yChannelSelector%3D%27G%27%2F%3E%3CfeGaussianBlur%20stdDeviation%3D%271.1%27%2F%3E%3C%2Ffilter%3E%3CradialGradient%20id%3D%27a%27%20cx%3D%270.74%27%20cy%3D%270.34%27%20r%3D%270.74%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%234F7347%27%20stop-opacity%3D%270.78%27%2F%3E%3Cstop%20offset%3D%270.42%27%20stop-color%3D%27%236F9265%27%20stop-opacity%3D%270.52%27%2F%3E%3Cstop%20offset%3D%270.74%27%20stop-color%3D%27%23AFC3A2%27%20stop-opacity%3D%270.22%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%23AFC3A2%27%20stop-opacity%3D%270%27%2F%3E%3C%2FradialGradient%3E%3CradialGradient%20id%3D%27b%27%20cx%3D%270.34%27%20cy%3D%270.78%27%20r%3D%270.56%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%236F9265%27%20stop-opacity%3D%270.46%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%236F9265%27%20stop-opacity%3D%270%27%2F%3E%3C%2FradialGradient%3E%3C%2Fdefs%3E%3Cg%20filter%3D%27url%28%23w%29%27%3E%3Cellipse%20cx%3D%27152%27%20cy%3D%2744%27%20rx%3D%2780%27%20ry%3D%2752%27%20fill%3D%27url%28%23a%29%27%2F%3E%3Cellipse%20cx%3D%2786%27%20cy%3D%2798%27%20rx%3D%2756%27%20ry%3D%2732%27%20fill%3D%27url%28%23b%29%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E"),
+    url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%20160%20110%27%3E%3Cg%20fill%3D%27%23FFFFFF%27%20fill-opacity%3D%270.55%27%3E%3Ccircle%20cx%3D%2722%27%20cy%3D%2718%27%20r%3D%272.1%27%2F%3E%3Ccircle%20cx%3D%2758%27%20cy%3D%279%27%20r%3D%271.3%27%2F%3E%3Ccircle%20cx%3D%2796%27%20cy%3D%2727%27%20r%3D%272.6%27%2F%3E%3Ccircle%20cx%3D%27131%27%20cy%3D%2714%27%20r%3D%271.6%27%2F%3E%3Ccircle%20cx%3D%2744%27%20cy%3D%2762%27%20r%3D%271.8%27%2F%3E%3Ccircle%20cx%3D%27118%27%20cy%3D%2771%27%20r%3D%272.3%27%2F%3E%3Ccircle%20cx%3D%27150%27%20cy%3D%2747%27%20r%3D%271.4%27%2F%3E%3Ccircle%20cx%3D%2778%27%20cy%3D%2795%27%20r%3D%271.9%27%2F%3E%3C%2Fg%3E%3Cg%20fill%3D%27%233F6B45%27%20fill-opacity%3D%270.34%27%3E%3Ccircle%20cx%3D%2736%27%20cy%3D%2733%27%20r%3D%271.1%27%2F%3E%3Ccircle%20cx%3D%2772%27%20cy%3D%2720%27%20r%3D%270.9%27%2F%3E%3Ccircle%20cx%3D%27109%27%20cy%3D%2752%27%20r%3D%271.2%27%2F%3E%3Ccircle%20cx%3D%27142%27%20cy%3D%2788%27%20r%3D%271%27%2F%3E%3Ccircle%20cx%3D%2720%27%20cy%3D%2784%27%20r%3D%270.9%27%2F%3E%3Ccircle%20cx%3D%2790%27%20cy%3D%2768%27%20r%3D%271.1%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E"),
+    url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%20220%20130%27%20preserveAspectRatio%3D%27none%27%3E%3Cdefs%3E%3Cfilter%20id%3D%27w%27%20x%3D%27-25%25%27%20y%3D%27-35%25%27%20width%3D%27150%25%27%20height%3D%27170%25%27%3E%3CfeTurbulence%20type%3D%27fractalNoise%27%20baseFrequency%3D%270.013%200.022%27%20numOctaves%3D%274%27%20seed%3D%279%27%20result%3D%27n%27%2F%3E%3CfeDisplacementMap%20in%3D%27SourceGraphic%27%20in2%3D%27n%27%20scale%3D%2730%27%20xChannelSelector%3D%27R%27%20yChannelSelector%3D%27G%27%2F%3E%3CfeGaussianBlur%20stdDeviation%3D%271.1%27%2F%3E%3C%2Ffilter%3E%3CradialGradient%20id%3D%27a%27%20cx%3D%270.74%27%20cy%3D%270.34%27%20r%3D%270.74%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%231C5A52%27%20stop-opacity%3D%270.78%27%2F%3E%3Cstop%20offset%3D%270.42%27%20stop-color%3D%27%236FA061%27%20stop-opacity%3D%270.52%27%2F%3E%3Cstop%20offset%3D%270.74%27%20stop-color%3D%27%23DCE7B8%27%20stop-opacity%3D%270.22%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%23DCE7B8%27%20stop-opacity%3D%270%27%2F%3E%3C%2FradialGradient%3E%3CradialGradient%20id%3D%27b%27%20cx%3D%270.34%27%20cy%3D%270.78%27%20r%3D%270.56%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%236FA061%27%20stop-opacity%3D%270.46%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%236FA061%27%20stop-opacity%3D%270%27%2F%3E%3C%2FradialGradient%3E%3C%2Fdefs%3E%3Cg%20filter%3D%27url%28%23w%29%27%3E%3Cellipse%20cx%3D%27152%27%20cy%3D%2744%27%20rx%3D%2780%27%20ry%3D%2752%27%20fill%3D%27url%28%23a%29%27%2F%3E%3Cellipse%20cx%3D%2786%27%20cy%3D%2798%27%20rx%3D%2756%27%20ry%3D%2732%27%20fill%3D%27url%28%23b%29%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E"),
     radial-gradient(150% 190% at 50% 50%,
       transparent 46%,
       color-mix(in oklab, var(--field-border) 26%, transparent) 84%,
@@ -277,4 +326,184 @@
   [data-slot="textarea"] {
     transition: none;
   }
+}
+
+
+/* --- The scroll ------------------------------------------------------------
+   A 青绿山水 hanging scroll, rebuilt as background layers: aged silk with its
+   fibre tooth, three ridges receding by hue rather than by blur, a mist band
+   cutting them the way cloud cuts a mountain in the painting, and fine wave
+   lines for the water at the foot.
+
+   `fixed`, so the page scrolls over the landscape rather than dragging it
+   along - a hanging scroll does not move while you read it.
+
+   z-0 and `pointer-events: none`: the app lives in the z-10 wrapper in
+   layout.tsx and must stay both above this and clickable through it. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%20120%20120%27%3E%20%3Cfilter%20id%3D%27f%27%3E%3CfeTurbulence%20type%3D%27fractalNoise%27%20baseFrequency%3D%270.85%27%20numOctaves%3D%273%27%20seed%3D%277%27%2F%3E%20%3CfeColorMatrix%20values%3D%270%200%200%200%200.42%200%200%200%200%200.40%200%200%200%200%200.26%200%200%200%200.06%200%27%2F%3E%3C%2Ffilter%3E%20%3Crect%20width%3D%27120%27%20height%3D%27120%27%20filter%3D%27url%28%23f%29%27%2F%3E%3C%2Fsvg%3E"),
+    url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%20200%2060%27%3E%20%3Cg%20fill%3D%27none%27%20stroke%3D%27%231C5A52%27%20stroke-opacity%3D%27.22%27%20stroke-width%3D%271.1%27%20stroke-linecap%3D%27round%27%3E%20%3Cpath%20d%3D%27M0%2010%20q25%20-7%2050%200%20t50%200%20t50%200%20t50%200%27%2F%3E%20%3Cpath%20d%3D%27M0%2024%20q25%207%2050%200%20t50%200%20t50%200%20t50%200%27%2F%3E%20%3Cpath%20d%3D%27M0%2038%20q25%20-7%2050%200%20t50%200%20t50%200%20t50%200%27%2F%3E%20%3Cpath%20d%3D%27M0%2052%20q25%207%2050%200%20t50%200%20t50%200%20t50%200%27%2F%3E%20%3C%2Fg%3E%3C%2Fsvg%3E"),
+    url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%201200%20400%27%20preserveAspectRatio%3D%27none%27%3E%20%3Cpath%20d%3D%27M%200%20352%20Q%20118%20300%20171%20320%20Q%20224%20340%20280%20311%20Q%20336%20282%20392%20307%20Q%20448%20332%20504%20311%20Q%20560%20290%20618%20316%20Q%20676%20342%20734%20318%20Q%20792%20294%20848%20319%20Q%20904%20344%20961%20322%20Q%201018%20300%201069%20321%20Q%201120%20342%201160%20327%20T%201200%20312%20L1200%20400%20L0%20400%20Z%27%20fill%3D%27%231C5A52%27%20fill-opacity%3D%270.42%27%2F%3E%20%3Cpath%20d%3D%27M%200%20352%20Q%20118%20300%20171%20320%20Q%20224%20340%20280%20311%20Q%20336%20282%20392%20307%20Q%20448%20332%20504%20311%20Q%20560%20290%20618%20316%20Q%20676%20342%20734%20318%20Q%20792%20294%20848%20319%20Q%20904%20344%20961%20322%20Q%201018%20300%201069%20321%20Q%201120%20342%201160%20327%20T%201200%20312%20L1200%20400%20L0%20400%20Z%27%20fill%3D%27%230F3D38%27%20fill-opacity%3D%270.16%27%20transform%3D%27translate%2826%2034%29%27%2F%3E%20%3Cg%20fill%3D%27none%27%20stroke%3D%27%231B2A20%27%20stroke-opacity%3D%270.15%27%20stroke-width%3D%272%27%20stroke-linecap%3D%27round%27%3E%3C%2Fg%3E%20%3Cpath%20d%3D%27M%200%20352%20Q%20118%20300%20171%20320%20Q%20224%20340%20280%20311%20Q%20336%20282%20392%20307%20Q%20448%20332%20504%20311%20Q%20560%20290%20618%20316%20Q%20676%20342%20734%20318%20Q%20792%20294%20848%20319%20Q%20904%20344%20961%20322%20Q%201018%20300%201069%20321%20Q%201120%20342%201160%20327%20T%201200%20312%27%20fill%3D%27none%27%20stroke%3D%27%231B2A20%27%20stroke-opacity%3D%270.21%27%20stroke-width%3D%272.4%27%20stroke-linejoin%3D%27round%27%2F%3E%20%3C%2Fsvg%3E"),
+    url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%201200%20400%27%20preserveAspectRatio%3D%27none%27%3E%20%3Cpath%20d%3D%27M%200%20330%20Q%2096%20252%20139%20276%20Q%20182%20300%20229%20249%20Q%20276%20198%20322%20233%20Q%20368%20268%20410%20239%20Q%20452%20210%20500%20248%20Q%20548%20286%20595%20254%20Q%20642%20222%20691%20259%20Q%20740%20296%20787%20266%20Q%20834%20236%20882%20271%20Q%20930%20306%20983%20278%20Q%201036%20250%201118%20273%20T%201200%20296%20L1200%20400%20L0%20400%20Z%27%20fill%3D%27%236FA061%27%20fill-opacity%3D%270.40%27%2F%3E%20%3Cpath%20d%3D%27M%200%20330%20Q%2096%20252%20139%20276%20Q%20182%20300%20229%20249%20Q%20276%20198%20322%20233%20Q%20368%20268%20410%20239%20Q%20452%20210%20500%20248%20Q%20548%20286%20595%20254%20Q%20642%20222%20691%20259%20Q%20740%20296%20787%20266%20Q%20834%20236%20882%20271%20Q%20930%20306%20983%20278%20Q%201036%20250%201118%20273%20T%201200%20296%20L1200%20400%20L0%20400%20Z%27%20fill%3D%27%233F6B45%27%20fill-opacity%3D%270.16%27%20transform%3D%27translate%2826%2034%29%27%2F%3E%20%3Cg%20fill%3D%27none%27%20stroke%3D%27%231B2A20%27%20stroke-opacity%3D%270.11%27%20stroke-width%3D%272%27%20stroke-linecap%3D%27round%27%3E%3Cpath%20d%3D%27M%20182%20316%20c%207%2013%2022%2023%2018%2042%27%2F%3E%3Cpath%20d%3D%27M%20368%20284%20c%20-5%2017%20-18%2030%20-14%2055%27%2F%3E%3Cpath%20d%3D%27M%20548%20302%20c%207%2014%2022%2026%2018%2048%27%2F%3E%3Cpath%20d%3D%27M%20740%20312%20c%20-5%2013%20-18%2024%20-14%2044%27%2F%3E%3C%2Fg%3E%20%3Cpath%20d%3D%27M%200%20330%20Q%2096%20252%20139%20276%20Q%20182%20300%20229%20249%20Q%20276%20198%20322%20233%20Q%20368%20268%20410%20239%20Q%20452%20210%20500%20248%20Q%20548%20286%20595%20254%20Q%20642%20222%20691%20259%20Q%20740%20296%20787%20266%20Q%20834%20236%20882%20271%20Q%20930%20306%20983%20278%20Q%201036%20250%201118%20273%20T%201200%20296%27%20fill%3D%27none%27%20stroke%3D%27%231B2A20%27%20stroke-opacity%3D%270.17%27%20stroke-width%3D%272.4%27%20stroke-linejoin%3D%27round%27%2F%3E%20%3C%2Fsvg%3E"),
+    url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%201200%20400%27%20preserveAspectRatio%3D%27none%27%3E%20%3Cpath%20d%3D%27M%200%20268%20Q%2070%20180%20100%20197%20Q%20130%20214%20172%20159%20Q%20214%20104%20247%20136%20Q%20280%20168%20313%20121%20Q%20346%2074%20383%20112%20Q%20420%20150%20453%20131%20Q%20486%20112%20523%20149%20Q%20560%20186%20594%20153%20Q%20628%20120%20667%20158%20Q%20706%20196%20742%20162%20Q%20778%20128%20817%20166%20Q%20856%20204%20895%20169%20Q%20934%20134%20976%20167%20Q%201018%20200%201061%20171%20Q%201104%20142%201152%20167%20T%201200%20192%20L1200%20400%20L0%20400%20Z%27%20fill%3D%27%23DCE7B8%27%20fill-opacity%3D%270.62%27%2F%3E%20%3Cpath%20d%3D%27M%200%20268%20Q%2070%20180%20100%20197%20Q%20130%20214%20172%20159%20Q%20214%20104%20247%20136%20Q%20280%20168%20313%20121%20Q%20346%2074%20383%20112%20Q%20420%20150%20453%20131%20Q%20486%20112%20523%20149%20Q%20560%20186%20594%20153%20Q%20628%20120%20667%20158%20Q%20706%20196%20742%20162%20Q%20778%20128%20817%20166%20Q%20856%20204%20895%20169%20Q%20934%20134%20976%20167%20Q%201018%20200%201061%20171%20Q%201104%20142%201152%20167%20T%201200%20192%20L1200%20400%20L0%20400%20Z%27%20fill%3D%27%23B9CE92%27%20fill-opacity%3D%270.16%27%20transform%3D%27translate%2826%2034%29%27%2F%3E%20%3Cg%20fill%3D%27none%27%20stroke%3D%27%231B2A20%27%20stroke-opacity%3D%270.07%27%20stroke-width%3D%272%27%20stroke-linecap%3D%27round%27%3E%3Cpath%20d%3D%27M%20130%20230%20c%207%2023%2022%2043%2018%2078%27%2F%3E%3Cpath%20d%3D%27M%20280%20184%20c%20-5%2029%20-18%2054%20-14%2097%27%2F%3E%3Cpath%20d%3D%27M%20420%20166%20c%207%2032%2022%2058%2018%20105%27%2F%3E%3Cpath%20d%3D%27M%20560%20202%20c%20-5%2027%20-18%2049%20-14%2090%27%2F%3E%3Cpath%20d%3D%27M%20706%20212%20c%207%2026%2022%2047%2018%2086%27%2F%3E%3Cpath%20d%3D%27M%20856%20220%20c%20-5%2025%20-18%2045%20-14%2082%27%2F%3E%3Cpath%20d%3D%27M%201018%20216%20c%207%2025%2022%2046%2018%2084%27%2F%3E%3C%2Fg%3E%20%3Cpath%20d%3D%27M%200%20268%20Q%2070%20180%20100%20197%20Q%20130%20214%20172%20159%20Q%20214%20104%20247%20136%20Q%20280%20168%20313%20121%20Q%20346%2074%20383%20112%20Q%20420%20150%20453%20131%20Q%20486%20112%20523%20149%20Q%20560%20186%20594%20153%20Q%20628%20120%20667%20158%20Q%20706%20196%20742%20162%20Q%20778%20128%20817%20166%20Q%20856%20204%20895%20169%20Q%20934%20134%20976%20167%20Q%201018%20200%201061%20171%20Q%201104%20142%201152%20167%20T%201200%20192%27%20fill%3D%27none%27%20stroke%3D%27%231B2A20%27%20stroke-opacity%3D%270.13%27%20stroke-width%3D%272.4%27%20stroke-linejoin%3D%27round%27%2F%3E%20%3C%2Fsvg%3E"),
+    linear-gradient(to bottom,
+      var(--background) 0%,
+      var(--background) 34%,
+      color-mix(in oklab, var(--background) 88%, transparent) 52%,
+      color-mix(in oklab, var(--background) 62%, transparent) 66%,
+      transparent 82%);
+  background-repeat: repeat, repeat-x, no-repeat, no-repeat, no-repeat, no-repeat;
+  background-size:
+    7.5rem 7.5rem,
+    12.5rem 4.5rem,
+    100% 20vh,
+    100% 33vh,
+    100% 47vh,
+    100% 100%;
+  background-position:
+    0 0,
+    0 bottom,
+    0 bottom,
+    0 bottom,
+    0 bottom,
+    0 0;
+}
+
+/* The mist band is a separate fixed layer rather than another stop on the
+   gradient above, because it has to sit *between* the ridges and the fibre
+   without repeating with either. */
+body::after {
+  content: "";
+  position: fixed;
+  inset-inline: 0;
+  bottom: 26vh;
+  height: 24vh;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(120% 100% at 30% 60%,
+    color-mix(in oklab, var(--background) 88%, white) 0%,
+    color-mix(in oklab, var(--background) 70%, transparent) 42%,
+    transparent 78%);
+  filter: blur(6px);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  body::after {
+    animation: mist-drift 48s ease-in-out infinite;
+  }
+}
+
+@keyframes mist-drift {
+  0%, 100% { transform: translateX(-2%); opacity: 0.92; }
+  50%      { transform: translateX(3%);  opacity: 1; }
+}
+
+/* Dark mode is the same scroll by lamplight. The pigments are kept — inverting
+   them hue-rotated the silk and left the nav a pale olive band — and only the
+   strength comes down, so the ranges read as faint moonlit masses rather than
+   as a picture someone turned the lights off on. */
+.dark body::before {
+  opacity: 0.34;
+}
+
+.dark body::after {
+  opacity: 0.5;
+}
+
+.dark [data-slot="scroll-mount"] {
+  /* The far range is a pale pigment; at full strength over a dark mount it
+     painted a light band across the whole nav. */
+  background-blend-mode: soft-light, normal;
+  opacity: 0.96;
+}
+
+/* --- Panels as mounted silk ------------------------------------------------
+   Each card is a piece of the scroll: pigment pooling into two corners, and a
+   hairline of ink where the mount meets it. The wash is strongest at the
+   bottom-right, which is where a brush leaves it. */
+[data-slot="panel"] {
+  background-image:
+    radial-gradient(70% 90% at 100% 100%,
+      color-mix(in oklab, var(--malachite) 13%, transparent) 0%,
+      transparent 64%),
+    radial-gradient(52% 72% at 0% 0%,
+      color-mix(in oklab, var(--peak) 24%, transparent) 0%,
+      transparent 58%),
+    radial-gradient(130% 150% at 50% 50%,
+      transparent 62%,
+      color-mix(in oklab, var(--malachite-deep) 9%, transparent) 100%);
+}
+
+/* The nav is the top mount of the scroll: sunken silk, an ink rule under it,
+   and the palest ridge showing through. */
+[data-slot="scroll-mount"] {
+  background-image:
+    url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%201200%20400%27%20preserveAspectRatio%3D%27none%27%3E%20%3Cpath%20d%3D%27M%200%20268%20Q%2070%20180%20100%20197%20Q%20130%20214%20172%20159%20Q%20214%20104%20247%20136%20Q%20280%20168%20313%20121%20Q%20346%2074%20383%20112%20Q%20420%20150%20453%20131%20Q%20486%20112%20523%20149%20Q%20560%20186%20594%20153%20Q%20628%20120%20667%20158%20Q%20706%20196%20742%20162%20Q%20778%20128%20817%20166%20Q%20856%20204%20895%20169%20Q%20934%20134%20976%20167%20Q%201018%20200%201061%20171%20Q%201104%20142%201152%20167%20T%201200%20192%20L1200%20400%20L0%20400%20Z%27%20fill%3D%27%23DCE7B8%27%20fill-opacity%3D%270.62%27%2F%3E%20%3Cpath%20d%3D%27M%200%20268%20Q%2070%20180%20100%20197%20Q%20130%20214%20172%20159%20Q%20214%20104%20247%20136%20Q%20280%20168%20313%20121%20Q%20346%2074%20383%20112%20Q%20420%20150%20453%20131%20Q%20486%20112%20523%20149%20Q%20560%20186%20594%20153%20Q%20628%20120%20667%20158%20Q%20706%20196%20742%20162%20Q%20778%20128%20817%20166%20Q%20856%20204%20895%20169%20Q%20934%20134%20976%20167%20Q%201018%20200%201061%20171%20Q%201104%20142%201152%20167%20T%201200%20192%20L1200%20400%20L0%20400%20Z%27%20fill%3D%27%23B9CE92%27%20fill-opacity%3D%270.16%27%20transform%3D%27translate%2826%2034%29%27%2F%3E%20%3Cg%20fill%3D%27none%27%20stroke%3D%27%231B2A20%27%20stroke-opacity%3D%270.07%27%20stroke-width%3D%272%27%20stroke-linecap%3D%27round%27%3E%3Cpath%20d%3D%27M%20130%20230%20c%207%2023%2022%2043%2018%2078%27%2F%3E%3Cpath%20d%3D%27M%20280%20184%20c%20-5%2029%20-18%2054%20-14%2097%27%2F%3E%3Cpath%20d%3D%27M%20420%20166%20c%207%2032%2022%2058%2018%20105%27%2F%3E%3Cpath%20d%3D%27M%20560%20202%20c%20-5%2027%20-18%2049%20-14%2090%27%2F%3E%3Cpath%20d%3D%27M%20706%20212%20c%207%2026%2022%2047%2018%2086%27%2F%3E%3Cpath%20d%3D%27M%20856%20220%20c%20-5%2025%20-18%2045%20-14%2082%27%2F%3E%3Cpath%20d%3D%27M%201018%20216%20c%207%2025%2022%2046%2018%2084%27%2F%3E%3C%2Fg%3E%20%3Cpath%20d%3D%27M%200%20268%20Q%2070%20180%20100%20197%20Q%20130%20214%20172%20159%20Q%20214%20104%20247%20136%20Q%20280%20168%20313%20121%20Q%20346%2074%20383%20112%20Q%20420%20150%20453%20131%20Q%20486%20112%20523%20149%20Q%20560%20186%20594%20153%20Q%20628%20120%20667%20158%20Q%20706%20196%20742%20162%20Q%20778%20128%20817%20166%20Q%20856%20204%20895%20169%20Q%20934%20134%20976%20167%20Q%201018%20200%201061%20171%20Q%201104%20142%201152%20167%20T%201200%20192%27%20fill%3D%27none%27%20stroke%3D%27%231B2A20%27%20stroke-opacity%3D%270.13%27%20stroke-width%3D%272.4%27%20stroke-linejoin%3D%27round%27%2F%3E%20%3C%2Fsvg%3E"),
+    linear-gradient(to bottom,
+      color-mix(in oklab, var(--secondary) 70%, transparent),
+      color-mix(in oklab, var(--background) 82%, transparent));
+  background-repeat: no-repeat, no-repeat;
+  background-size: 140% 760%, 100% 100%;
+  background-position: 30% 96%, 0 0;
+  /* The range under the nav is a suggestion, not a picture: at this crop the
+     creases would otherwise read as scribble behind the links. */
+  opacity: 1;
+}
+
+/* 朱砂 - the seal. Square, cinnabar, carved rather than printed: the glyph is
+   the paper showing through, which is what a 白文 seal looks like. */
+[data-slot="seal"] {
+  display: inline-grid;
+  place-items: center;
+  inline-size: 2.05rem;
+  block-size: 2.05rem;
+  border-radius: 0.2rem;
+  background-color: var(--seal);
+  color: var(--background);
+  font-family: var(--font-display), Georgia, serif;
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0;
+  /* Stone never prints evenly. The mottle is two soft holes in the ink. */
+  box-shadow:
+    inset 0 0 0 1px color-mix(in oklab, var(--seal) 70%, black),
+    inset 2px 3px 6px color-mix(in oklab, var(--background) 22%, transparent),
+    inset -3px -2px 7px color-mix(in oklab, var(--background) 16%, transparent);
+  rotate: -1.5deg;
+}
+
+/* An ink rule that thins to nothing, the way a brushed line does. */
+[data-slot="ink-rule"] {
+  block-size: 1px;
+  border: 0;
+  background: linear-gradient(to right,
+    color-mix(in oklab, var(--foreground) 34%, transparent),
+    color-mix(in oklab, var(--foreground) 12%, transparent) 42%,
+    transparent 92%);
+}
+
+/* The mounting silk under the reading column. Near-opaque, because this is the
+   surface every word in the app is read off; the landscape is for the margins
+   and for the space below the content, not for behind a form label. */
+[data-slot="mount-sheet"] {
+  background-color: color-mix(in oklab, var(--background) 93%, transparent);
+  backdrop-filter: blur(3px);
+  box-shadow:
+    0 0 0 1px color-mix(in oklab, var(--foreground) 6%, transparent),
+    0 1px 2px color-mix(in oklab, var(--foreground) 5%, transparent),
+    0 12px 40px -24px color-mix(in oklab, var(--malachite-deep) 40%, transparent);
+}
+
+/* Once a picture is dropped the sheet goes fully opaque and takes its own
+   border, so neither the landscape nor the picture shows through. */
+[data-slot="mount-sheet"].bg-background {
+  background-color: var(--background);
+  backdrop-filter: none;
 }

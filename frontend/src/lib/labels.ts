@@ -37,13 +37,13 @@ export const URGENCY_LABELS: Record<Urgency, string> = {
   important: "Important",
 };
 
-/** One colour per level, loud to quiet, so the three read as a scale rather than
- *  three identical chips. Mirrors the Figma "urgency/*" tokens. */
+/** One pigment per level, loud to quiet: cinnabar, then the pavilion's ochre,
+ *  then malachite. Three hues off the scroll rather than three tints of one, so
+ *  the levels read as a scale even before the words are read. */
 export const URGENCY_STYLES: Record<Urgency, string> = {
-  fundamental: "border-transparent bg-destructive/10 text-destructive",
-  very_important:
-    "border-transparent bg-amber-500/12 text-amber-800 dark:text-amber-300",
-  important: "border-border bg-muted text-muted-foreground",
+  fundamental: "border-seal/25 bg-seal/10 text-seal",
+  very_important: "border-ochre/25 bg-ochre/10 text-ochre",
+  important: "border-malachite-deep/25 bg-malachite/10 text-malachite-deep",
 };
 
 export const SECTION_LABELS: Record<Section, string> = {

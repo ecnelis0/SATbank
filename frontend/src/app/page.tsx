@@ -6,6 +6,7 @@ import Link from "next/link";
 import { DueHero } from "@/components/app/due-hero";
 import { Empty } from "@/components/app/empty";
 import { MistakeCard } from "@/components/app/mistake-card";
+import { PageHeader } from "@/components/app/page-header";
 import { Recurring } from "@/components/app/recurring";
 import { UrgencyBadge } from "@/components/app/urgency-badge";
 import { buttonVariants } from "@/components/ui/button";
@@ -39,14 +40,14 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Your mistakes</h1>
-        </div>
-        <Link href="/log" className={buttonVariants({ variant: "secondary" })}>
-          Log a miss
-        </Link>
-      </div>
+      <PageHeader
+        title="Your mistakes"
+        actions={
+          <Link href="/log" className={buttonVariants({ variant: "secondary" })}>
+            Log a miss
+          </Link>
+        }
+      />
 
       <DueHero due={data.due_now} total={data.total_mistakes} />
 

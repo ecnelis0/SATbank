@@ -52,13 +52,26 @@ export function MainArea({ children }: { children: React.ReactNode }) {
         open && "lg:mr-[26rem]",
       )}
     >
-      {/* A sheet under the reading column, and only once a picture has been
-          dropped: a small grey heading sitting straight on the wallpaper is not
-          readable, and part-transparency was not enough - a pale cat behind the
-          question box still showed through. Opaque, so everything you actually
-          use is unambiguous, and the cut-outs keep both margins to themselves.
-          Off by default, so the untouched app looks exactly as it did. */}
-      <div className={cn(themed && "rounded-2xl border bg-background p-4 shadow-sm sm:p-6")}>
+      {/* The mounting silk. A painting is mounted on a panel and read off the
+          panel, not off the painting — and the same is true here: the scroll's
+          range is fixed to the viewport, so on a long page every heading would
+          otherwise scroll across a mountain. Measured, a form label over the
+          mid range came out at 4.43:1.
+
+          So the reading column always carries its own silk. Rounded and
+          shadowed rather than bordered, so it reads as mounted rather than as
+          a card, and the landscape keeps both margins.
+
+          A dropped picture (the Theme tab) takes it to fully opaque: part
+          transparency was not enough there — a pale cat behind the question
+          box still showed through. */}
+      <div
+        data-slot="mount-sheet"
+        className={cn(
+          "rounded-2xl p-4 sm:p-6",
+          themed && "border bg-background shadow-sm",
+        )}
+      >
         {children}
       </div>
     </main>
