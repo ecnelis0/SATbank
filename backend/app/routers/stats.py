@@ -51,8 +51,12 @@ async def stats(session: SessionDep, user_id: UserDep) -> Stats:
     total = await session.scalar(
         select(func.count()).select_from(Mistake).where(Mistake.user_id == user_id)
     )
+    # Distinct questions, not open rungs. The whole ladder is armed when the
+    # question is logged, so a question left alone for a month has all five of its
+    # rungs overdue at once — counting rows made five questions read as "12 due".
+    # What the student is being told is how many questions are waiting.
     due = await session.scalar(
-        select(func.count())
+        select(func.count(func.distinct(ReviewEvent.mistake_id)))
         .select_from(ReviewEvent)
         .join(Mistake)
         .where(

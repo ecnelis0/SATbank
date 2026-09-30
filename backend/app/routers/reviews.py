@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Query
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
 from ..deps import SessionDep, UserDep
@@ -23,20 +23,48 @@ def _open_for_user(user_id: str):
     )
 
 
+def _earliest_open_rung(user_id: str, now):
+    """One rung per question: the oldest of the ones that are due.
+
+    The ladder is armed in full when the question is logged, so a question left for
+    a month has every rung overdue at the same time. Serving them all put the same
+    question in front of the student five times in one session — and answering one
+    left the other four still due, so it came straight back.
+    """
+    return (
+        select(ReviewEvent.mistake_id, func.min(ReviewEvent.due_at).label("due_at"))
+        .join(Mistake)
+        .where(
+            Mistake.user_id == user_id,
+            ReviewEvent.completed_at.is_(None),
+            ReviewEvent.due_at <= now,
+        )
+        .group_by(ReviewEvent.mistake_id)
+        .subquery()
+    )
+
+
 @router.get("/due", response_model=list[DueReview])
 async def due_now(
     session: SessionDep,
     user_id: UserDep,
     limit: int = Query(default=50, ge=1, le=200),
 ) -> list[DueReview]:
-    """Rungs whose time has come, most urgent first, then oldest.
+    """The questions whose time has come, most urgent first, then oldest.
 
-    Everything here is already due, so the question to put in front of the student
-    is the one that matters most - not merely the one that ripened first.
+    One card per question, never one per rung. Everything here is already due, so
+    the question to put in front of the student is the one that matters most - not
+    merely the one that ripened first.
     """
+    now = utcnow()
+    earliest = _earliest_open_rung(user_id, now)
     stmt = (
         _open_for_user(user_id)
-        .where(ReviewEvent.due_at <= utcnow())
+        .join(
+            earliest,
+            (ReviewEvent.mistake_id == earliest.c.mistake_id)
+            & (ReviewEvent.due_at == earliest.c.due_at),
+        )
         .order_by(URGENCY_RANK, ReviewEvent.due_at)
         .limit(limit)
     )

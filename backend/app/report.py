@@ -269,8 +269,10 @@ async def build_report(session: AsyncSession, user_id: str, window: Window) -> P
     # Still due is deliberately *not* windowed. It is the state of the bank right
     # now, and a report that hid a review due today because it was armed last month
     # would be worse than useless.
+    # Distinct questions, for the same reason the dashboard counts them that way:
+    # an overdue question has several open rungs and is still one question.
     still_due = await session.scalar(
-        select(func.count())
+        select(func.count(func.distinct(ReviewEvent.mistake_id)))
         .select_from(ReviewEvent)
         .join(Mistake)
         .where(
