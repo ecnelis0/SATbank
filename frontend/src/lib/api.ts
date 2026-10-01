@@ -15,9 +15,13 @@ import type {
   Section,
   Stats,
   StudentOutcome,
+  SubjectTab,
   TagCount,
   Turn,
   Urgency,
+  Video,
+  VideoDetail,
+  VideoDraft,
 } from "./types";
 
 export const API_URL =
@@ -219,6 +223,26 @@ export const api = {
   ask: (question: string) =>
     request<Answer>("/ask", { method: "POST", body: JSON.stringify({ question }) }),
 
+  // --- videos ---------------------------------------------------------------
+
+  listVideos: (subject?: string | null) =>
+    request<Video[]>(`/videos${subject ? `?subject=${encodeURIComponent(subject)}` : ""}`),
+
+  videoSubjects: () => request<SubjectTab[]>("/videos/subjects"),
+
+  getVideo: (id: string) => request<VideoDetail>(`/videos/${id}`),
+
+  addVideo: (draft: VideoDraft) =>
+    request<Video>("/videos", { method: "POST", body: JSON.stringify(draft) }),
+
+  updateVideo: (id: string, patch: Partial<VideoDraft>) =>
+    request<Video>(`/videos/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
+
+  rereadVideo: (id: string) => request<Video>(`/videos/${id}/reread`, { method: "POST" }),
+
+  deleteVideo: (id: string) =>
+    request<void>(`/videos/${id}`, { method: "DELETE" }),
+
   /** A follow-up about one question, with everything said about it so far. The
    *  thread travels with the request; the API keeps no conversation of its own. */
   askAboutMistake: (id: string, question: string, history: Turn[]) =>
@@ -230,6 +254,9 @@ export const api = {
 
 /** Query keys, in one place so mutations can invalidate precisely. */
 export const keys = {
+  videos: (subject?: string | null) => ["videos", subject ?? null] as const,
+  video: (id: string) => ["video", id] as const,
+  videoSubjects: () => ["videos", "subjects"] as const,
   mistakes: (filters: MistakeFilters = {}) => ["mistakes", filters] as const,
   search: (query: Partial<BankQuery>) => ["mistakes", "search", query] as const,
   mistake: (id: string) => ["mistake", id] as const,

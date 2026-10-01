@@ -31,6 +31,10 @@ class MistakeInput(BaseModel):
     # clustering: handed nothing, the model writes a fresh wording for the same
     # habit every time and every pattern ends up with one question under it.
     known_patterns: list[str] = Field(default_factory=list)
+    # The concepts the student already keeps - written by hand, promoted from a
+    # pattern, or read out of a video. The debrief checks the question against
+    # these so it is filed as it is logged rather than months later by hand.
+    known_concepts: list[ConceptBrief] = Field(default_factory=list)
 
 
 class PatternTag(BaseModel):
@@ -86,6 +90,16 @@ class MistakeAnalysis(BaseModel):
     trap: str = Field(
         description="What made the wrong answer attractive - the specific trap this "
         "question sets. One or two sentences."
+    )
+    concepts: list[str] = Field(
+        default_factory=list,
+        max_length=4,
+        description="Titles of concepts from the list you were given that this "
+        "question is genuinely an instance of, copied exactly. These are the "
+        "student's own revision notes, so file the question where they would look "
+        "for it. Leave empty when none really apply - a question filed under a "
+        "concept it only loosely touches makes that concept useless, and an empty "
+        "list is a perfectly good answer. Never invent a title that is not listed.",
     )
     patterns: list[PatternTag] = Field(
         default_factory=list,
@@ -143,6 +157,35 @@ class ConceptProposal(BaseModel):
         "their own notes: the rule, and how to apply it next time. This is what "
         "goes in the concept's body if they accept.",
     )
+
+
+class ConceptBrief(BaseModel):
+    """A concept as the analyzer sees it when deciding whether it applies."""
+
+    title: str
+    body: str | None = None
+
+
+class ConceptMatch(BaseModel):
+    """Which questions belong under one concept."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    concept_title: str = Field(
+        description="Copied exactly from the concepts you were given."
+    )
+    mistake_ids: list[str] = Field(
+        default_factory=list,
+        description="The ids of the questions this concept genuinely explains.",
+    )
+
+
+class Filing(BaseModel):
+    """The whole filing decision, for a batch of questions against a set of concepts."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    matches: list[ConceptMatch] = Field(default_factory=list)
 
 
 class VideoInput(BaseModel):
@@ -221,6 +264,10 @@ class Analyzer(Protocol):
 
     async def summarise(self, question: str, digest: str) -> str:
         """Answer in a sentence or two, using only the rows it is given."""
+        ...
+
+    async def file_questions(self, concepts: list[ConceptBrief], digest: str) -> Filing:
+        """Decide which already-logged questions belong under which concepts."""
         ...
 
     async def read_video(self, video: VideoInput) -> VideoSummary:

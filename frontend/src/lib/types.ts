@@ -240,3 +240,55 @@ export interface Reply {
   analyzer_ready: boolean;
   error: string | null;
 }
+
+// --- videos -------------------------------------------------------------------
+
+export type VideoStatus = "pending" | "ready" | "failed";
+
+export interface VideoConcept {
+  id: string;
+  title: string;
+  body: string | null;
+  subject: string | null;
+  start_seconds: number | null;
+  question_count: number;
+  /** Opens the video at the moment this concept is explained. */
+  watch_url: string | null;
+}
+
+export interface Video {
+  id: string;
+  created_at: string;
+  youtube_id: string;
+  url: string;
+  title: string | null;
+  author: string | null;
+  subject: string | null;
+  directions: string | null;
+  status: VideoStatus;
+  error: string | null;
+  summary: string | null;
+  duration_seconds: number | null;
+  summarised_at: string | null;
+  concept_count: number;
+  has_transcript: boolean;
+}
+
+export interface VideoDetail extends Video {
+  concepts: VideoConcept[];
+  /** Every question filed under any of this video's concepts. */
+  mistakes: Mistake[];
+}
+
+export interface SubjectTab {
+  subject: string | null;
+  video_count: number;
+  concept_count: number;
+}
+
+export interface VideoDraft {
+  url: string;
+  subject?: string | null;
+  directions?: string | null;
+  transcript?: string | null;
+}
