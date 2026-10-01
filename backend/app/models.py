@@ -145,6 +145,65 @@ concept_mistakes = Table(
 )
 
 
+# A pattern is the AI's answer to "what do these questions have in common?" — the
+# shared slip or the shared trap, not the shared topic. Many-to-many for the same
+# reason concepts are: one question can be an instance of several patterns (rushed
+# *and* walked into a negative-sign trap), and a pattern is only useful once it has
+# collected more than one question.
+pattern_mistakes = Table(
+    "pattern_mistakes",
+    Base.metadata,
+    Column("pattern_id", ForeignKey("patterns.id", ondelete="CASCADE"), primary_key=True),
+    Column("mistake_id", ForeignKey("mistakes.id", ondelete="CASCADE"), primary_key=True),
+)
+
+
+class Pattern(Base):
+    """A recurring way this student gets questions wrong, named by the analyzer.
+
+    Deliberately not a `Concept` and not one of their own `tags`: a concept is
+    something the student writes in their own words, and tags are theirs to invent.
+    This is the AI's own reading, and mixing the three would mean none of them could
+    be trusted to mean what it says.
+
+    The analyzer is handed the titles already in the bank before it writes a new
+    one, which is the whole mechanism: without that it invents a fresh wording every
+    time and nothing ever collects into a pattern.
+    """
+
+    __tablename__ = "patterns"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=new_id)
+    user_id: Mapped[str] = mapped_column(String(64), index=True)
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime(), default=utcnow)
+    last_seen_at: Mapped[datetime] = mapped_column(UtcDateTime(), default=utcnow)
+
+    title: Mapped[str] = mapped_column(String(120))
+    # Matched on, so two spellings of one pattern cannot split its questions in half.
+    slug: Mapped[str] = mapped_column(String(120), index=True)
+    # One sentence on what the questions under it share. This is what the assistant
+    # reads out when asked what keeps going wrong — a bare label cannot explain
+    # itself.
+    summary: Mapped[str | None] = mapped_column(Text)
+
+    mistakes: Mapped[list[Mistake]] = relationship(
+        secondary=pattern_mistakes,
+        back_populates="patterns",
+        order_by="Mistake.created_at.desc()",
+    )
+
+
+def pattern_slug(title: str) -> str:
+    """The key two titles have to agree on to be the same pattern.
+
+    Case, punctuation and inner spacing are noise: "Negative-sign slips" and
+    "negative sign slips" are one pattern, and treating them as two is exactly the
+    failure that leaves a bank full of patterns with one question each.
+    """
+    cleaned = "".join(c if c.isalnum() or c.isspace() else " " for c in title)
+    return " ".join(cleaned.split()).lower()
+
+
 class Concept(Base):
     """Something worth knowing, written by the student, that questions hang off."""
 
@@ -219,6 +278,11 @@ class Mistake(Base):
         back_populates="mistake",
         cascade="all, delete-orphan",
         order_by="ReviewEvent.due_at",
+    )
+    patterns: Mapped[list[Pattern]] = relationship(
+        secondary=pattern_mistakes,
+        back_populates="mistakes",
+        order_by="Pattern.title",
     )
     images: Mapped[list[MistakeImage]] = relationship(
         back_populates="mistake",
@@ -332,6 +396,7 @@ def blank_collections(mistake: Mistake) -> Mistake:
     because the two lists must be added to together.
     """
     mistake.concepts = []
+    mistake.patterns = []
     mistake.images = []
     return mistake
 
@@ -350,5 +415,6 @@ def mistake_options() -> tuple:
     return (
         selectinload(Mistake.reviews),
         selectinload(Mistake.concepts),
+        selectinload(Mistake.patterns),
         selectinload(Mistake.images),
     )

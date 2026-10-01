@@ -1,202 +1,249 @@
-"""What the student keeps getting wrong, as opposed to what they got wrong once.
-
-"Which questions have I consistently been getting wrong in the past month" is a
-question about repetition. Listing rows cannot answer it, and a model asked to
-count a list by eye will approximate - so the repetition is counted here.
-"""
+"""Patterns: the habits the analyzer names, and whether they actually collect."""
 
 from __future__ import annotations
 
-from datetime import timedelta
-
 from sqlalchemy import select
 
-from app.models import Mistake, ReviewEvent
+from app.models import Mistake, Pattern, pattern_slug
+from app.services import attach_patterns, known_pattern_titles
 from tests.conftest import MATH_MISTAKE, VERBAL_MISTAKE
 
 
-async def _log(client, payload, **overrides):
-    mistake_id = (await client.post("/mistakes", json=payload)).json()["id"]
-    if overrides:
-        assert (await client.patch(f"/mistakes/{mistake_id}", json=overrides)).status_code == 200
-    return mistake_id
+async def _log(client, **overrides):
+    body = {**MATH_MISTAKE, **overrides}
+    response = await client.post("/mistakes", json=body, params={"analyze": True})
+    assert response.status_code == 201
+    return response.json()
 
 
-async def _age(session_factory, mistake_id: str, days: float) -> None:
+# --- the slug is what makes a pattern collect ---------------------------------
+
+
+def test_wordings_of_one_habit_share_a_slug():
+    """Case and punctuation are noise. Letting them through is exactly what leaves
+    a bank full of patterns with a single question under each."""
+    assert pattern_slug("Negative-sign slips") == pattern_slug("negative sign slips")
+    assert pattern_slug("Dropped a negative sign!") == pattern_slug("dropped a negative sign")
+    assert pattern_slug("  Rushed   the   last step ") == "rushed the last step"
+
+
+def test_different_habits_do_not_collide():
+    assert pattern_slug("Misread the question") != pattern_slug("Misread the evidence")
+
+
+# --- collecting ---------------------------------------------------------------
+
+
+async def test_two_questions_with_the_same_habit_land_under_one_pattern(
+    client, session_factory
+):
+    await _log(client, question_text="First question about x")
+    await _log(client, question_text="Second question about x")
+
     async with session_factory() as session:
-        mistake = await session.get(Mistake, mistake_id)
-        mistake.created_at = mistake.created_at - timedelta(days=days)
-        events = await session.scalars(
-            select(ReviewEvent).where(ReviewEvent.mistake_id == mistake_id)
+        patterns = list(await session.scalars(select(Pattern)))
+
+    # The stub names its pattern from the topic, so both questions share one.
+    assert len(patterns) == 1
+    async with session_factory() as session:
+        detail = await session.scalar(
+            select(Pattern).where(Pattern.id == patterns[0].id)
         )
-        for event in events:
-            event.due_at = event.due_at - timedelta(days=days)
+        await session.refresh(detail, ["mistakes"])
+        assert len(detail.mistakes) == 2
+
+
+async def test_a_near_copy_of_an_existing_title_is_not_a_second_pattern(
+    client, session_factory
+):
+    """The case the slug exists for, driven through the service rather than the
+    model, so it holds whatever wording a provider happens to return."""
+    from app.analysis.base import PatternTag
+
+    logged = await _log(client)
+    async with session_factory() as session:
+        first = await session.scalar(
+            select(Mistake).where(Mistake.id == logged["id"])
+        )
+        await session.refresh(first, ["patterns"])
+        await attach_patterns(session, first, [PatternTag(title="Rushed it", why="a")])
         await session.commit()
 
+        await attach_patterns(session, first, [PatternTag(title="rushed  it!", why="b")])
+        await session.commit()
 
-async def _miss_it_again(client, session_factory, mistake_id: str, times: int = 1) -> None:
-    """Answer this question's due review wrong, `times` times over."""
-    for _ in range(times):
-        await _age(session_factory, mistake_id, days=1)
-        due = (await client.get("/reviews/due")).json()
-        review = next(d["review"] for d in due if d["mistake"]["id"] == mistake_id)
-        response = await client.post(f"/reviews/{review['id']}/complete", json={"outcome": "wrong"})
-        assert response.status_code == 200
+        patterns = list(await session.scalars(select(Pattern)))
 
-
-async def test_a_question_missed_again_is_counted(client, session_factory):
-    mistake_id = await _log(client, MATH_MISTAKE, topic="inverse trig")
-    await _miss_it_again(client, session_factory, mistake_id, times=2)
-
-    body = (await client.post("/ask", json={"question": "everything"})).json()
-
-    assert "2 time(s) in total" in body["answer"]
+    # Precisely: the two wordings are one row, not that the bank holds one row.
+    rushed = [p for p in patterns if p.slug == pattern_slug("Rushed it")]
+    assert len(rushed) == 1
+    # The wording the pattern first collected under is kept.
+    assert rushed[0].title == "Rushed it"
 
 
-async def test_a_question_answered_correctly_is_not_a_pattern(client, session_factory):
-    mistake_id = await _log(client, MATH_MISTAKE)
-    await _age(session_factory, mistake_id, days=1)
-    due = (await client.get("/reviews/due")).json()
-    await client.post(f"/reviews/{due[0]['review']['id']}/complete", json={"outcome": "correct"})
+async def test_retagging_replaces_rather_than_piles_up(client, session_factory):
+    """Re-running a debrief should correct a question's filing, not leave the old
+    reading sitting next to the new one."""
+    from app.analysis.base import PatternTag
 
-    body = (await client.post("/ask", json={"question": "everything"})).json()
+    logged = await _log(client)
+    async with session_factory() as session:
+        mistake = await session.scalar(select(Mistake).where(Mistake.id == logged["id"]))
+        await session.refresh(mistake, ["patterns"])
 
-    assert "Nothing here has been missed again" in body["answer"]
+        await attach_patterns(session, mistake, [PatternTag(title="First reading", why="a")])
+        await session.commit()
+        await attach_patterns(session, mistake, [PatternTag(title="Second reading", why="b")])
+        await session.commit()
+
+        await session.refresh(mistake, ["patterns"])
+        assert [p.title for p in mistake.patterns] == ["Second reading"]
 
 
-async def test_the_topic_you_keep_missing_is_named(client, session_factory):
-    """The student's own example: inverse trig, wrong again and again."""
-    trig = await _log(client, MATH_MISTAKE, topic="inverse trig")
-    other = await _log(client, VERBAL_MISTAKE, topic="command of evidence")
-    await _miss_it_again(client, session_factory, trig, times=3)
-    await _miss_it_again(client, session_factory, other, times=1)
+async def test_the_same_title_twice_in_one_analysis_is_one_pattern(client, session_factory):
+    from app.analysis.base import PatternTag
 
-    body = (
-        await client.post(
-            "/ask",
-            json={"question": "which questions have I consistently been getting wrong"},
+    logged = await _log(client)
+    async with session_factory() as session:
+        mistake = await session.scalar(select(Mistake).where(Mistake.id == logged["id"]))
+        await session.refresh(mistake, ["patterns"])
+        await attach_patterns(
+            session,
+            mistake,
+            [PatternTag(title="Rushed it", why="a"), PatternTag(title="rushed it", why="b")],
         )
-    ).json()
-
-    # Named, with a number, and ordered so the worst comes first.
-    assert "inverse trig (3 repeat misses)" in body["answer"]
-    assert body["answer"].index("inverse trig") < body["answer"].index("command of evidence")
+        await session.commit()
+        await session.refresh(mistake, ["patterns"])
+    assert len(mistake.patterns) == 1
 
 
-async def test_breadth_and_repetition_are_both_reported(client, session_factory):
-    """Both are real patterns, and reporting only repetition was a genuine gap.
-
-    Four different command-of-evidence questions wrong once each is a weakness in
-    command of evidence. One inverse trig question missed twice is a weakness too.
-    An answer that names only one of them is not answering the question.
-    """
-    for _ in range(4):
-        await _log(client, VERBAL_MISTAKE, topic="command of evidence")
-    trig = await _log(client, MATH_MISTAKE, topic="inverse trig")
-    await _miss_it_again(client, session_factory, trig, times=2)
-
-    body = (await client.post("/ask", json={"question": "what do I keep getting wrong"})).json()
-
-    assert "command of evidence (4 different questions)" in body["answer"]
-    assert "inverse trig (2 repeat misses)" in body["answer"]
+# --- what the analyzer is told ------------------------------------------------
 
 
-async def test_the_students_own_example_different_questions_same_weakness(client):
-    """Four *different* inverse trig questions, each wrong once, never reviewed.
-
-    This is the case the feature was asked for and the one it originally missed:
-    it answered "nothing has been missed again on review" - true, and useless.
-    """
-    for question in (
-        "arcsin(0.5) is which angle?",
-        "arctan(1) in radians?",
-        "cos^-1(0) is which angle?",
-        "sin^-1(-1) is which angle?",
-    ):
-        await _log(client, {**MATH_MISTAKE, "question_text": question}, topic="inverse trig")
-    await _log(client, VERBAL_MISTAKE, topic="command of evidence")
-
-    body = (
-        await client.post(
-            "/ask",
-            json={"question": "which questions have I consistently been getting wrong"},
-        )
-    ).json()
-
-    assert "inverse trig (4 different questions)" in body["answer"]
-    # A topic with a single question is not dressed up as a pattern.
-    assert "command of evidence" not in body["answer"]
+async def test_the_analyzer_is_handed_the_patterns_already_in_the_bank(
+    client, session_factory
+):
+    """Without this the model invents a fresh wording every time and nothing ever
+    collects — the single most important wire in the feature."""
+    await _log(client)
+    async with session_factory() as session:
+        known = await known_pattern_titles(session, "local")
+    assert known, "a logged question should have left a pattern to reuse"
 
 
-async def test_a_single_question_is_never_called_a_pattern(client):
-    await _log(client, MATH_MISTAKE, topic="inverse trig")
+async def test_known_patterns_lead_with_the_commonest(client, session_factory):
+    from app.analysis.base import PatternTag
 
-    body = (await client.post("/ask", json={"question": "what do I keep getting wrong"})).json()
+    first = await _log(client, question_text="One")
+    second = await _log(client, question_text="Two")
+    async with session_factory() as session:
+        for mistake_id, titles in (
+            (first["id"], ["Busy pattern"]),
+            (second["id"], ["Busy pattern"]),
+        ):
+            mistake = await session.scalar(select(Mistake).where(Mistake.id == mistake_id))
+            await session.refresh(mistake, ["patterns"])
+            await attach_patterns(
+                session, mistake, [PatternTag(title=t, why="x") for t in titles]
+            )
+        await session.commit()
+        known = await known_pattern_titles(session, "local")
 
-    assert "different questions" not in body["answer"]
-    assert "accounts for more than one question" in body["answer"]
-
-
-async def test_a_concept_across_several_questions_counts(client):
-    concept = (await client.post("/concepts", json={"title": "Inverse trig needs a domain"})).json()
-    for question in ("arcsin(0.5)?", "arccos(1)?", "arctan(0)?"):
-        mistake_id = await _log(client, {**MATH_MISTAKE, "question_text": question})
-        await client.post(f"/concepts/{concept['id']}/questions/{mistake_id}")
-
-    body = (await client.post("/ask", json={"question": "what am I consistently missing"})).json()
-
-    assert "Inverse trig needs a domain (3 different questions)" in body["answer"]
-
-
-async def test_a_concept_you_keep_missing_is_named(client, session_factory):
-    mistake_id = await _log(client, MATH_MISTAKE)
-    concept = (await client.post("/concepts", json={"title": "Inverse trig needs a domain"})).json()
-    await client.post(f"/concepts/{concept['id']}/questions/{mistake_id}")
-    await _miss_it_again(client, session_factory, mistake_id, times=2)
-
-    body = (await client.post("/ask", json={"question": "what keeps coming back"})).json()
-
-    assert "Inverse trig needs a domain (2 repeat misses)" in body["answer"]
+    # The model reads from the top, so the pattern worth reusing has to be there.
+    assert known[0] == "Busy pattern"
 
 
-async def test_the_period_is_respected(client, session_factory):
-    """ "in the past month" must exclude what happened before it."""
-    recent = await _log(client, MATH_MISTAKE, topic="inverse trig")
-    old = await _log(client, VERBAL_MISTAKE, topic="command of evidence")
-    await _miss_it_again(client, session_factory, recent, times=2)
-    await _miss_it_again(client, session_factory, old, times=2)
-    await _age(session_factory, old, days=120)
-
-    body = (
-        await client.post(
-            "/ask",
-            json={"question": "what have I consistently got wrong in the past month"},
-        )
-    ).json()
-
-    assert "logged since" in body["filter_description"]
-    assert [m["id"] for m in body["mistakes"]] == [recent]
-    assert "inverse trig" in body["answer"]
-    assert "command of evidence" not in body["answer"]
+# --- the API ------------------------------------------------------------------
 
 
-async def test_the_worst_offenders_are_quoted(client, session_factory):
-    mistake_id = await _log(client, MATH_MISTAKE)
-    await _miss_it_again(client, session_factory, mistake_id, times=2)
+async def test_patterns_are_listed_busiest_first(client):
+    await _log(client, question_text="One")
+    await _log(client, question_text="Two")
+    await _log(client, **VERBAL_MISTAKE)
 
-    body = (await client.post("/ask", json={"question": "what do I keep missing"})).json()
+    rows = (await client.get("/patterns")).json()
+    assert rows
+    assert rows == sorted(rows, key=lambda r: (-r["question_count"], r["title"]))
+    assert rows[0]["question_count"] >= 2
 
-    assert MATH_MISTAKE["question_text"][:40] in body["answer"]
+
+async def test_a_pattern_can_be_opened_with_its_questions(client):
+    await _log(client, question_text="One")
+    await _log(client, question_text="Two")
+    listed = (await client.get("/patterns")).json()
+
+    detail = (await client.get(f"/patterns/{listed[0]['id']}")).json()
+    assert detail["question_count"] == len(detail["mistakes"]) == 2
+    assert detail["summary"]
 
 
-async def test_bookkeeping_from_a_restart_is_not_counted_as_a_miss(client, session_factory):
-    """A miss retires the rungs it never reached; those are not extra misses."""
-    mistake_id = await _log(client, MATH_MISTAKE)
-    await _miss_it_again(client, session_factory, mistake_id, times=1)
+async def test_min_questions_hides_the_ones_that_have_not_collected(client):
+    await _log(client, question_text="One")
+    assert (await client.get("/patterns", params={"min_questions": 2})).json() == []
 
-    stored = (await client.get(f"/mistakes/{mistake_id}")).json()
-    superseded = [r for r in stored["reviews"] if r["outcome"] == "superseded"]
-    assert len(superseded) == 4  # the rungs the restart retired
 
-    body = (await client.post("/ask", json={"question": "everything"})).json()
-    assert "1 time(s) in total" in body["answer"]
+async def test_a_question_carries_its_patterns(client):
+    logged = await _log(client)
+    fetched = (await client.get(f"/mistakes/{logged['id']}")).json()
+    assert fetched["patterns"]
+    assert fetched["patterns"][0]["title"]
+
+
+async def test_patterns_never_cross_between_students(client):
+    await _log(client)
+    assert (await client.get("/patterns", headers={"X-User-Id": "someone-else"})).json() == []
+
+
+async def test_rebuild_tags_a_bank_that_was_logged_before_patterns_existed(
+    client, session_factory
+):
+    logged = await _log(client)
+    # Strip the patterns, as an older bank would have none.
+    async with session_factory() as session:
+        mistake = await session.scalar(select(Mistake).where(Mistake.id == logged["id"]))
+        await session.refresh(mistake, ["patterns"])
+        mistake.patterns = []
+        await session.commit()
+    assert (await client.get(f"/mistakes/{logged['id']}")).json()["patterns"] == []
+
+    rebuilt = (await client.post("/patterns/rebuild")).json()
+    assert rebuilt
+    assert (await client.get(f"/mistakes/{logged['id']}")).json()["patterns"]
+
+
+async def test_rebuild_leaves_the_debrief_alone(client):
+    """The student may have edited it. The backfill is about filing, not content."""
+    logged = await _log(client)
+    before = (await client.get(f"/mistakes/{logged['id']}")).json()
+
+    await client.post("/patterns/rebuild")
+
+    after = (await client.get(f"/mistakes/{logged['id']}")).json()
+    assert after["why_wrong"] == before["why_wrong"]
+    assert after["takeaway"] == before["takeaway"]
+    assert after["analyzed_at"] == before["analyzed_at"]
+
+
+async def test_a_pattern_left_holding_nothing_is_removed(client, session_factory):
+    """A pattern with no questions is not just clutter in the list: it stays in the
+    vocabulary handed to the analyzer, which is then invited to reuse a name the
+    student has nothing under."""
+    from app.analysis.base import PatternTag
+
+    logged = await _log(client)
+    async with session_factory() as session:
+        mistake = await session.scalar(select(Mistake).where(Mistake.id == logged["id"]))
+        await session.refresh(mistake, ["patterns"])
+        await attach_patterns(session, mistake, [PatternTag(title="Only home", why="a")])
+        await session.commit()
+
+        # Move it somewhere else; the pattern it left is now empty.
+        await attach_patterns(session, mistake, [PatternTag(title="New home", why="b")])
+        await session.commit()
+
+        titles = [p.title for p in await session.scalars(select(Pattern))]
+        known = await known_pattern_titles(session, "local")
+
+    assert "Only home" not in titles
+    assert "Only home" not in known
+    assert "New home" in titles

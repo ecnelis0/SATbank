@@ -12,7 +12,7 @@ from datetime import date, timedelta
 
 from ..models import Difficulty, ErrorType, Section, Urgency
 from ..query import BankQuery, Vocabulary
-from .base import MistakeAnalysis, MistakeInput, Turn
+from .base import MistakeAnalysis, MistakeInput, PatternTag, Turn
 
 _MATH_HINTS = {
     "equation": "linear equations",
@@ -88,6 +88,18 @@ class StubAnalyzer:
             ),
             takeaway=f"Re-read the stem before committing on {topic} questions.",
             trap=f"{mistake.your_answer!r} is the answer you reach if you stop one step early.",
+            # Offline, but still deterministic and still *reusing*: the title is
+            # derived from the topic, so two questions in one topic land under one
+            # pattern and the clustering path is exercised by the tests.
+            patterns=[
+                PatternTag(
+                    title=f"Stopped one step early on {topic}",
+                    why=(
+                        f"You reached {mistake.your_answer!r} and stopped, where "
+                        f"{mistake.correct_answer!r} needed one more step."
+                    ),
+                )
+            ],
         )
 
     async def interpret(self, question: str, today: date, vocabulary: Vocabulary) -> BankQuery:

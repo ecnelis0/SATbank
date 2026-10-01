@@ -117,6 +117,13 @@ def _render(mistake: MistakeInput) -> str:
     parts.append(f"The correct answer is: {mistake.correct_answer}")
     if mistake.student_note:
         parts.append(f"\nThe student's own note: {mistake.student_note}")
+    if mistake.known_patterns:
+        listed = "\n".join(f"- {title}" for title in mistake.known_patterns)
+        parts.append(
+            "\nPatterns already named in this student's bank. Reuse one word for word "
+            "wherever it fits, so their questions collect under it instead of under a "
+            "near-copy:\n" + listed
+        )
     return "\n".join(parts)
 
 

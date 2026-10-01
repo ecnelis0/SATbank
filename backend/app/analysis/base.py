@@ -27,6 +27,30 @@ class MistakeInput(BaseModel):
     correct_answer: str
     source: str | None = None
     student_note: str | None = None
+    # The patterns already named in this bank. This is the whole mechanism behind
+    # clustering: handed nothing, the model writes a fresh wording for the same
+    # habit every time and every pattern ends up with one question under it.
+    known_patterns: list[str] = Field(default_factory=list)
+
+
+class PatternTag(BaseModel):
+    """One recurring habit this question is an instance of."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    title: str = Field(
+        max_length=120,
+        description="Short, reusable name for the habit itself — 'Dropped a negative "
+        "sign', 'Answered the question before the one asked', 'Picked the choice that "
+        "restates the passage'. Name what the student did or what the trap was, never "
+        "the topic: 'quadratics' is a topic and groups nothing useful. If one of the "
+        "patterns you were given already means this, reuse its exact wording.",
+    )
+    why: str = Field(
+        max_length=400,
+        description="One sentence on how this particular question is an instance of "
+        "that pattern, in the second person.",
+    )
 
 
 class MistakeAnalysis(BaseModel):
@@ -62,6 +86,15 @@ class MistakeAnalysis(BaseModel):
     trap: str = Field(
         description="What made the wrong answer attractive - the specific trap this "
         "question sets. One or two sentences."
+    )
+    patterns: list[PatternTag] = Field(
+        default_factory=list,
+        max_length=3,
+        description="The recurring habits this miss is an instance of, most telling "
+        "first. One or two is normal; three is the most that is ever useful. Base them "
+        "on what went wrong and on the trap, not on the topic — the point is that a "
+        "question from algebra and a question from geometry can share one. Reuse a "
+        "pattern you were given wherever it fits rather than inventing a near-copy.",
     )
 
 

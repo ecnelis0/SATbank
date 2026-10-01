@@ -11,18 +11,20 @@ from datetime import UTC, date, datetime, time
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy import String, and_, or_, select
+from sqlalchemy import String, and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .models import (
     Concept,
     ErrorType,
     Mistake,
+    Pattern,
     ReviewEvent,
     ReviewOutcome,
     Section,
     Urgency,
     mistake_options,
+    pattern_mistakes,
     utcnow,
 )
 from .review import URGENCY_RANK
@@ -44,6 +46,11 @@ class Vocabulary(BaseModel):
     )
     topics: list[str] = Field(default_factory=list)
     concepts: list[str] = Field(default_factory=list)
+    patterns: list[str] = Field(
+        default_factory=list,
+        description="The recurring habits the analyzer has named in this bank, "
+        "commonest first.",
+    )
     sources: list[str] = Field(default_factory=list)
 
     def render(self) -> str:
@@ -55,6 +62,7 @@ class Vocabulary(BaseModel):
                 block("Topics in this bank", self.topics),
                 block("Tags the student uses", self.tags),
                 block("Concepts the student has written", self.concepts),
+                block("Mistake patterns the analyzer has named", self.patterns),
                 block("Sources", self.sources),
             ]
         )
@@ -91,6 +99,14 @@ class BankQuery(BaseModel):
     topics: list[str] = Field(
         default_factory=list,
         description="Topic words to match, e.g. 'circles'. Matched as substrings.",
+    )
+    patterns: list[str] = Field(
+        default_factory=list,
+        description="Pattern titles, copied from the patterns you were given. These "
+        "are the recurring habits the analyzer named - 'Dropped a negative sign', "
+        "'Picked the choice that restates the passage'. Use these, not `topics`, when "
+        "the student asks what they keep doing wrong rather than what subject it was "
+        "in. Matched as substrings, case-insensitively.",
     )
     text: str | None = Field(
         default=None, description="Words that must appear in the question itself."
@@ -165,6 +181,12 @@ def build_statement(user_id: str, query: BankQuery):
         )
     if query.topics:
         stmt = stmt.where(or_(*[Mistake.topic.ilike(f"%{topic}%") for topic in query.topics]))
+    if query.patterns:
+        stmt = stmt.where(
+            Mistake.patterns.any(
+                or_(*[Pattern.title.ilike(f"%{title}%") for title in query.patterns])
+            )
+        )
     if query.text:
         clause = text_filter(query.text)
         if clause is not None:
@@ -265,9 +287,21 @@ async def vocabulary(session: AsyncSession, user_id: str) -> Vocabulary:
         select(Mistake.tags).where(Mistake.user_id == user_id, Mistake.tags.is_not(None))
     )
     tags = sorted({tag for row in tag_rows for tag in (row or [])})
+    # Commonest first, not alphabetical: the model reads a long list from the top,
+    # and the pattern that has collected the most questions is the one most worth
+    # offering for "what do I keep getting wrong".
+    pattern_rows = await session.execute(
+        select(Pattern.title, func.count(pattern_mistakes.c.mistake_id))
+        .select_from(Pattern)
+        .outerjoin(pattern_mistakes, Pattern.id == pattern_mistakes.c.pattern_id)
+        .where(Pattern.user_id == user_id)
+        .group_by(Pattern.id, Pattern.title)
+        .order_by(func.count(pattern_mistakes.c.mistake_id).desc(), Pattern.title)
+    )
     return Vocabulary(
         topics=sorted(topics),
         concepts=sorted(concepts),
+        patterns=[title for title, _ in pattern_rows],
         sources=sorted(sources),
         tags=tags,
     )
@@ -388,6 +422,12 @@ def overview(mistakes: list[Mistake]) -> str:
     concepts = [concept.title for m in mistakes for concept in m.concepts]
     if concepts:
         lines.append(f"By concept: {tally(concepts)}")
+    # The line "what do I struggle with most" is answered from: a pattern is the
+    # analyzer's own reading of *what the student did*, so it groups across topics
+    # in a way none of the others can.
+    patterns = [pattern.title for m in mistakes for pattern in m.patterns]
+    if patterns:
+        lines.append(f"By pattern: {tally(patterns)}")
     lines.append("")
     lines.append(recurring(mistakes))
     return "\n".join(lines)
@@ -402,10 +442,12 @@ def digest(mistakes: list[Mistake]) -> str:
     for index, mistake in enumerate(mistakes, start=1):
         repeats = times_missed_again(mistake)
         concepts = ", ".join(concept.title for concept in mistake.concepts) or "-"
+        patterns = ", ".join(pattern.title for pattern in mistake.patterns) or "-"
         lines.append(
             f"{index}. [{mistake.urgency or 'unrated'}] [{mistake.section}] "
             f"[{mistake.error_type or 'no slot'}] topic={mistake.topic or '-'} "
-            f"concepts={concepts} logged={mistake.created_at.date()} "
+            f"concepts={concepts} patterns={patterns} "
+            f"logged={mistake.created_at.date()} "
             f"missed_again_on_review={repeats} "
             f'question="{mistake.question_text[:120]}" '
             f"you_put={mistake.your_answer!r} answer={mistake.correct_answer!r}"

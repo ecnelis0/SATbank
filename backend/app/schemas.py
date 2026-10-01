@@ -195,6 +195,26 @@ class ReviewEventRead(BaseModel):
     outcome: ReviewOutcome | None
 
 
+class PatternSummary(BaseModel):
+    """A pattern as it appears on a question: enough to show a chip and explain it."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    title: str
+    summary: str | None = None
+    question_count: int = 0
+
+
+class PatternRead(PatternSummary):
+    created_at: datetime
+    last_seen_at: datetime
+
+
+class PatternDetail(PatternRead):
+    mistakes: list[MistakeRead] = []
+
+
 class MistakeRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -226,6 +246,7 @@ class MistakeRead(BaseModel):
 
     reviews: list[ReviewEventRead] = []
     concepts: list[ConceptSummary] = []
+    patterns: list[PatternSummary] = []
     images: list[ImageRead] = []
 
 
