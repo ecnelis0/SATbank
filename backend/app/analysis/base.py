@@ -110,6 +110,41 @@ class Turn(BaseModel):
     text: str = Field(min_length=1, max_length=4000)
 
 
+class ConceptProposal(BaseModel):
+    """The case for turning a pattern into a concept the student keeps.
+
+    A suggestion that only says "you did this 11 times" is a statistic. What makes
+    it worth acting on is the three things below: the rule behind the misses, the
+    case for writing it down, and what went wrong every time.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    title: str = Field(
+        max_length=200,
+        description="What to call the concept. The rule or idea behind the misses, "
+        "not the habit - the pattern is already named. Something the student would "
+        "recognise in a revision list.",
+    )
+    why_a_concept: str = Field(
+        max_length=800,
+        description="Two or three sentences on why these questions belong together "
+        "and why this is worth writing down, pointing at what they actually share.",
+    )
+    what_went_wrong: str = Field(
+        max_length=800,
+        description="What the student did, across all of them, in the second person. "
+        "The single recurring move - 'every time, you went to the answers before you "
+        "had written down what the question was asking for'.",
+    )
+    body: str = Field(
+        max_length=2000,
+        description="The concept itself, as the student would want it written in "
+        "their own notes: the rule, and how to apply it next time. This is what "
+        "goes in the concept's body if they accept.",
+    )
+
+
 class AnalysisFailed(RuntimeError):
     """The analyzer could not produce an analysis. The mistake is still saved."""
 
@@ -129,6 +164,10 @@ class Analyzer(Protocol):
 
     async def summarise(self, question: str, digest: str) -> str:
         """Answer in a sentence or two, using only the rows it is given."""
+        ...
+
+    async def propose_concept(self, pattern: str, summary: str, digest: str) -> ConceptProposal:
+        """Make the case for promoting a pattern into a concept, from its questions."""
         ...
 
     async def discuss(self, context: str, conversation: list[Turn]) -> str:

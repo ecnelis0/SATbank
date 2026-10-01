@@ -13,7 +13,7 @@ import anthropic
 import httpx2
 
 from ..query import BankQuery, Vocabulary
-from .base import AnalysisFailed, MistakeAnalysis, MistakeInput, Turn
+from .base import AnalysisFailed, ConceptProposal, MistakeAnalysis, MistakeInput, Turn
 
 if TYPE_CHECKING:
     from .scan import ScanInput, ScannedQuestion
@@ -55,6 +55,30 @@ everything - the counts are computed separately and you will get them.
 nothing else: set logged_after and leave every other field empty. Narrowing it to one \
 topic would hide the very pattern they are asking you to find.\
 """
+
+PROPOSE_PROMPT = """\
+A student's mistake bank has collected several questions under one recurring \
+habit. You are deciding what single idea sits underneath them, so they can \
+write it down once instead of re-learning it a question at a time.
+
+You are given the habit, and the questions filed under it with their debriefs.
+
+Name the *rule or idea*, not the habit - the habit already has a name. "Read \
+the question stem before the answers" is a rule; "rushes" is a habit. If the \
+questions genuinely share a step - and they usually do, because that is why \
+they ended up together - the first step they all skipped is normally the \
+concept.
+
+Say what went wrong across all of them as one recurring move in the second \
+person, not as a list of the individual misses. The student has already read \
+each debrief; what they have not seen is the thing those debriefs have in \
+common.
+
+Write the body as their own revision note: the rule, then how to apply it next \
+time. Short. If the questions do not actually share one idea, say so in \
+`why_a_concept` rather than inventing a link - a concept that is really three \
+concepts is worse than none."""
+
 
 DISCUSS_PROMPT = """\
 You are a patient SAT tutor talking to a student about one question they got \
@@ -216,6 +240,34 @@ class ClaudeAnalyzer:
         if response.stop_reason == "refusal":
             raise AnalysisFailed("the model declined to answer")
         return "".join(block.text for block in response.content if block.type == "text")
+
+    async def propose_concept(self, pattern: str, summary: str, digest: str) -> ConceptProposal:
+        try:
+            response = await self._client.messages.parse(
+                model=self._model,
+                max_tokens=8000,
+                system=PROPOSE_PROMPT,
+                thinking={"type": "adaptive"},
+                messages=[
+                    {
+                        "role": "user",
+                        "content": (
+                            f"The habit: {pattern}\n{summary}\n\n"
+                            f"The questions filed under it:\n{digest}"
+                        ),
+                    }
+                ],
+                output_format=ConceptProposal,
+            )
+        except anthropic.APIError as exc:
+            raise AnalysisFailed(f"{type(exc).__name__}: {exc}") from exc
+
+        if response.stop_reason == "refusal":
+            raise AnalysisFailed("the model declined to answer")
+        parsed = response.parsed_output
+        if parsed is None:
+            raise AnalysisFailed("model returned no structured output")
+        return parsed
 
     async def discuss(self, context: str, conversation: list[Turn]) -> str:
         try:

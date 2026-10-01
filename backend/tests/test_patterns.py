@@ -247,3 +247,125 @@ async def test_a_pattern_left_holding_nothing_is_removed(client, session_factory
     assert "Only home" not in titles
     assert "Only home" not in known
     assert "New home" in titles
+
+
+# --- a pattern that has collected enough becomes a concept --------------------
+
+
+async def _collect(client, session_factory, count: int, title: str = "Skipped the first step"):
+    """Put `count` questions under one named pattern."""
+    from app.analysis.base import PatternTag
+
+    ids = []
+    for index in range(count):
+        logged = await _log(client, question_text=f"Graph question {index}")
+        ids.append(logged["id"])
+    async with session_factory() as session:
+        for mistake_id in ids:
+            mistake = await session.scalar(select(Mistake).where(Mistake.id == mistake_id))
+            await session.refresh(mistake, ["patterns"])
+            await attach_patterns(session, mistake, [PatternTag(title=title, why="same step")])
+        await session.commit()
+    return ids
+
+
+async def test_a_pattern_below_the_threshold_is_not_suggested(client, session_factory):
+    await _collect(client, session_factory, 3)
+    assert (await client.get("/patterns/suggestions/candidates")).json() == []
+
+
+async def test_ten_questions_under_one_habit_becomes_a_candidate(client, session_factory):
+    """The student's own example: ten graph questions, each needing the same first
+    step, should stop being ten questions and start being one idea."""
+    await _collect(client, session_factory, 10)
+
+    candidates = (await client.get("/patterns/suggestions/candidates")).json()
+    assert len(candidates) == 1
+    assert candidates[0]["question_count"] == 10
+    assert candidates[0]["title"] == "Skipped the first step"
+
+
+async def test_the_suggestion_carries_the_case_and_the_questions(client, session_factory):
+    ids = await _collect(client, session_factory, 10)
+    candidate = (await client.get("/patterns/suggestions/candidates")).json()[0]
+
+    suggestion = (await client.post(f"/patterns/{candidate['id']}/suggest")).json()
+    assert suggestion["question_count"] == 10
+    assert suggestion["why_a_concept"]
+    assert suggestion["what_went_wrong"]
+    # The questions it would carry over, so accepting is one click and not ten.
+    assert sorted(suggestion["mistake_ids"]) == sorted(ids)
+
+
+async def test_promoting_files_every_question_under_the_new_concept(client, session_factory):
+    ids = await _collect(client, session_factory, 10)
+    candidate = (await client.get("/patterns/suggestions/candidates")).json()[0]
+
+    concept = (
+        await client.post(
+            f"/patterns/{candidate['id']}/promote",
+            json={"title": "Eliminate the impossible answers first", "body": "Rule."},
+        )
+    ).json()
+
+    assert concept["title"] == "Eliminate the impossible answers first"
+    assert concept["question_count"] == 10
+    assert sorted(m["id"] for m in concept["mistakes"]) == sorted(ids)
+
+    # And from the question's side, which is where the student will see it.
+    fetched = (await client.get(f"/mistakes/{ids[0]}")).json()
+    assert "Eliminate the impossible answers first" in [c["title"] for c in fetched["concepts"]]
+
+
+async def test_a_promoted_pattern_stops_being_suggested(client, session_factory):
+    ids = await _collect(client, session_factory, 10)
+    candidate = (await client.get("/patterns/suggestions/candidates")).json()[0]
+    await client.post(f"/patterns/{candidate['id']}/promote", json={})
+
+    assert (await client.get("/patterns/suggestions/candidates")).json() == []
+    assert ids  # the questions are untouched by the suggestion going away
+
+
+async def test_promoting_twice_is_refused(client, session_factory):
+    await _collect(client, session_factory, 10)
+    candidate = (await client.get("/patterns/suggestions/candidates")).json()[0]
+    await client.post(f"/patterns/{candidate['id']}/promote", json={})
+
+    again = await client.post(f"/patterns/{candidate['id']}/promote", json={})
+    assert again.status_code == 409
+
+
+async def test_dismissing_sticks(client, session_factory):
+    """Not every repeated habit deserves writing up, and a prompt that comes back
+    after you have answered it teaches you to ignore prompts."""
+    await _collect(client, session_factory, 10)
+    candidate = (await client.get("/patterns/suggestions/candidates")).json()[0]
+
+    await client.post(f"/patterns/{candidate['id']}/dismiss")
+    assert (await client.get("/patterns/suggestions/candidates")).json() == []
+
+
+async def test_the_suggestion_survives_a_failing_analyzer(client, session_factory, monkeypatch):
+    ids = await _collect(client, session_factory, 10)
+    candidate = (await client.get("/patterns/suggestions/candidates")).json()[0]
+
+    class Broken:
+        name = "broken"
+
+        async def propose_concept(self, pattern, summary, digest):
+            raise RuntimeError("no model today")
+
+    monkeypatch.setattr("app.routers.patterns.get_analyzer", lambda: Broken())
+
+    suggestion = (await client.post(f"/patterns/{candidate['id']}/suggest")).json()
+    # The questions are the valuable half and must still come back.
+    assert sorted(suggestion["mistake_ids"]) == sorted(ids)
+    assert "no model today" in suggestion["error"]
+
+
+async def test_suggestions_never_cross_between_students(client, session_factory):
+    await _collect(client, session_factory, 10)
+    other = await client.get(
+        "/patterns/suggestions/candidates", headers={"X-User-Id": "someone-else"}
+    )
+    assert other.json() == []

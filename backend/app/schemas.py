@@ -215,6 +215,36 @@ class PatternDetail(PatternRead):
     mistakes: list[MistakeRead] = []
 
 
+class PatternCandidate(BaseModel):
+    """A pattern that has collected enough questions to be worth writing up."""
+
+    id: str
+    title: str
+    summary: str | None = None
+    question_count: int
+
+
+class ConceptSuggestion(BaseModel):
+    """The case for promoting one pattern, with the questions it would carry over."""
+
+    pattern_id: str
+    pattern_title: str
+    question_count: int
+    title: str
+    why_a_concept: str
+    what_went_wrong: str
+    body: str
+    mistake_ids: list[str] = []
+    error: str | None = None
+
+
+class PromoteConcept(BaseModel):
+    """What the student settled on. Both default to what was proposed."""
+
+    title: str | None = Field(default=None, max_length=200)
+    body: str | None = Field(default=None, max_length=4000)
+
+
 class MistakeRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

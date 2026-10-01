@@ -12,7 +12,7 @@ from datetime import date, timedelta
 
 from ..models import Difficulty, ErrorType, Section, Urgency
 from ..query import BankQuery, Vocabulary
-from .base import MistakeAnalysis, MistakeInput, PatternTag, Turn
+from .base import ConceptProposal, MistakeAnalysis, MistakeInput, PatternTag, Turn
 
 _MATH_HINTS = {
     "equation": "linear equations",
@@ -136,6 +136,23 @@ class StubAnalyzer:
             if repeats:
                 return "\n".join([head[0], *repeats])
         return "\n".join(head)
+
+    async def propose_concept(self, pattern: str, summary: str, digest: str) -> ConceptProposal:
+        """Composes the case from the counts it was given rather than inventing one."""
+        count = digest.split(" question", 1)[0].strip() or "Several"
+        return ConceptProposal(
+            title=pattern,
+            why_a_concept=(
+                f"{count} questions have collected under this habit, which is enough "
+                "for it to be the thing to revise rather than any one of them."
+            ),
+            what_went_wrong=summary or "The same step went missing each time.",
+            body=(
+                f"{pattern}. Written offline, so this is the habit's own wording "
+                "rather than a reading of the questions - set AI_PROVIDER to get the "
+                "real one."
+            ),
+        )
 
     async def discuss(self, context: str, conversation: list[Turn]) -> str:
         """Says what it is rather than pretending to tutor.

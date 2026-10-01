@@ -181,6 +181,14 @@ class Pattern(Base):
     title: Mapped[str] = mapped_column(String(120))
     # Matched on, so two spellings of one pattern cannot split its questions in half.
     slug: Mapped[str] = mapped_column(String(120), index=True)
+    # Once a pattern has collected enough questions it is worth writing up as a
+    # concept. These two record what was decided, so the suggestion is made once
+    # and then stops: a prompt that keeps coming back after you have answered it
+    # is the fastest way to teach someone to ignore prompts.
+    promoted_concept_id: Mapped[str | None] = mapped_column(
+        ForeignKey("concepts.id", ondelete="SET NULL")
+    )
+    dismissed_at: Mapped[datetime | None] = mapped_column(UtcDateTime())
     # One sentence on what the questions under it share. This is what the assistant
     # reads out when asked what keeps going wrong — a bare label cannot explain
     # itself.

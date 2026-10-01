@@ -25,8 +25,15 @@ from PIL import Image
 from pydantic import BaseModel, ValidationError
 
 from ..query import BankQuery, Vocabulary
-from .base import AnalysisFailed, MistakeAnalysis, MistakeInput, Turn
-from .claude import DISCUSS_PROMPT, INTERPRET_PROMPT, SUMMARISE_PROMPT, SYSTEM_PROMPT, _render
+from .base import AnalysisFailed, ConceptProposal, MistakeAnalysis, MistakeInput, Turn
+from .claude import (
+    DISCUSS_PROMPT,
+    INTERPRET_PROMPT,
+    PROPOSE_PROMPT,
+    SUMMARISE_PROMPT,
+    SYSTEM_PROMPT,
+    _render,
+)
 from .scan import SCAN_PROMPT, ScanInput, ScannedQuestion
 
 # Where a PDF or image lands before the agent reads it. The extension matters:
@@ -168,6 +175,16 @@ class AgentAnalyzer:
             system=SUMMARISE_PROMPT,
             model=self._model,
             schema=None,
+        )
+
+    async def propose_concept(self, pattern: str, summary: str, digest: str) -> ConceptProposal:
+        return await _run(
+            prompt=(
+                f"The habit: {pattern}\n{summary}\n\nThe questions filed under it:\n{digest}"
+            ),
+            system=PROPOSE_PROMPT,
+            model=self._model,
+            schema=ConceptProposal,
         )
 
     async def discuss(self, context: str, conversation: list[Turn]) -> str:
