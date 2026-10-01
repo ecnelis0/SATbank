@@ -245,6 +245,69 @@ class PromoteConcept(BaseModel):
     body: str | None = Field(default=None, max_length=4000)
 
 
+class VideoCreate(BaseModel):
+    url: str = Field(min_length=1, max_length=500)
+    # The tab. The student's own word rather than a list the app decided for them.
+    subject: str | None = Field(default=None, max_length=60)
+    directions: str | None = Field(default=None, max_length=2000)
+    # The escape hatch for a video with captions turned off.
+    transcript: str | None = Field(default=None, max_length=400_000)
+
+
+class VideoUpdate(BaseModel):
+    subject: str | None = Field(default=None, max_length=60)
+    directions: str | None = Field(default=None, max_length=2000)
+    title: str | None = Field(default=None, max_length=300)
+
+
+class VideoConceptRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    title: str
+    body: str | None
+    subject: str | None
+    start_seconds: int | None
+    question_count: int = 0
+    # Opens the video at the moment this is explained.
+    watch_url: str | None = None
+
+
+class VideoRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    created_at: datetime
+    youtube_id: str
+    url: str
+    title: str | None
+    author: str | None
+    subject: str | None
+    directions: str | None
+    status: str
+    error: str | None
+    summary: str | None
+    duration_seconds: int | None
+    summarised_at: datetime | None
+    concept_count: int = 0
+    has_transcript: bool = False
+
+
+class VideoDetail(VideoRead):
+    concepts: list[VideoConceptRead] = []
+    # Every question filed under any of this video's concepts: the answer to
+    # "what have I actually got wrong on the thing this video teaches".
+    mistakes: list[MistakeRead] = []
+
+
+class SubjectTab(BaseModel):
+    """One tab on the videos screen."""
+
+    subject: str | None
+    video_count: int
+    concept_count: int
+
+
 class MistakeRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

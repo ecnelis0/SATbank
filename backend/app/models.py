@@ -212,8 +212,66 @@ def pattern_slug(title: str) -> str:
     return " ".join(cleaned.split()).lower()
 
 
+class VideoStatus(StrEnum):
+    pending = "pending"
+    ready = "ready"
+    failed = "failed"
+
+
+class Video(Base):
+    """A video the student is studying from, broken into concepts.
+
+    The transcript is kept rather than thrown away after summarising: re-reading a
+    video under new directions ("do this one as a list of comma rules") should not
+    need to fetch it again, and the assistant can search what was actually said.
+    """
+
+    __tablename__ = "videos"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=new_id)
+    user_id: Mapped[str] = mapped_column(String(64), index=True)
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime(), default=utcnow)
+
+    youtube_id: Mapped[str] = mapped_column(String(32), index=True)
+    url: Mapped[str] = mapped_column(String(500))
+    title: Mapped[str | None] = mapped_column(String(300))
+    author: Mapped[str | None] = mapped_column(String(200))
+
+    # The tab this belongs under - "grammar", "reading", "algebra". The student's
+    # own word, normalised, so the tabs are theirs rather than a fixed list the app
+    # decided on their behalf.
+    subject: Mapped[str | None] = mapped_column(String(60), index=True)
+    # What they told the model to do with it. Kept, because re-reading the video
+    # should start from the instruction that was given, not from nothing.
+    directions: Mapped[str | None] = mapped_column(Text)
+
+    status: Mapped[str] = mapped_column(String(16), default=VideoStatus.pending)
+    error: Mapped[str | None] = mapped_column(Text)
+    summary: Mapped[str | None] = mapped_column(Text)
+    transcript: Mapped[str | None] = mapped_column(Text)
+    duration_seconds: Mapped[int | None] = mapped_column(Integer)
+    summarised_at: Mapped[datetime | None] = mapped_column(UtcDateTime())
+
+    concepts: Mapped[list[Concept]] = relationship(
+        back_populates="video",
+        order_by="Concept.start_seconds",
+    )
+
+
+def subject_slug(subject: str | None) -> str | None:
+    """The tab two spellings have to agree on. "Grammar" and "grammar " are one tab."""
+    if subject is None:
+        return None
+    cleaned = " ".join(subject.split()).lower()
+    return cleaned or None
+
+
 class Concept(Base):
-    """Something worth knowing, written by the student, that questions hang off."""
+    """Something worth knowing that questions hang off.
+
+    Written by the student, promoted from a pattern, or read out of a video - the
+    three meet here on purpose, because the student revises one list, not three.
+    """
 
     __tablename__ = "concepts"
 
@@ -226,6 +284,17 @@ class Concept(Base):
     body: Mapped[str | None] = mapped_column(Text)
     # Optional: plenty of concepts (careless-work habits, pacing) belong to neither.
     section: Mapped[str | None] = mapped_column(String(32), index=True)
+    # The tab, as on Video. A concept read out of a grammar video is a grammar
+    # concept; one the student writes can be filed under a tab too.
+    subject: Mapped[str | None] = mapped_column(String(60), index=True)
+
+    # Where it came from, when it came from a video, and the moment it is explained.
+    video_id: Mapped[str | None] = mapped_column(
+        ForeignKey("videos.id", ondelete="CASCADE"), index=True
+    )
+    start_seconds: Mapped[int | None] = mapped_column(Integer)
+
+    video: Mapped[Video | None] = relationship(back_populates="concepts")
 
     mistakes: Mapped[list[Mistake]] = relationship(
         secondary=concept_mistakes,

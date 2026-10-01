@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import asyncio
+
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from .analysis import MistakeInput, get_analyzer
-from .analysis.base import PatternTag
+from .analysis.base import PatternTag, VideoInput
 from .db import get_sessionmaker
 from .models import (
     AnalysisStatus,
@@ -179,3 +182,100 @@ async def analyze_in_background(mistake_id: str) -> None:
         if mistake is None:
             return
         await analyze_mistake(session, mistake)
+
+
+# --- videos -------------------------------------------------------------------
+
+
+async def read_video_in_background(video_id: str) -> None:
+    """Fetch the captions, read them into concepts, and file them.
+
+    Owns its own session; the request's is long gone. Mirrors the mistake
+    analyser deliberately — same statuses, same "a failure is recorded, not
+    raised", so a video that cannot be read still exists and can be retried.
+    """
+    from .models import Concept, Video, VideoStatus, subject_slug
+    from .videos import VideoUnreadable, clip, fetch_metadata, fetch_transcript, from_pasted
+
+    async with get_sessionmaker()() as session:
+        video = await session.scalar(
+            select(Video).where(Video.id == video_id).options(selectinload(Video.concepts))
+        )
+        if video is None:
+            return
+
+        try:
+            if video.transcript:
+                # Pasted by the student, or kept from the first read. Either way it
+                # is already here and fetching again would only risk losing it.
+                transcript = from_pasted(video.transcript)
+                has_timestamps = "[0s]" in video.transcript or "s]" in video.transcript
+            else:
+                transcript = await asyncio.to_thread(fetch_transcript, video.youtube_id)
+                has_timestamps = True
+                video.transcript = transcript.text
+                video.duration_seconds = transcript.duration_seconds
+
+            if not video.title:
+                video.title, video.author = await fetch_metadata(video.youtube_id)
+
+            text, truncated = clip(transcript.text)
+            known = list(
+                await session.scalars(
+                    select(Concept.title).where(Concept.user_id == video.user_id).distinct()
+                )
+            )
+            summary = await get_analyzer().read_video(
+                VideoInput(
+                    title=video.title,
+                    author=video.author,
+                    subject=video.subject,
+                    directions=video.directions,
+                    transcript=text,
+                    truncated=truncated,
+                    has_timestamps=has_timestamps,
+                    known_concepts=known,
+                )
+            )
+        except VideoUnreadable as exc:
+            video.status = VideoStatus.failed
+            video.error = str(exc)
+            await session.commit()
+            return
+        except Exception as exc:
+            video.status = VideoStatus.failed
+            video.error = f"{type(exc).__name__}: {exc}"[:1000]
+            await session.commit()
+            return
+
+        # Re-reading a video replaces what it produced last time. Its concepts
+        # cascade, but any the student has since tagged questions onto would go
+        # with them, so an existing title is updated in place instead.
+        existing = {c.title.strip().lower(): c for c in video.concepts}
+        kept: list[Concept] = []
+        for read in summary.concepts:
+            key = read.title.strip().lower()
+            concept = existing.get(key)
+            if concept is None:
+                concept = Concept(user_id=video.user_id, title=read.title.strip())
+                session.add(concept)
+            concept.body = read.body
+            concept.start_seconds = read.start_seconds
+            concept.subject = subject_slug(video.subject)
+            concept.video_id = video.id
+            concept.updated_at = utcnow()
+            kept.append(concept)
+
+        for title, concept in existing.items():
+            if title not in {c.title.strip().lower() for c in kept}:
+                # Dropped by the new reading. Deleted only if nothing is filed
+                # under it - the student's tagging outranks a re-read.
+                await session.refresh(concept, ["mistakes"])
+                if not concept.mistakes:
+                    await session.delete(concept)
+
+        video.summary = summary.summary
+        video.status = VideoStatus.ready
+        video.error = None
+        video.summarised_at = utcnow()
+        await session.commit()

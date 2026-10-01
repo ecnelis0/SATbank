@@ -24,6 +24,7 @@ from .routers import (
     reviews,
     stats,
     tags,
+    videos,
 )
 
 
@@ -65,6 +66,7 @@ app.include_router(concepts.router)
 app.include_router(ask.router)
 app.include_router(reports.router)
 app.include_router(patterns.router)
+app.include_router(videos.router)
 
 
 @app.get("/health", tags=["meta"])

@@ -25,14 +25,24 @@ from PIL import Image
 from pydantic import BaseModel, ValidationError
 
 from ..query import BankQuery, Vocabulary
-from .base import AnalysisFailed, ConceptProposal, MistakeAnalysis, MistakeInput, Turn
+from .base import (
+    AnalysisFailed,
+    ConceptProposal,
+    MistakeAnalysis,
+    MistakeInput,
+    Turn,
+    VideoInput,
+    VideoSummary,
+)
 from .claude import (
     DISCUSS_PROMPT,
     INTERPRET_PROMPT,
     PROPOSE_PROMPT,
     SUMMARISE_PROMPT,
     SYSTEM_PROMPT,
+    VIDEO_PROMPT,
     _render,
+    render_video,
 )
 from .scan import SCAN_PROMPT, ScanInput, ScannedQuestion
 
@@ -175,6 +185,17 @@ class AgentAnalyzer:
             system=SUMMARISE_PROMPT,
             model=self._model,
             schema=None,
+        )
+
+    async def read_video(self, video: VideoInput) -> VideoSummary:
+        return await _run(
+            prompt=render_video(video),
+            system=VIDEO_PROMPT,
+            model=self._model,
+            schema=VideoSummary,
+            # A long lecture is a long prompt; the default turn budget is tight
+            # for one that has to come back as 20 structured concepts.
+            max_turns=12,
         )
 
     async def propose_concept(self, pattern: str, summary: str, digest: str) -> ConceptProposal:

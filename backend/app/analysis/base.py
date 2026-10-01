@@ -145,6 +145,63 @@ class ConceptProposal(BaseModel):
     )
 
 
+class VideoInput(BaseModel):
+    """What a video summariser is given."""
+
+    title: str | None = None
+    author: str | None = None
+    subject: str | None = None
+    # The student's own instruction for this video. Followed over the defaults.
+    directions: str | None = None
+    transcript: str
+    truncated: bool = False
+    has_timestamps: bool = True
+    # Concepts already in this bank, so a second video on the same rule adds to it
+    # rather than creating a near-duplicate beside it.
+    known_concepts: list[str] = Field(default_factory=list)
+
+
+class VideoConcept(BaseModel):
+    """One teachable idea out of a video."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    title: str = Field(
+        max_length=200,
+        description="The rule or idea, named the way a student would look it up - "
+        "'Semicolons join two independent clauses'. Not 'Part 3' and not the "
+        "video's own section heading. If a concept you were given is the same "
+        "idea, reuse its exact wording.",
+    )
+    body: str = Field(
+        max_length=2000,
+        description="The concept as a revision note: what the rule is, and how to "
+        "apply it. Include the video's own examples where they earn their place. "
+        "Written to be read without the video open.",
+    )
+    start_seconds: int | None = Field(
+        default=None,
+        description="Seconds from the start of the video where this is explained, "
+        "taken from the [123s] marks in the transcript. Null if you cannot tell.",
+    )
+
+
+class VideoSummary(BaseModel):
+    """What a video summariser must return."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    summary: str = Field(
+        max_length=2000,
+        description="What the video covers and who it is for, in a few sentences.",
+    )
+    concepts: list[VideoConcept] = Field(
+        default_factory=list,
+        max_length=25,
+        description="The teachable ideas, in the order the video takes them.",
+    )
+
+
 class AnalysisFailed(RuntimeError):
     """The analyzer could not produce an analysis. The mistake is still saved."""
 
@@ -164,6 +221,10 @@ class Analyzer(Protocol):
 
     async def summarise(self, question: str, digest: str) -> str:
         """Answer in a sentence or two, using only the rows it is given."""
+        ...
+
+    async def read_video(self, video: VideoInput) -> VideoSummary:
+        """Turn a video's transcript into concepts the student can revise from."""
         ...
 
     async def propose_concept(self, pattern: str, summary: str, digest: str) -> ConceptProposal:

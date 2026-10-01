@@ -13,7 +13,15 @@ import anthropic
 import httpx2
 
 from ..query import BankQuery, Vocabulary
-from .base import AnalysisFailed, ConceptProposal, MistakeAnalysis, MistakeInput, Turn
+from .base import (
+    AnalysisFailed,
+    ConceptProposal,
+    MistakeAnalysis,
+    MistakeInput,
+    Turn,
+    VideoInput,
+    VideoSummary,
+)
 
 if TYPE_CHECKING:
     from .scan import ScanInput, ScannedQuestion
@@ -55,6 +63,32 @@ everything - the counts are computed separately and you will get them.
 nothing else: set logged_after and leave every other field empty. Narrowing it to one \
 topic would hide the very pattern they are asking you to find.\
 """
+
+VIDEO_PROMPT = """\
+You are turning a video a student is studying from into concepts they can \
+revise, and later attach their own missed questions to.
+
+Break it into the *ideas it teaches*, not into the sections it happens to have. \
+A video that spends eleven minutes on one comma rule is one concept, not four; \
+a video that races through eight rules is eight. Skip the introduction, the \
+sign-off and anything about the channel - nobody revises from "make sure to \
+subscribe".
+
+Write each concept so it stands on its own without the video open. Title it the \
+way a student would look it up, and put the rule and how to apply it in the \
+body, keeping the examples that earn their place.
+
+The transcript is marked with [123s] stamps. Give each concept the stamp where \
+its explanation starts, so the student can jump straight there.
+
+If you are given concepts the student already has and the video teaches one of \
+them, reuse that exact title - a second video on the same rule should deepen the \
+note they have, not sit beside it as a near-copy.
+
+If the student gave directions, they outrank everything above except honesty: \
+follow them. If the transcript is not teaching material at all, say so in the \
+summary and return no concepts rather than inventing some."""
+
 
 PROPOSE_PROMPT = """\
 A student's mistake bank has collected several questions under one recurring \
@@ -127,6 +161,40 @@ A single question wrong once is not a pattern; do not invent one.
 Two or three sentences. Lead with the count, then the pattern worth noticing - the slot \
 or topic that keeps recurring, not a restatement of the list they can already see.\
 """
+
+
+def render_video(video: VideoInput) -> str:
+    """Everything the summariser is told about a video, in one prompt."""
+    parts: list[str] = []
+    if video.title:
+        parts.append(f"Video: {video.title}")
+    if video.author:
+        parts.append(f"Channel: {video.author}")
+    if video.subject:
+        parts.append(f"The student files this under: {video.subject}")
+    if video.directions:
+        # Last of the framing and clearly labelled, so it is the instruction the
+        # model is still holding when it reaches the transcript.
+        parts.append(f"\nThe student's directions for this video: {video.directions}")
+    if not video.has_timestamps:
+        parts.append(
+            "\nThis transcript was pasted by the student and has no timestamps, so "
+            "leave start_seconds null."
+        )
+    if video.truncated:
+        parts.append(
+            "\nThis transcript is cut off before the end of the video. Say so in the "
+            "summary and do not guess at what followed."
+        )
+    if video.known_concepts:
+        listed = "\n".join(f"- {title}" for title in video.known_concepts)
+        parts.append(
+            "\nConcepts this student already has. If the video teaches one of these, "
+            "reuse its exact title so the note deepens instead of being duplicated:\n"
+            + listed
+        )
+    parts.append(f"\nTranscript:\n{video.transcript}")
+    return "\n".join(parts)
 
 
 def _render(mistake: MistakeInput) -> str:
@@ -240,6 +308,26 @@ class ClaudeAnalyzer:
         if response.stop_reason == "refusal":
             raise AnalysisFailed("the model declined to answer")
         return "".join(block.text for block in response.content if block.type == "text")
+
+    async def read_video(self, video: VideoInput) -> VideoSummary:
+        try:
+            response = await self._client.messages.parse(
+                model=self._model,
+                max_tokens=16000,
+                system=VIDEO_PROMPT,
+                thinking={"type": "adaptive"},
+                messages=[{"role": "user", "content": render_video(video)}],
+                output_format=VideoSummary,
+            )
+        except anthropic.APIError as exc:
+            raise AnalysisFailed(f"{type(exc).__name__}: {exc}") from exc
+
+        if response.stop_reason == "refusal":
+            raise AnalysisFailed("the model declined to read that video")
+        parsed = response.parsed_output
+        if parsed is None:
+            raise AnalysisFailed("model returned no structured output")
+        return parsed
 
     async def propose_concept(self, pattern: str, summary: str, digest: str) -> ConceptProposal:
         try:

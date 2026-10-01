@@ -12,7 +12,16 @@ from datetime import date, timedelta
 
 from ..models import Difficulty, ErrorType, Section, Urgency
 from ..query import BankQuery, Vocabulary
-from .base import ConceptProposal, MistakeAnalysis, MistakeInput, PatternTag, Turn
+from .base import (
+    ConceptProposal,
+    MistakeAnalysis,
+    MistakeInput,
+    PatternTag,
+    Turn,
+    VideoConcept,
+    VideoInput,
+    VideoSummary,
+)
 
 _MATH_HINTS = {
     "equation": "linear equations",
@@ -136,6 +145,30 @@ class StubAnalyzer:
             if repeats:
                 return "\n".join([head[0], *repeats])
         return "\n".join(head)
+
+    async def read_video(self, video: VideoInput) -> VideoSummary:
+        """Splits the transcript on its timestamps rather than understanding it.
+
+        Enough for the pipeline - upload, concepts, tabs, links - to be exercised
+        offline, and clearly labelled so nobody mistakes it for a reading.
+        """
+        stamps = re.findall(r"\[(\d+)s\]", video.transcript)
+        lines = [line for line in video.transcript.splitlines() if line.strip()]
+        concepts = [
+            VideoConcept(
+                title=f"Part {index + 1} of {video.title or 'this video'}",
+                body=line[:400],
+                start_seconds=int(stamps[index]) if index < len(stamps) else None,
+            )
+            for index, line in enumerate(lines[:3])
+        ]
+        return VideoSummary(
+            summary=(
+                "Read by the offline reader, which splits the transcript up rather "
+                "than understanding it. Set AI_PROVIDER to get real concepts."
+            ),
+            concepts=concepts,
+        )
 
     async def propose_concept(self, pattern: str, summary: str, digest: str) -> ConceptProposal:
         """Composes the case from the counts it was given rather than inventing one."""
