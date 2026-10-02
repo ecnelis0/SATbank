@@ -433,6 +433,28 @@ def overview(mistakes: list[Mistake]) -> str:
     return "\n".join(lines)
 
 
+def filing_digest(mistakes: list[Mistake]) -> str:
+    """Rows for the filing decision, with their ids.
+
+    Separate from `digest`, which numbers rows for a human-readable answer. Here
+    the id is the whole point: it is what comes back, and a model given numbers
+    would have to be trusted to keep a mapping it was never shown.
+    """
+    lines: list[str] = []
+    for mistake in mistakes:
+        lines.append(
+            f"id={mistake.id} [{mistake.section}] topic={mistake.topic or '-'} "
+            f"slot={mistake.error_type or '-'} "
+            f'question="{mistake.question_text[:200]}" '
+            f"you_put={mistake.your_answer!r} answer={mistake.correct_answer!r}"
+        )
+        if mistake.why_wrong:
+            lines.append(f"   why_wrong: {mistake.why_wrong[:300]}")
+        if mistake.takeaway:
+            lines.append(f"   takeaway: {mistake.takeaway[:200]}")
+    return "\n".join(lines)
+
+
 def digest(mistakes: list[Mistake]) -> str:
     """A compact rendering of the results for the model to summarise. Facts only."""
     if not mistakes:

@@ -9,10 +9,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from .analysis import MistakeInput, get_analyzer
-from .analysis.base import PatternTag, VideoInput
+from .analysis.base import ConceptBrief, PatternTag, VideoInput
 from .db import get_sessionmaker
 from .models import (
     AnalysisStatus,
+    Concept,
     Mistake,
     Pattern,
     mistake_options,
@@ -20,9 +21,14 @@ from .models import (
     pattern_slug,
     utcnow,
 )
+from .query import filing_digest
 
 
-def to_input(mistake: Mistake, known_patterns: list[str] | None = None) -> MistakeInput:
+def to_input(
+    mistake: Mistake,
+    known_patterns: list[str] | None = None,
+    known_concepts: list[ConceptBrief] | None = None,
+) -> MistakeInput:
     return MistakeInput(
         section=mistake.section,
         question_text=mistake.question_text,
@@ -32,7 +38,46 @@ def to_input(mistake: Mistake, known_patterns: list[str] | None = None) -> Mista
         source=mistake.source,
         student_note=mistake.student_note,
         known_patterns=known_patterns or [],
+        known_concepts=known_concepts or [],
     )
+
+
+async def concept_briefs(session: AsyncSession, user_id: str) -> list[ConceptBrief]:
+    """Every concept the student keeps, as the analyzer sees them when filing."""
+    rows = await session.execute(
+        select(Concept.title, Concept.body).where(Concept.user_id == user_id)
+    )
+    return [ConceptBrief(title=title, body=body) for title, body in rows]
+
+
+async def file_under_named_concepts(
+    session: AsyncSession, mistake: Mistake, titles: list[str]
+) -> list[Concept]:
+    """Attach the concepts the debrief said apply.
+
+    Added to, never replacing: a concept the student tagged by hand outranks the
+    model's reading, and a re-run of the debrief must not quietly untag their
+    work. Titles the model invented rather than copied are dropped - filing is
+    matching against what exists, and inventing concepts is what videos and
+    pattern promotion are for.
+    """
+    if not titles:
+        return list(mistake.concepts)
+
+    wanted = {title.strip().lower() for title in titles if title.strip()}
+    existing = {c.id for c in mistake.concepts}
+    found = list(
+        await session.scalars(
+            select(Concept).where(
+                Concept.user_id == mistake.user_id,
+                func.lower(Concept.title).in_(wanted),
+            )
+        )
+    )
+    for concept in found:
+        if concept.id not in existing:
+            mistake.concepts.append(concept)
+    return list(mistake.concepts)
 
 
 async def known_pattern_titles(session: AsyncSession, user_id: str) -> list[str]:
@@ -125,8 +170,9 @@ async def analyze_mistake(session: AsyncSession, mistake: Mistake) -> Mistake:
     """
     analyzer = get_analyzer()
     known = await known_pattern_titles(session, mistake.user_id)
+    concepts = await concept_briefs(session, mistake.user_id)
     try:
-        result = await analyzer.analyze(to_input(mistake, known))
+        result = await analyzer.analyze(to_input(mistake, known, concepts))
     except Exception as exc:  # AnalysisFailed, plus anything a provider SDK throws
         mistake.analysis_status = AnalysisStatus.failed
         mistake.analysis_error = f"{type(exc).__name__}: {exc}"[:1000]
@@ -144,6 +190,7 @@ async def analyze_mistake(session: AsyncSession, mistake: Mistake) -> Mistake:
     mistake.takeaway = result.takeaway
     mistake.trap = result.trap
     await attach_patterns(session, mistake, result.patterns)
+    await file_under_named_concepts(session, mistake, result.concepts)
     mistake.analysis_status = AnalysisStatus.ready
     mistake.analysis_error = None
     # A fresh analysis replaces whatever the student wrote, so the edit marker - and
@@ -274,8 +321,72 @@ async def read_video_in_background(video_id: str) -> None:
                 if not concept.mistakes:
                     await session.delete(concept)
 
+        await session.flush()
+        await autofile_concepts(session, video.user_id, kept)
+
         video.summary = summary.summary
         video.status = VideoStatus.ready
         video.error = None
         video.summarised_at = utcnow()
         await session.commit()
+
+
+# How many already-logged questions are offered to the filer at once. A whole
+# bank in one prompt is both expensive and worse: the model's attention is
+# finite, and the oldest questions are the least likely to still matter.
+AUTOFILE_LIMIT = 150
+
+
+async def autofile_concepts(
+    session: AsyncSession, user_id: str, concepts: list[Concept]
+) -> int:
+    """File already-logged questions under newly written concepts.
+
+    The point of a video is not the summary; it is that what you have already got
+    wrong gets attached to what the video teaches. Doing that by hand across a
+    bank of a hundred questions is work nobody does, so it happens here.
+
+    Never removes a tag. Returns how many were added.
+    """
+    briefs = [ConceptBrief(title=c.title, body=c.body) for c in concepts if c.title]
+    if not briefs:
+        return 0
+
+    mistakes = list(
+        await session.scalars(
+            select(Mistake)
+            .where(
+                Mistake.user_id == user_id,
+                Mistake.analysis_status == AnalysisStatus.ready,
+            )
+            .options(*mistake_options())
+            .order_by(Mistake.created_at.desc())
+            .limit(AUTOFILE_LIMIT)
+        )
+    )
+    if not mistakes:
+        return 0
+
+    try:
+        filing = await get_analyzer().file_questions(briefs, filing_digest(mistakes))
+    except Exception:
+        # Filing is a convenience laid on top of the video. Losing it must not
+        # cost the concepts the video produced, which are already saved.
+        return 0
+
+    by_title = {c.title.strip().lower(): c for c in concepts}
+    by_id = {m.id: m for m in mistakes}
+    added = 0
+    for match in filing.matches:
+        concept = by_title.get(match.concept_title.strip().lower())
+        if concept is None:
+            continue
+        for mistake_id in match.mistake_ids:
+            mistake = by_id.get(mistake_id)
+            if mistake is None:
+                continue
+            if concept.id not in {c.id for c in mistake.concepts}:
+                mistake.concepts.append(concept)
+                added += 1
+    await session.flush()
+    return added

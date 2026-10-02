@@ -13,7 +13,10 @@ from datetime import date, timedelta
 from ..models import Difficulty, ErrorType, Section, Urgency
 from ..query import BankQuery, Vocabulary
 from .base import (
+    ConceptBrief,
+    ConceptMatch,
     ConceptProposal,
+    Filing,
     MistakeAnalysis,
     MistakeInput,
     PatternTag,
@@ -75,6 +78,49 @@ _URGENT_ERRORS = {
 }
 
 
+# Words too common to mean two things are about the same idea. Without this,
+# a concept titled "Reading the question" collects the entire bank.
+_EMPTY_WORDS = frozenset(
+    {
+        "student",
+        "question",
+        "questions",
+        "answer",
+        "answers",
+        "because",
+        "reading",
+        "writing",
+        "before",
+        "should",
+        "always",
+        "never",
+    }
+)
+
+
+def _match_concepts(mistake: MistakeInput, topic: str) -> list[str]:
+    """Which of the student's concepts this question looks like an instance of.
+
+    Offline, so this is a shared-word test rather than a reading: a distinctive
+    word of six letters or more, from the concept's title, appearing in the
+    question or the topic. Crude on purpose and strict on purpose - a stub that
+    files everything would teach the student to distrust the filing.
+    """
+    if not mistake.known_concepts:
+        return []
+    haystack = f"{mistake.question_text} {topic} {mistake.student_note or ''}".lower()
+    matched: list[str] = []
+    for concept in mistake.known_concepts:
+        words = {
+            word.lower()
+            for word in re.findall(r"[A-Za-z]{6,}", concept.title)
+            if word.lower() not in _EMPTY_WORDS
+        }
+        if words and any(word in haystack for word in words):
+            matched.append(concept.title)
+    return matched[:4]
+
+
 class StubAnalyzer:
     name = "stub"
 
@@ -82,6 +128,7 @@ class StubAnalyzer:
         topic = _guess_topic(mistake.question_text, mistake.section)
         error_type = _guess_error_type(mistake)
         return MistakeAnalysis(
+            concepts=_match_concepts(mistake, topic),
             error_type=error_type,
             urgency=_URGENT_ERRORS.get(error_type, Urgency.important),
             topic=topic,
@@ -145,6 +192,36 @@ class StubAnalyzer:
             if repeats:
                 return "\n".join([head[0], *repeats])
         return "\n".join(head)
+
+    async def file_questions(self, concepts: list[ConceptBrief], digest: str) -> Filing:
+        """Files on a shared word rather than on understanding.
+
+        Deliberately crude and deliberately strict: it matches a question only
+        when a distinctive word from the concept's title appears in the row. That
+        keeps the offline app honest - it files almost nothing - while still
+        exercising the path end to end.
+        """
+        rows = {
+            match.group(1): match.group(0)
+            for match in re.finditer(r"id=([0-9a-f]{32})\b.*", digest)
+        }
+        matches: list[ConceptMatch] = []
+        for concept in concepts:
+            words = [
+                word.lower()
+                for word in re.findall(r"[A-Za-z]{6,}", concept.title)
+                if word.lower() not in ("student", "question", "answer", "because")
+            ]
+            if not words:
+                continue
+            hits = [
+                mistake_id
+                for mistake_id, row in rows.items()
+                if any(word in row.lower() for word in words)
+            ]
+            if hits:
+                matches.append(ConceptMatch(concept_title=concept.title, mistake_ids=hits))
+        return Filing(matches=matches)
 
     async def read_video(self, video: VideoInput) -> VideoSummary:
         """Splits the transcript on its timestamps rather than understanding it.

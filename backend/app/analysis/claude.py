@@ -15,7 +15,9 @@ import httpx2
 from ..query import BankQuery, Vocabulary
 from .base import (
     AnalysisFailed,
+    ConceptBrief,
     ConceptProposal,
+    Filing,
     MistakeAnalysis,
     MistakeInput,
     Turn,
@@ -63,6 +65,25 @@ everything - the counts are computed separately and you will get them.
 nothing else: set logged_after and leave every other field empty. Narrowing it to one \
 topic would hide the very pattern they are asking you to find.\
 """
+
+FILING_PROMPT = """\
+A student keeps a set of revision concepts, and a bank of questions they got \
+wrong. You are deciding which of those questions each concept actually \
+explains.
+
+File a question under a concept only when the concept is the thing that would \
+have helped - the rule they needed, or the step they skipped. Sharing a topic \
+is not enough: a concept about semicolons does not collect every punctuation \
+question, and "quadratics" is not a reason to file a quadratics question under \
+a concept about checking your working.
+
+Returning nothing is a good answer. A concept that has collected every \
+loosely-related question tells the student nothing, and they will stop trusting \
+all of them. Be strict; they can always tag more by hand.
+
+Use the ids exactly as given, and only concepts from the list you were \
+handed."""
+
 
 VIDEO_PROMPT = """\
 You are turning a video a student is studying from into concepts they can \
@@ -209,6 +230,17 @@ def _render(mistake: MistakeInput) -> str:
     parts.append(f"The correct answer is: {mistake.correct_answer}")
     if mistake.student_note:
         parts.append(f"\nThe student's own note: {mistake.student_note}")
+    if mistake.known_concepts:
+        listed = "\n".join(
+            f"- {c.title}" + (f": {c.body[:200]}" if c.body else "")
+            for c in mistake.known_concepts
+        )
+        parts.append(
+            "\nThe student's own revision concepts. If this question is genuinely an "
+            "instance of one, name it in `concepts` so it is filed where they would "
+            "look for it. Leave it empty rather than stretching - a concept that has "
+            "collected every loosely-related question is useless:\n" + listed
+        )
     if mistake.known_patterns:
         listed = "\n".join(f"- {title}" for title in mistake.known_patterns)
         parts.append(
@@ -308,6 +340,34 @@ class ClaudeAnalyzer:
         if response.stop_reason == "refusal":
             raise AnalysisFailed("the model declined to answer")
         return "".join(block.text for block in response.content if block.type == "text")
+
+    async def file_questions(self, concepts: list[ConceptBrief], digest: str) -> Filing:
+        listed = "\n".join(
+            f"- {c.title}" + (f": {c.body[:300]}" if c.body else "") for c in concepts
+        )
+        try:
+            response = await self._client.messages.parse(
+                model=self._model,
+                max_tokens=8000,
+                system=FILING_PROMPT,
+                thinking={"type": "adaptive"},
+                messages=[
+                    {
+                        "role": "user",
+                        "content": f"The concepts:\n{listed}\n\nThe questions:\n{digest}",
+                    }
+                ],
+                output_format=Filing,
+            )
+        except anthropic.APIError as exc:
+            raise AnalysisFailed(f"{type(exc).__name__}: {exc}") from exc
+
+        if response.stop_reason == "refusal":
+            raise AnalysisFailed("the model declined to file those questions")
+        parsed = response.parsed_output
+        if parsed is None:
+            raise AnalysisFailed("model returned no structured output")
+        return parsed
 
     async def read_video(self, video: VideoInput) -> VideoSummary:
         try:

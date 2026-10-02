@@ -27,7 +27,9 @@ from pydantic import BaseModel, ValidationError
 from ..query import BankQuery, Vocabulary
 from .base import (
     AnalysisFailed,
+    ConceptBrief,
     ConceptProposal,
+    Filing,
     MistakeAnalysis,
     MistakeInput,
     Turn,
@@ -36,6 +38,7 @@ from .base import (
 )
 from .claude import (
     DISCUSS_PROMPT,
+    FILING_PROMPT,
     INTERPRET_PROMPT,
     PROPOSE_PROMPT,
     SUMMARISE_PROMPT,
@@ -185,6 +188,17 @@ class AgentAnalyzer:
             system=SUMMARISE_PROMPT,
             model=self._model,
             schema=None,
+        )
+
+    async def file_questions(self, concepts: list[ConceptBrief], digest: str) -> Filing:
+        listed = "\n".join(
+            f"- {c.title}" + (f": {c.body[:300]}" if c.body else "") for c in concepts
+        )
+        return await _run(
+            prompt=f"The concepts:\n{listed}\n\nThe questions:\n{digest}",
+            system=FILING_PROMPT,
+            model=self._model,
+            schema=Filing,
         )
 
     async def read_video(self, video: VideoInput) -> VideoSummary:
