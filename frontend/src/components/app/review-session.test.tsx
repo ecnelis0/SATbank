@@ -89,3 +89,28 @@ describe("ReviewSession", () => {
     expect(await screen.findByText(/1 hour review/)).toBeInTheDocument();
   });
 });
+
+describe("ReviewSession skipping", () => {
+  beforeEach(() => vi.restoreAllMocks());
+
+  it("can skip without revealing the answer first", async () => {
+    // Revealing is the one thing you cannot take back in a review, so passing on
+    // a question must not require doing it.
+    const due = makeDueReview();
+    vi.spyOn(api, "dueReviews").mockResolvedValue([due]);
+    const complete = vi
+      .spyOn(api, "completeReview")
+      .mockResolvedValue({ review: due.review, ladder_restarted: false, next_due_at: null });
+    const user = userEvent.setup();
+
+    renderWithQuery(<ReviewSession />);
+    await screen.findByText(due.mistake.question_text);
+
+    expect(screen.queryByText("You put")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Skip" }));
+
+    await waitFor(() => expect(complete).toHaveBeenCalledWith(due.review.id, "skipped"));
+    // Still never revealed.
+    expect(screen.queryByText("You put")).not.toBeInTheDocument();
+  });
+});

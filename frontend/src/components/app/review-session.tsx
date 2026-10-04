@@ -178,9 +178,22 @@ export function ReviewSession() {
             </motion.div>
           ) : (
             <motion.div key="hidden" exit={{ opacity: 0 }} className="mt-6">
-              <Button variant="secondary" onClick={() => setRevealed(true)}>
-                Show the answer
-              </Button>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button variant="secondary" onClick={() => setRevealed(true)}>
+                  Show the answer
+                </Button>
+                {/* Skip was only offered once the answer was showing, so passing on
+                    a question meant revealing it first — which is the one thing you
+                    cannot take back in a review. */}
+                <Button
+                  variant="ghost"
+                  className="ml-auto text-muted-foreground"
+                  disabled={complete.isPending}
+                  onClick={() => complete.mutate({ id: review.id, outcome: "skipped" })}
+                >
+                  Skip
+                </Button>
+              </div>
               <p className="mt-2 text-xs text-muted-foreground">
                 Answer it in your head first — that is the whole point of the ladder.
               </p>
