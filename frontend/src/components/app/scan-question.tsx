@@ -17,11 +17,23 @@ import type { ScannedQuestion } from "@/lib/types";
  */
 export function ScanQuestion({
   onScanned,
+  onKeepPicture,
   disabled = false,
 }: {
   onScanned: (scanned: ScannedQuestion, file: File) => void;
+  /** Attach the picture without a reading of it. */
+  onKeepPicture?: (file: File) => void;
   disabled?: boolean;
 }) {
+  // Dropping a picture must do something useful with no AI at all. Whatever the
+  // reader manages, the picture itself is kept and attached to the question, so
+  // running out of usage costs you the typing it would have saved and nothing
+  // else.
+  const keep = (file: File, message: string) => {
+    onKeepPicture?.(file);
+    toast.info(onKeepPicture ? `${message} The picture is attached — type it in.` : message);
+  };
+
   const scan = useMutation({
     mutationFn: async (file: File) => ({ scanned: await api.scanQuestion(file), file }),
     onSuccess: ({ scanned, file }) => {
@@ -29,7 +41,7 @@ export function ScanQuestion({
       // or a picture with no question in it. Filling the form with blanks would
       // look like a successful read, so say what happened instead.
       if (!scanned.question_text.trim()) {
-        toast.error(scanned.note ?? "Nothing readable in that picture.");
+        keep(file, scanned.note ?? "Nothing readable in that picture.");
         return;
       }
       onScanned(scanned, file);
@@ -39,7 +51,7 @@ export function ScanQuestion({
           : "Filled in. Check it, then say what you put.",
       );
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: (error: Error, file: File) => keep(file, error.message),
   });
 
   if (scan.isPending) {

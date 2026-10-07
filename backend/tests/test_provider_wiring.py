@@ -33,7 +33,10 @@ def test_setting_the_provider_and_key_selects_the_real_one(reconfigure):
     reconfigure(AI_PROVIDER="claude", ANTHROPIC_API_KEY="sk-ant-test")
     analyzer = get_analyzer()
 
-    assert type(analyzer).__name__ == "ClaudeAnalyzer"
+    # Wrapped in the time limit, which is the point: a real provider is the only
+    # kind that can hang, so it is the only kind that gets a ceiling.
+    assert type(analyzer).__name__ == "Guarded"
+    assert type(analyzer._inner).__name__ == "ClaudeAnalyzer"
     assert analyzer.name == "claude"
     # And it satisfies the whole contract, not just the part the log form uses.
     assert all(hasattr(analyzer, m) for m in ("analyze", "interpret", "summarise"))

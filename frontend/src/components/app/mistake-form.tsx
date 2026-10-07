@@ -238,7 +238,11 @@ export function MistakeForm() {
 
   return (
     <form onSubmit={submitWith(true)} className="space-y-6" noValidate>
-      <ScanQuestion onScanned={fillFromPicture} disabled={log.isPending} />
+      <ScanQuestion
+        onScanned={fillFromPicture}
+        onKeepPicture={(file) => pictures.add([file])}
+        disabled={log.isPending}
+      />
 
       <fieldset>
         <legend className="text-sm font-medium">Section</legend>

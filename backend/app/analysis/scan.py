@@ -18,6 +18,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from ..config import get_settings
 from ..models import Section
+from .guard import Guarded
 
 ScanKind = Literal["image", "pdf"]
 
@@ -146,11 +147,14 @@ def get_scanner() -> Scanner:
     if provider == "claude":
         from .claude import ClaudeScanner
 
-        return ClaudeScanner(settings.anthropic_api_key, settings.anthropic_model)
+        return Guarded(
+            ClaudeScanner(settings.anthropic_api_key, settings.anthropic_model),
+            settings.ai_timeout_seconds,
+        )
 
     if provider == "agent":
         from .agent import AgentScanner
 
-        return AgentScanner(settings.anthropic_model)
+        return Guarded(AgentScanner(settings.anthropic_model), settings.ai_timeout_seconds)
 
     return StubScanner()

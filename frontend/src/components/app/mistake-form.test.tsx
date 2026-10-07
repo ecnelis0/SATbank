@@ -243,10 +243,18 @@ describe("MistakeForm scanning a question", () => {
 
     await user.upload(dropzoneInput("Scan a screenshot"), png("q.png"));
 
+    // Says what happened, and keeps the picture: with no AI the drop should still
+    // attach it, so you lose the typing it would have saved and nothing else.
     await waitFor(() =>
-      expect(toast.error).toHaveBeenCalledWith("The offline reader cannot see pictures."),
+      expect(toast.info).toHaveBeenCalledWith(
+        expect.stringContaining("The offline reader cannot see pictures."),
+      ),
     );
+    expect(toast.info).toHaveBeenCalledWith(expect.stringContaining("type it in"));
     expect(screen.getByLabelText("The question")).toHaveValue("");
+    expect(
+      await screen.findByRole("img", { name: "Picture 1 to upload" }),
+    ).toBeInTheDocument();
   });
 });
 

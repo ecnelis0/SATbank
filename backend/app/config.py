@@ -21,6 +21,14 @@ class Settings(BaseSettings):
     anthropic_api_key: str | None = None
     anthropic_model: str = "claude-opus-5"
 
+    # How long any one call to the model may take before it is abandoned.
+    # Without a ceiling a provider that stops responding does not fail - it waits
+    # for ever, holding a request or a background task open, and enough of those
+    # make the whole app look dead when only the model is. Generous, because a
+    # real analysis of a long question is not fast; finite, because "for ever" is
+    # the one duration that cannot be recovered from without a restart.
+    ai_timeout_seconds: float = 180.0
+
     # Explicit production origins. Dev is covered by the regex below instead, because
     # `next dev` silently moves to another port when 3000 is taken - and a browser
     # whose origin is not on the list gets a 400 on preflight and a blank page.
