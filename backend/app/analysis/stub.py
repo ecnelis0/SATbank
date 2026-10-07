@@ -129,6 +129,10 @@ class StubAnalyzer:
         error_type = _guess_error_type(mistake)
         return MistakeAnalysis(
             concepts=_match_concepts(mistake, topic),
+            headline=(
+                f"You answered {mistake.your_answer!r} where {mistake.correct_answer!r} "
+                f"was wanted on a {topic} question."
+            ),
             error_type=error_type,
             urgency=_URGENT_ERRORS.get(error_type, Urgency.important),
             topic=topic,

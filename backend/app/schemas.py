@@ -53,6 +53,7 @@ ANALYSIS_FIELDS = (
     "topic",
     "difficulty",
     "urgency",
+    "headline",
     "why_wrong",
     "correct_reasoning",
     "takeaway",
@@ -331,6 +332,7 @@ class MistakeRead(BaseModel):
     difficulty: Difficulty | None
     urgency: Urgency | None
     urgency_is_yours: bool
+    headline: str | None
     why_wrong: str | None
     correct_reasoning: str | None
     takeaway: str | None

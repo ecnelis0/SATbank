@@ -101,6 +101,7 @@ export interface Mistake {
   difficulty: Difficulty | null;
   urgency: Urgency | null;
   urgency_is_yours: boolean;
+  headline: string | null;
   why_wrong: string | null;
   correct_reasoning: string | null;
   takeaway: string | null;

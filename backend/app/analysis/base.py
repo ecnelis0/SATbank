@@ -76,12 +76,23 @@ class MistakeAnalysis(BaseModel):
         "'very_important' for a high-frequency skill or a trap they will meet again; "
         "'important' otherwise. Judge the gap, not the question's difficulty."
     )
+    headline: str = Field(
+        default="",
+        max_length=200,
+        description="One sentence, under 20 words, naming what actually went wrong "
+        "on this question. The first thing the student reads and sometimes the only "
+        "thing: 'You solved for 3x and stopped before dividing.' Not a restatement "
+        "of the question, not 'you made an error' - the specific move.",
+    )
     why_wrong: str = Field(
         description="Two to four sentences addressed to the student, explaining what "
         "their specific answer suggests they did, not just that it was incorrect."
     )
     correct_reasoning: str = Field(
-        description="The correct route to the answer, in steps the student can follow."
+        description="The correct route to the answer, as numbered steps: '1. …' on "
+        "its own line, then '2. …', and so on. One step per line, no blank lines "
+        "between them - the app spaces them out. Each step is a thing to do, short "
+        "enough to follow while looking at the question."
     )
     takeaway: str = Field(
         description="One sentence the student should remember next time they see this. "

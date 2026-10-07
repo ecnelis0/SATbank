@@ -345,6 +345,9 @@ class Mistake(Base):
     # alone: having the AI overwrite the importance you just picked, seconds after you
     # picked it, is worse than having no AI opinion at all.
     urgency_is_yours: Mapped[bool] = mapped_column(Boolean, default=False)
+    # One sentence naming what went wrong: the first thing read, and often the
+    # only thing, so it is stored separately rather than buried in why_wrong.
+    headline: Mapped[str | None] = mapped_column(Text)
     why_wrong: Mapped[str | None] = mapped_column(Text)
     correct_reasoning: Mapped[str | None] = mapped_column(Text)
     takeaway: Mapped[str | None] = mapped_column(Text)

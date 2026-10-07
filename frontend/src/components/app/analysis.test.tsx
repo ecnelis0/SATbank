@@ -2,7 +2,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { AnalysisPanel } from "@/components/app/analysis";
+import { asSteps, AnalysisPanel } from "@/components/app/analysis";
 import { api } from "@/lib/api";
 import { makeMistake } from "@/test/fixtures";
 import { renderWithQuery } from "@/test/render";
@@ -214,5 +214,33 @@ describe("AnalysisPanel urgency", () => {
       "Very important",
       "Important",
     ]);
+  });
+});
+
+describe("asSteps", () => {
+  it("splits numbered working into steps", () => {
+    expect(asSteps("1. Subtract 7.\n2. Divide by 3.\n3. Check it.")).toEqual([
+      "Subtract 7.",
+      "Divide by 3.",
+      "Check it.",
+    ]);
+  });
+
+  it("accepts the other numbering the model might use", () => {
+    expect(asSteps("1) First.\n2) Second.")).toEqual(["First.", "Second."]);
+  });
+
+  it("leaves prose alone", () => {
+    // Otherwise an explanation gets chopped into bullets it was never written as.
+    expect(asSteps("You solved for 3x and stopped.")).toBeNull();
+    expect(asSteps("Start by reading the stem.\nThen check the units.")).toBeNull();
+  });
+
+  it("does not treat one numbered line as a list", () => {
+    expect(asSteps("1. The only step.")).toBeNull();
+  });
+
+  it("is not fooled by a sentence that starts with a number", () => {
+    expect(asSteps("3 is the answer.\n4 is the trap.")).toBeNull();
   });
 });

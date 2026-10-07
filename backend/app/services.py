@@ -185,6 +185,7 @@ async def analyze_mistake(session: AsyncSession, mistake: Mistake) -> Mistake:
     # Never overrule an urgency the student set themselves.
     if not mistake.urgency_is_yours:
         mistake.urgency = result.urgency
+    mistake.headline = result.headline
     mistake.why_wrong = result.why_wrong
     mistake.correct_reasoning = result.correct_reasoning
     mistake.takeaway = result.takeaway

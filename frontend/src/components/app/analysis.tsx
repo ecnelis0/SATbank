@@ -34,13 +34,46 @@ const DIFFICULTY_OPTIONS: { value: Difficulty; label: string }[] = [
   { value: "hard", label: "Hard" },
 ];
 
+/** Splits "1. … 2. … 3. …" into its steps. Returns null for ordinary prose, so
+ *  only the parts that are genuinely a list get laid out as one. */
+export function asSteps(body: string): string[] | null {
+  const lines = body
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+  // Two is the fewest that reads as a sequence rather than a sentence that
+  // happens to start with a number.
+  if (lines.length < 2) return null;
+  if (!lines.every((line) => /^\d+[.)]\s+/.test(line))) return null;
+  return lines.map((line) => line.replace(/^\d+[.)]\s+/, ""));
+}
+
 function Section({ title, body }: { title: string; body: string }) {
+  const steps = asSteps(body);
   return (
     <div>
       <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
         {title}
       </h3>
-      <p className="mt-1 text-sm leading-relaxed whitespace-pre-line">{body}</p>
+      {steps ? (
+        // Numbered, and spaced: a wall of steps run together is the thing that
+        // makes a debrief unreadable at the moment you most need it.
+        <ol className="mt-2 space-y-2.5">
+          {steps.map((step, index) => (
+            <li key={index} className="flex gap-3 text-sm leading-relaxed">
+              <span
+                aria-hidden
+                className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-accent text-[11px] font-medium text-accent-foreground"
+              >
+                {index + 1}
+              </span>
+              <span className="min-w-0">{step}</span>
+            </li>
+          ))}
+        </ol>
+      ) : (
+        <p className="mt-1 text-sm leading-relaxed whitespace-pre-line">{body}</p>
+      )}
     </div>
   );
 }
@@ -51,6 +84,7 @@ function AnalysisEditor({ mistake, onDone }: { mistake: Mistake; onDone: () => v
     difficulty: (mistake.difficulty ?? "medium") as Difficulty,
     urgency: (mistake.urgency ?? "important") as Urgency,
     topic: mistake.topic ?? "",
+    headline: mistake.headline ?? "",
     why_wrong: mistake.why_wrong ?? "",
     trap: mistake.trap ?? "",
     correct_reasoning: mistake.correct_reasoning ?? "",
@@ -105,6 +139,7 @@ function AnalysisEditor({ mistake, onDone }: { mistake: Mistake; onDone: () => v
 
       {(
         [
+          ["headline", "In one sentence"],
           ["why_wrong", "What went wrong"],
           ["trap", "The trap"],
           ["correct_reasoning", "How it works"],
@@ -115,7 +150,7 @@ function AnalysisEditor({ mistake, onDone }: { mistake: Mistake; onDone: () => v
           <Label htmlFor={key}>{label}</Label>
           <Textarea
             id={key}
-            rows={key === "takeaway" ? 2 : 3}
+            rows={key === "takeaway" || key === "headline" ? 2 : 3}
             className="mt-1.5"
             value={draft[key]}
             onChange={(event) => field(key, event.target.value)}
@@ -227,6 +262,11 @@ export function AnalysisPanel({
         </p>
       )}
 
+      {mistake.headline && (
+        <p className="font-[family-name:var(--font-display)] text-lg leading-snug font-semibold">
+          {mistake.headline}
+        </p>
+      )}
       {mistake.why_wrong && <Section title="Why you got it wrong" body={mistake.why_wrong} />}
       {mistake.trap && <Section title="The trap" body={mistake.trap} />}
       {mistake.correct_reasoning && (

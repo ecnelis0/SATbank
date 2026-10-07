@@ -26,7 +26,7 @@ start_api() {
     echo "API already running on $API_PORT"
     return
   fi
-  echo "Starting API on $API_PORT…"
+  echo "Starting API on ${API_PORT}…"
   (cd backend && uv run uvicorn app.main:app --reload --port "$API_PORT") &
 }
 
@@ -35,7 +35,7 @@ start_web() {
     echo "Web already running on $WEB_PORT"
     return
   fi
-  echo "Starting web on $WEB_PORT…"
+  echo "Starting web on ${WEB_PORT}…"
   (cd frontend && NEXT_PUBLIC_API_URL="http://localhost:$API_PORT" \
      npm run dev -- --port "$WEB_PORT") &
 }
