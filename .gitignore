@@ -19,3 +19,4 @@ backend/e2e-uploads/
 *.db-journal
 .DS_Store
 coverage/
+sat_bank.db.backup-*
