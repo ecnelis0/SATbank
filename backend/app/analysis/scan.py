@@ -152,6 +152,14 @@ def get_scanner() -> Scanner:
             settings.ai_timeout_seconds,
         )
 
+    if provider == "openai":
+        from .openai_provider import OpenAIScanner
+
+        return Guarded(
+            OpenAIScanner(settings.openai_api_key, settings.openai_model),
+            settings.ai_timeout_seconds,
+        )
+
     if provider == "agent":
         from .agent import AgentScanner
 

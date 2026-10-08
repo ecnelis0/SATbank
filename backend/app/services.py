@@ -168,10 +168,13 @@ async def analyze_mistake(session: AsyncSession, mistake: Mistake) -> Mistake:
     Never raises for an analyzer failure: a mistake with no analysis is still a
     logged mistake, still on the ladder, and can be re-analyzed later.
     """
-    analyzer = get_analyzer()
     known = await known_pattern_titles(session, mistake.user_id)
     concepts = await concept_briefs(session, mistake.user_id)
+    # Inside the try: `get_analyzer` raises on a provider name it does not know,
+    # and a typo in .env must leave the question marked failed with a readable
+    # reason rather than stuck on "pending" for ever.
     try:
+        analyzer = get_analyzer()
         result = await analyzer.analyze(to_input(mistake, known, concepts))
     except Exception as exc:  # AnalysisFailed, plus anything a provider SDK throws
         mistake.analysis_status = AnalysisStatus.failed
@@ -198,7 +201,7 @@ async def analyze_mistake(session: AsyncSession, mistake: Mistake) -> Mistake:
     # the guard it drives - goes with it.
     mistake.analysis_edited_at = None
     mistake.analyzed_at = utcnow()
-    mistake.analyzed_by = analyzer.name
+    mistake.analyzed_by = get_analyzer().name
     await session.commit()
     return mistake
 

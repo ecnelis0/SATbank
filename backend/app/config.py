@@ -20,6 +20,11 @@ class Settings(BaseSettings):
     ai_provider: str = "stub"
     anthropic_api_key: str | None = None
     anthropic_model: str = "claude-opus-5"
+    openai_api_key: str | None = None
+    # Needs to read pictures (the screenshot scanner) and return structured
+    # output. Configurable, because which model is current changes faster than
+    # this file does.
+    openai_model: str = "gpt-4o"
 
     # How long any one call to the model may take before it is abandoned.
     # Without a ceiling a provider that stops responding does not fail - it waits

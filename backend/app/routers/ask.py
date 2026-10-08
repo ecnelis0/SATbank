@@ -49,13 +49,15 @@ async def ask(body: Ask, session: SessionDep, user_id: UserDep) -> Answer:
     provider = settings.ai_provider.lower()
     ready = analyzer_ready(settings)
 
-    analyzer = get_analyzer()
     today = datetime.now(UTC).date()
     # What this bank actually contains, so the model filters on strings that exist.
     words = await vocabulary(session, user_id)
 
+    # `get_analyzer` is inside the try as well: it raises on a provider name it
+    # does not know, and a typo in .env should answer with the whole bank rather
+    # than a 500.
     try:
-        query = await analyzer.interpret(body.question, today, words)
+        query = await get_analyzer().interpret(body.question, today, words)
     except Exception as exc:  # a failed interpretation still gets them results
         query = BankQuery()
         mistakes = await run_query(session, user_id, query)
@@ -73,7 +75,7 @@ async def ask(body: Ask, session: SessionDep, user_id: UserDep) -> Answer:
     mistakes = await run_query(session, user_id, query)
 
     try:
-        answer = await analyzer.summarise(body.question, digest(mistakes))
+        answer = await get_analyzer().summarise(body.question, digest(mistakes))
         error = None
     except Exception as exc:
         # The rows are the valuable part; losing the prose is survivable.

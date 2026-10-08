@@ -19,6 +19,7 @@ dependencies = [
     "claude-agent-sdk>=0.2.154",
     "reportlab>=5.0.1",
     "youtube-transcript-api>=1.2.4",
+    "openai>=3.26.1",
 ]
 
 [dependency-groups]

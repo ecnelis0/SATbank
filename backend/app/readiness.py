@@ -20,4 +20,6 @@ def analyzer_ready(settings: Settings) -> bool:
         return True
     if provider == "claude":
         return bool(settings.anthropic_api_key)
+    if provider == "openai":
+        return bool(settings.openai_api_key)
     return False

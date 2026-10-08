@@ -43,6 +43,14 @@ def get_analyzer() -> Analyzer:
             settings.ai_timeout_seconds,
         )
 
+    if provider == "openai":
+        from .openai_provider import OpenAIAnalyzer
+
+        return Guarded(
+            OpenAIAnalyzer(settings.openai_api_key, settings.openai_model),
+            settings.ai_timeout_seconds,
+        )
+
     if provider == "agent":
         # Claude Agent SDK: drives the Claude Code CLI, paid for by the plan you
         # are logged into with `claude auth login`. No API key.
@@ -51,5 +59,6 @@ def get_analyzer() -> Analyzer:
         return Guarded(AgentAnalyzer(settings.anthropic_model), settings.ai_timeout_seconds)
 
     raise ValueError(
-        f"Unknown AI_PROVIDER {settings.ai_provider!r}; expected 'stub', 'claude' or 'agent'"
+        f"Unknown AI_PROVIDER {settings.ai_provider!r}; "
+        "expected 'stub', 'claude', 'openai' or 'agent'"
     )
