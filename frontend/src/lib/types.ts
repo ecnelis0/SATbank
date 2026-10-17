@@ -198,7 +198,22 @@ export interface Answer {
   filter_description: string;
   query: BankQuery;
   mistakes: Mistake[];
+  /** Set for "where am I losing points" questions: the rows grouped by why. */
+  groups?: AskGroup[];
   error: string | null;
+}
+
+/** One reason or pattern the matched questions were lost to. The count and the
+ *  list are the database's; `why` and `what_to_do` are the model's. */
+export interface AskGroup {
+  key: string;
+  kind: "reason" | "pattern";
+  label: string;
+  count: number;
+  repeat_misses: number;
+  why: string | null;
+  what_to_do: string | null;
+  mistakes: Mistake[];
 }
 
 export interface MistakeDraft {

@@ -216,4 +216,68 @@ describe("Ask results", () => {
     expect(within(hit).getByText("Fundamental concept")).toBeInTheDocument();
     expect(within(hit).getByText(/Careless arithmetic/)).toBeInTheDocument();
   });
+
+  it("debriefs each group and lists the questions lost to it", async () => {
+    const user = userEvent.setup();
+    const q1 = makeMistake({ id: "q1", question_text: "Solve 3x + 7 = 22" });
+    const q2 = makeMistake({ id: "q2", question_text: "Solve 5x - 1 = 9" });
+    const q3 = makeMistake({ id: "q3", question_text: "Which choice best supports the claim?" });
+    vi.spyOn(api, "ask").mockResolvedValue(
+      answer({
+        answer: "Concept gaps cost you the most.",
+        mistakes: [q1, q2, q3],
+        groups: [
+          {
+            key: "reason:concept_gap",
+            kind: "reason",
+            label: "Concept gap",
+            count: 2,
+            repeat_misses: 1,
+            why: "You isolate x before undoing the constant.",
+            what_to_do: "Undo the + and - first.",
+            mistakes: [q1, q2],
+          },
+          {
+            key: "reason:trap_answer",
+            kind: "reason",
+            label: "Walked into the trap",
+            count: 1,
+            repeat_misses: 0,
+            why: null,
+            what_to_do: null,
+            mistakes: [q3],
+          },
+        ],
+      }),
+    );
+    renderWithQuery(<Ask />);
+
+    await user.type(screen.getByLabelText("Ask about your bank"), "Where am I losing points?");
+    await user.click(screen.getByRole("button", { name: "Ask" }));
+
+    const gap = await screen.findByRole("region", { name: "Concept gap" });
+    expect(within(gap).getByText("You isolate x before undoing the constant.")).toBeInTheDocument();
+    expect(within(gap).getByText("Undo the + and - first.")).toBeInTheDocument();
+    expect(within(gap).getByText(/2 questions · missed again 1×/)).toBeInTheDocument();
+    expect(within(gap).getAllByRole("link").map((a) => a.getAttribute("href"))).toEqual([
+      "/bank/q1",
+      "/bank/q2",
+    ]);
+    // A group the model said nothing about still lists its question.
+    const trap = screen.getByRole("region", { name: "Walked into the trap" });
+    expect(within(trap).getByRole("link")).toHaveAttribute("href", "/bank/q3");
+  });
+
+  it("keeps the flat list when the answer is not a breakdown", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(api, "ask").mockResolvedValue(answer({ groups: [] }));
+    renderWithQuery(<Ask />);
+
+    await user.type(screen.getByLabelText("Ask about your bank"), "What is due?");
+    await user.click(screen.getByRole("button", { name: "Ask" }));
+
+    await screen.findByText("1 question matched.");
+    expect(screen.queryByRole("region")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("link")).toHaveLength(1);
+  });
 });

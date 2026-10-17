@@ -9,9 +9,10 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/lib/api";
 import { ERROR_TYPE_LABELS, SECTION_LABELS } from "@/lib/labels";
-import type { Answer, Mistake } from "@/lib/types";
+import type { Answer, AskGroup, Mistake } from "@/lib/types";
 
 const EXAMPLES = [
+  "Where am I losing the most points, and why?",
   "Everything very important from Reading in the past 3 months",
   "What is due for review now?",
   "Which concept gaps keep coming back?",
@@ -32,6 +33,37 @@ function Hit({ mistake }: { mistake: Mistake }) {
       </div>
       <p className="line-clamp-2 text-sm leading-snug">{mistake.question_text}</p>
     </Link>
+  );
+}
+
+/** One reason or pattern, debriefed, with every question lost to it. */
+function Group({ group }: { group: AskGroup }) {
+  return (
+    <section
+      aria-label={group.label}
+      className="space-y-2 rounded-xl border border-foreground/12 bg-card/70 p-3"
+    >
+      <div className="flex flex-wrap items-baseline gap-2">
+        <h3 className="text-sm font-medium">{group.label}</h3>
+        <span className="text-[11px] text-muted-foreground">
+          {group.kind === "pattern" ? "Pattern" : "Reason"} · {group.count} question
+          {group.count === 1 ? "" : "s"}
+          {group.repeat_misses > 0 && ` · missed again ${group.repeat_misses}×`}
+        </span>
+      </div>
+      {group.why && <p className="text-sm leading-relaxed">{group.why}</p>}
+      {group.what_to_do && (
+        <p className="text-sm leading-relaxed">
+          <span className="font-medium">Next time: </span>
+          {group.what_to_do}
+        </p>
+      )}
+      <div className="space-y-1.5">
+        {group.mistakes.map((mistake) => (
+          <Hit key={mistake.id} mistake={mistake} />
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -105,9 +137,8 @@ export function Ask() {
           {result.analyzer === "stub" && (
             <p className="rounded-lg border border-dashed bg-card/70 px-3 py-2 text-xs text-muted-foreground">
               Offline assistant — it matches your topics and concepts by keyword and
-              reports counts, but it cannot reason about your bank. Set{" "}
-              <code className="font-mono">AI_PROVIDER=claude</code> and your API key in{" "}
-              <code className="font-mono">.env</code> for real answers.
+              reports counts, but it cannot reason about your bank. Pick Claude or
+              OpenAI in the top bar for real answers.
             </p>
           )}
           {!result.analyzer_ready && (
@@ -128,11 +159,32 @@ export function Ask() {
             <p className="font-mono text-[11px] text-muted-foreground">{result.error}</p>
           )}
 
-          <div className="space-y-2">
-            {result.mistakes.map((mistake) => (
-              <Hit key={mistake.id} mistake={mistake} />
-            ))}
-          </div>
+          {result.groups && result.groups.length > 0 ? (
+            <>
+              <div className="space-y-3">
+                {result.groups.map((group) => (
+                  <Group key={group.key} group={group} />
+                ))}
+              </div>
+              {/* Every match, for the ones no group holds (not yet debriefed). */}
+              <details className="text-sm">
+                <summary className="cursor-pointer text-xs text-muted-foreground">
+                  All {result.mistakes.length} matched questions
+                </summary>
+                <div className="mt-2 space-y-2">
+                  {result.mistakes.map((mistake) => (
+                    <Hit key={mistake.id} mistake={mistake} />
+                  ))}
+                </div>
+              </details>
+            </>
+          ) : (
+            <div className="space-y-2">
+              {result.mistakes.map((mistake) => (
+                <Hit key={mistake.id} mistake={mistake} />
+              ))}
+            </div>
+          )}
 
           {result.mistakes.length === 0 && (
             <p className="text-sm text-muted-foreground">
