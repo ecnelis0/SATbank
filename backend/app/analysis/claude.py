@@ -15,6 +15,7 @@ import httpx2
 from ..query import BankQuery, Vocabulary
 from .base import (
     AnalysisFailed,
+    Breakdown,
     CoachReport,
     ConceptBrief,
     ConceptProposal,
@@ -197,6 +198,23 @@ Cite the questions each point rests on by their ids, copied exactly. If the stud
 asked something specific, answer it in `answer` and let it shape the rest; \
 otherwise leave `answer` empty. Address them as "you". Be direct and brief - this is \
 read in a few minutes, not studied.\
+"""
+
+
+BREAKDOWN_PROMPT = """\
+A student asked their SAT mistake bank where they are losing points. The database \
+has already grouped the questions - by the reason each was filed under, and by the \
+recurring patterns named across them - and counted them. Debrief each group.
+
+For each group, say why they keep losing points there: the move they make across \
+those questions, which a reason label alone does not tell them. What they said \
+happened and what they told the debriefs outrank the debrief's own guess. Then one \
+concrete thing to do on the next question like these. Copy each group's key exactly, \
+and keep the order you were given.
+
+In `summary`, answer what they asked, biggest point-loser first. Quote the counts \
+you were given; never compute a number, and never mention a question that is not \
+listed. Address them as "you". Brief and direct.\
 """
 
 
@@ -485,6 +503,26 @@ class ClaudeAnalyzer:
                 thinking={"type": "adaptive"},
                 messages=[{"role": "user", "content": render_coach(focus, digest)}],
                 output_format=CoachReport,
+            )
+        except anthropic.APIError as exc:
+            raise AnalysisFailed(f"{type(exc).__name__}: {exc}") from exc
+
+        if response.stop_reason == "refusal":
+            raise AnalysisFailed("the model declined to answer")
+        parsed = response.parsed_output
+        if parsed is None:
+            raise AnalysisFailed("model returned no structured output")
+        return parsed
+
+    async def explain_breakdown(self, digest: str) -> Breakdown:
+        try:
+            response = await self._client.messages.parse(
+                model=self._model,
+                max_tokens=8000,
+                system=BREAKDOWN_PROMPT,
+                thinking={"type": "adaptive"},
+                messages=[{"role": "user", "content": digest}],
+                output_format=Breakdown,
             )
         except anthropic.APIError as exc:
             raise AnalysisFailed(f"{type(exc).__name__}: {exc}") from exc

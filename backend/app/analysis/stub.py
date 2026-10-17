@@ -13,12 +13,14 @@ from datetime import date, timedelta
 from ..models import Difficulty, ErrorType, Section, Urgency
 from ..query import BankQuery, Vocabulary
 from .base import (
+    Breakdown,
     CoachPoint,
     CoachReport,
     ConceptBrief,
     ConceptMatch,
     ConceptProposal,
     Filing,
+    GroupReading,
     MistakeAnalysis,
     MistakeInput,
     PatternTag,
@@ -312,6 +314,29 @@ class StubAnalyzer:
             if ids
             else [],
             next_steps=["Switch the AI on and run this analysis again."],
+        )
+
+    async def explain_breakdown(self, digest: str) -> Breakdown:
+        """The groups and counts are the database's and stand on their own; the
+        offline reader adds no *why*, and says so rather than inventing one."""
+        keys = re.findall(r"^key=(\S+)", digest, flags=re.MULTILINE)
+        counts = [line for line in digest.splitlines() if line.startswith("By ")]
+        return Breakdown(
+            summary="\n".join(
+                [
+                    "Grouped by the database. The offline reader cannot say why you "
+                    "lose points in each group - switch the AI on for that.",
+                    *counts,
+                ]
+            ),
+            groups=[
+                GroupReading(
+                    key=key,
+                    why="Offline: these questions share this reason or pattern.",
+                    what_to_do="Open them side by side and look for the move they share.",
+                )
+                for key in keys
+            ],
         )
 
     async def discuss(self, context: str, conversation: list[Turn]) -> str:

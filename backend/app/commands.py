@@ -45,3 +45,29 @@ def is_debrief_command(text: str) -> bool:
     if _QUESTION_START.search(text):
         return False
     return bool(_MENTIONS_DEBRIEF.search(text) and _ACTION.search(text))
+
+
+# --- asking the bank for a breakdown -------------------------------------------
+#
+# "What do I keep getting wrong?", "where am I losing points?" - questions about
+# *why*, across many questions, rather than for a list of some of them. These get
+# the questions grouped by reason and pattern, each group debriefed. A plain
+# search ("everything due now") is better served by the flat list.
+
+_BREAKDOWN = re.compile(
+    r"\b("
+    r"patterns?|habits?|recurring|consistently|again and again|over and over|"
+    r"keep (?:on )?(?:getting|making|missing|losing|doing|messing|falling|picking)|"
+    r"(?:lose|lost|losing) (?:the most |most |my |more )?points?|"
+    r"where (?:do|did|am|have) i (?:lose|lost|losing|go wrong|went wrong|mess)|"
+    r"why (?:do|did|am|have) i (?:keep|get|got|getting|miss|lose|make)|"
+    r"weak(?:ness|nesses|est| spots?)|struggl\w*|worst at|"
+    r"(?:common|most frequent|biggest|main) (?:mistakes?|errors?|problems?|reasons?)|"
+    r"go(?:ing)? wrong|reasons? (?:why|i)"
+    r")\b",
+    re.IGNORECASE,
+)
+
+
+def is_breakdown_question(text: str) -> bool:
+    return bool(_BREAKDOWN.search(text))

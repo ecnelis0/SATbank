@@ -27,6 +27,7 @@ from pydantic import BaseModel, ValidationError
 from ..query import BankQuery, Vocabulary
 from .base import (
     AnalysisFailed,
+    Breakdown,
     CoachReport,
     ConceptBrief,
     ConceptProposal,
@@ -38,6 +39,7 @@ from .base import (
     VideoSummary,
 )
 from .claude import (
+    BREAKDOWN_PROMPT,
     COACH_PROMPT,
     DISCUSS_PROMPT,
     FILING_PROMPT,
@@ -233,6 +235,11 @@ class AgentAnalyzer:
             schema=CoachReport,
             # A whole bank is the longest prompt this app sends.
             max_turns=12,
+        )
+
+    async def explain_breakdown(self, digest: str) -> Breakdown:
+        return await _run(
+            prompt=digest, system=BREAKDOWN_PROMPT, model=self._model, schema=Breakdown
         )
 
     async def discuss(self, context: str, conversation: list[Turn]) -> str:

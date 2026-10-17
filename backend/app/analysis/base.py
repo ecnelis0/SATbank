@@ -362,6 +362,51 @@ class CoachReport(BaseModel):
     )
 
 
+class GroupReading(BaseModel):
+    """Why the student keeps losing points in one group of questions."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    key: str = Field(description="The group's key, copied exactly from the groups given.")
+    why: str = Field(
+        max_length=900,
+        description="Two or three sentences in the second person: the move they keep "
+        "making across these questions - not the topic, and not a restatement of the "
+        "label. Lean on what they said happened and what they told the debriefs.",
+    )
+    what_to_do: str = Field(
+        max_length=400,
+        description="One concrete thing to do on the next question like these.",
+    )
+
+    @field_validator("why", "what_to_do", mode="before")
+    @classmethod
+    def _trim(cls, value: object, info) -> object:
+        return trim_to_limits(cls, info.field_name, value)
+
+
+class Breakdown(BaseModel):
+    """The debrief of where the points are going, group by group."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    summary: str = Field(
+        max_length=1500,
+        description="Two to four sentences answering what they asked, biggest "
+        "point-loser first. Quote the counts you were given; compute none.",
+    )
+    groups: list[GroupReading] = Field(
+        default_factory=list,
+        max_length=8,
+        description="One reading per group you were given, in the same order.",
+    )
+
+    @field_validator("summary", "groups", mode="before")
+    @classmethod
+    def _trim(cls, value: object, info) -> object:
+        return trim_to_limits(cls, info.field_name, value)
+
+
 class AnalysisFailed(RuntimeError):
     """The analyzer could not produce an analysis. The mistake is still saved."""
 
@@ -399,6 +444,10 @@ class Analyzer(Protocol):
         """Read the whole bank - debriefs, notes, what was said, reviews - and say
         what the student has been doing right and wrong. `digest` carries the
         counts already made by the database; the model is not asked to count."""
+        ...
+
+    async def explain_breakdown(self, digest: str) -> Breakdown:
+        """Say why the points in each already-counted group are being lost."""
         ...
 
     async def discuss(self, context: str, conversation: list[Turn]) -> str:

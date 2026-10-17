@@ -23,6 +23,7 @@ from pydantic import BaseModel
 from ..query import BankQuery, Vocabulary
 from .base import (
     AnalysisFailed,
+    Breakdown,
     CoachReport,
     ConceptBrief,
     ConceptProposal,
@@ -34,6 +35,7 @@ from .base import (
     VideoSummary,
 )
 from .claude import (
+    BREAKDOWN_PROMPT,
     COACH_PROMPT,
     DISCUSS_PROMPT,
     FILING_PROMPT,
@@ -182,6 +184,9 @@ class OpenAIAnalyzer:
 
     async def coach(self, focus: str | None, digest: str) -> CoachReport:
         return await self._structured(COACH_PROMPT, render_coach(focus, digest), CoachReport)
+
+    async def explain_breakdown(self, digest: str) -> Breakdown:
+        return await self._structured(BREAKDOWN_PROMPT, digest, Breakdown)
 
     async def discuss(self, context: str, conversation: list[Turn]) -> str:
         messages: list[dict[str, str]] = [
