@@ -60,7 +60,10 @@ test("topics live under their section, and four facets narrow each other", async
   await expect(panel.getByText(`circles ${stamp}`)).toBeVisible();
 
   // Four facets at once: section, topic, slot, urgency.
-  await panel.getByRole("checkbox", { name: /^Math/ }).click();
+  // The section itself: "Math" and its count, nothing else. A bare /^Math/ also
+  // matches any concept another spec named "Math …", and the e2e bank keeps
+  // everything every spec ever logged.
+  await panel.getByRole("checkbox", { name: /^Math \d+$/ }).click();
   await panel.getByRole("checkbox", { name: new RegExp(`math fundamentals ${stamp}`) }).click();
   await panel.getByRole("checkbox", { name: /Concept gap/ }).click();
   await panel.getByRole("checkbox", { name: /Very important/ }).click();

@@ -2,7 +2,8 @@ import { expect, test } from "@playwright/test";
 
 /** Unique per run, so a repeated run never matches an earlier one's question. */
 function uniqueQuestion() {
-  return `If 4x + ${Date.now() % 100} = 40, what is x? [e2e]`;
+  // The whole timestamp: the e2e bank keeps every run, and % 100 collided.
+  return `If 4x + ${Date.now()} = 40, what is x? [e2e]`;
 }
 
 test("logging a miss analyses it, files it in a slot, and arms the full ladder", async ({
