@@ -6,6 +6,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from .analysis.base import Turn
 from .models import Difficulty, ErrorType, ReviewOutcome, Section, Urgency
 
 
@@ -361,6 +362,9 @@ class DebriefMessage(BaseModel):
     """What the student tells the debrief: what happened, or what they want from it."""
 
     message: str = Field(min_length=1, max_length=4000)
+    # The "Ask about this question" chat since it last reached the debrief, so
+    # "use what we just worked out" means something. Kept with the conversation.
+    context: list[Turn] = Field(default_factory=list, max_length=40)
 
 
 class DebriefExchange(BaseModel):

@@ -167,6 +167,10 @@ Stay on this question. If they ask something the question cannot answer - about 
 the rest of their bank, or about another topic entirely - say so in a sentence \
 and answer what you can.
 
+You may also be given what the student has already said to the debrief itself and \
+what it answered. Treat that as part of this conversation: build on it, and do not \
+contradict a change it made without saying why.
+
 Be brief. Two or three short paragraphs at most, no headings, no bullet lists \
 unless you are genuinely enumerating steps. You are talking, not writing a \
 worksheet. Never tell them the debrief is wrong without saying what is right."""

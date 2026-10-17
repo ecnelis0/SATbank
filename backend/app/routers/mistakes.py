@@ -148,6 +148,10 @@ class Discussion(BaseModel):
     # The button: apply this to the debrief whatever the wording. A message that
     # reads as a command (`is_debrief_command`) is applied without it.
     apply_to_debrief: bool = False
+    # How many of the leading `history` turns are already in the debrief's kept
+    # conversation, from an earlier command. The model still reads the whole
+    # thread; only the rest is saved, so nothing is kept twice.
+    already_kept: int = Field(default=0, ge=0)
 
 
 class Reply(BaseModel):
@@ -161,7 +165,7 @@ class Reply(BaseModel):
     mistake: MistakeRead | None = None
 
 
-def render_for_discussion(mistake: Mistake) -> str:
+def render_for_discussion(mistake: Mistake, kept: list[DebriefTurn] | None = None) -> str:
     """Everything the tutor is allowed to know about this question.
 
     Built here rather than handing over the ORM object, for the same reason
@@ -193,6 +197,18 @@ def render_for_discussion(mistake: Mistake) -> str:
         parts.append(f"The trap: {mistake.trap}")
     if mistake.takeaway:
         parts.append(f"Takeaway: {mistake.takeaway}")
+    if kept:
+        # What was said in the "Talk to the debrief" box. The two chats are one
+        # conversation about one question; this one should know what the other
+        # was told, and what it changed.
+        spoken = "\n".join(
+            f"{'Student' if t.role == 'student' else 'Debrief'}: {t.text[:600]}"
+            for t in kept[-20:]
+        )
+        parts.append(
+            "\nWhat the student and the debrief have already said to each other "
+            "(the debrief above reflects it):\n" + spoken
+        )
     return "\n".join(parts)
 
 
@@ -212,7 +228,9 @@ async def ask_about_mistake(
 
     conversation = [*body.history, Turn(role="student", text=body.question)]
     if body.apply_to_debrief or is_debrief_command(body.question):
-        reply, error = await _rewrite_debrief(session, mistake, conversation)
+        reply, error = await _rewrite_debrief(
+            session, mistake, conversation[body.already_kept :]
+        )
         return Reply(
             answer=reply
             if error is None
@@ -226,7 +244,8 @@ async def ask_about_mistake(
         )
 
     try:
-        answer = await get_analyzer().discuss(render_for_discussion(mistake), conversation)
+        context = render_for_discussion(mistake, await _turns(session, mistake.id))
+        answer = await get_analyzer().discuss(context, conversation)
         error = None
     except Exception as exc:
         # The debrief is still on the page; losing the follow-up is survivable.
@@ -479,7 +498,7 @@ async def talk_to_debrief(
     """
     mistake = await _load(session, user_id, mistake_id)
     _, error = await _rewrite_debrief(
-        session, mistake, [Turn(role="student", text=body.message.strip())]
+        session, mistake, [*body.context, Turn(role="student", text=body.message.strip())]
     )
     return DebriefExchange(
         turns=[DebriefTurnRead.model_validate(t) for t in await _turns(session, mistake_id)],
