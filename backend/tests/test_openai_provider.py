@@ -24,7 +24,7 @@ from app.query import BankQuery, Vocabulary
 
 
 @pytest.mark.parametrize(
-    "model", [MistakeAnalysis, VideoSummary, BankQuery, ScannedQuestion]
+    "model", [MistakeAnalysis, VideoSummary, BankQuery, ScannedQuestion, CoachReport]
 )
 def test_the_schema_drops_everything_strict_mode_rejects(model):
     """Pydantic emits maxLength, maxItems and default; strict mode rejects the
@@ -206,7 +206,7 @@ async def test_a_pdf_says_so_rather_than_failing_deep_in_the_sdk():
 
 
 @pytest.mark.parametrize(
-    "model", [MistakeAnalysis, VideoSummary, BankQuery, ScannedQuestion]
+    "model", [MistakeAnalysis, VideoSummary, BankQuery, ScannedQuestion, CoachReport]
 )
 def test_no_ref_survives_the_conversion(model):
     """OpenAI rejects a $ref that has anything written beside it, and Pydantic
