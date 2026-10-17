@@ -4,10 +4,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { useQuestionChat } from "@/components/app/question-chat";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { api, keys } from "@/lib/api";
-import type { Mistake } from "@/lib/types";
+import type { Mistake, Turn } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 /** Talk to the debrief itself: say what happened, or what it got wrong, and it is
@@ -19,6 +20,9 @@ import { cn } from "@/lib/utils";
  *  reads it. */
 export function DebriefChat({ mistake }: { mistake: Mistake }) {
   const queryClient = useQueryClient();
+  // The ask chat's thread, shared: what was worked out there goes with a message
+  // sent here, and a rewrite made here is announced there.
+  const chat = useQuestionChat();
   const [message, setMessage] = useState("");
   // Shown at once, before the round trip: the rewrite takes seconds, and a box
   // that empties with nothing in its place reads as a message thrown away.
@@ -30,8 +34,24 @@ export function DebriefChat({ mistake }: { mistake: Mistake }) {
   });
 
   const talk = useMutation({
-    mutationFn: (text: string) => api.talkToDebrief(mistake.id, text),
-    onSuccess: (exchange) => {
+    mutationFn: ({ text, context }: { text: string; context: Turn[] }) =>
+      api.talkToDebrief(mistake.id, text, context),
+    onSuccess: (exchange, { context }) => {
+      // The ask chat's turns sent along are now kept with the debrief.
+      const keptThrough = chat.keptUpTo + context.length;
+      const reply = [...exchange.turns].reverse().find((t) => t.role === "assistant");
+      if (!exchange.error && reply && chat.thread.length > 0) {
+        // Tell the other box, if there is a conversation going on in it.
+        const at = chat.thread.length;
+        chat.setThread((current) => [
+          ...current,
+          { role: "assistant", text: `From “Talk to the debrief”: ${reply.text}` },
+        ]);
+        chat.setUpdates((current) => [...current, at]);
+        chat.setKeptUpTo(at + 1);
+      } else {
+        chat.setKeptUpTo(keptThrough);
+      }
       queryClient.setQueryData(keys.debrief(mistake.id), exchange.turns);
       queryClient.setQueryData(keys.mistake(mistake.id), exchange.mistake);
       queryClient.invalidateQueries({ queryKey: ["mistakes"] });
@@ -40,7 +60,7 @@ export function DebriefChat({ mistake }: { mistake: Mistake }) {
         toast.error("The debrief could not be rewritten just now. Your message is saved.");
       }
     },
-    onError: (error: Error, text) => {
+    onError: (error: Error, { text }) => {
       // Nothing reached the API, so nothing was saved: put it back to send again.
       setMessage(text);
       toast.error(error.message);
@@ -53,7 +73,7 @@ export function DebriefChat({ mistake }: { mistake: Mistake }) {
     if (!trimmed || talk.isPending) return;
     setSending(trimmed);
     setMessage("");
-    talk.mutate(trimmed);
+    talk.mutate({ text: trimmed, context: chat.thread.slice(chat.keptUpTo) });
   };
 
   const shown = turns ?? [];

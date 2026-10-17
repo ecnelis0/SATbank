@@ -250,10 +250,22 @@ export const api = {
 
   /** A follow-up about one question, with everything said about it so far. The
    *  thread travels with the request; the API keeps no conversation of its own. */
-  askAboutMistake: (id: string, question: string, history: Turn[], applyToDebrief = false) =>
+  /** `alreadyKept`: how many leading history turns the debrief already holds. */
+  askAboutMistake: (
+    id: string,
+    question: string,
+    history: Turn[],
+    applyToDebrief = false,
+    alreadyKept = 0,
+  ) =>
     request<Reply>(`/mistakes/${id}/ask`, {
       method: "POST",
-      body: JSON.stringify({ question, history, apply_to_debrief: applyToDebrief }),
+      body: JSON.stringify({
+        question,
+        history,
+        apply_to_debrief: applyToDebrief,
+        already_kept: alreadyKept,
+      }),
     }),
 
   // --- talking to the debrief -------------------------------------------------
@@ -261,10 +273,11 @@ export const api = {
   debriefConversation: (id: string) => request<DebriefTurn[]>(`/mistakes/${id}/debrief`),
 
   /** Tell the debrief what happened or what you want; it is rewritten and re-tagged. */
-  talkToDebrief: (id: string, message: string) =>
+  /** `context`: the ask chat since it last reached the debrief. */
+  talkToDebrief: (id: string, message: string, context: Turn[] = []) =>
     request<DebriefExchange>(`/mistakes/${id}/debrief`, {
       method: "POST",
-      body: JSON.stringify({ message }),
+      body: JSON.stringify({ message, context }),
     }),
 
   // --- which AI ---------------------------------------------------------------

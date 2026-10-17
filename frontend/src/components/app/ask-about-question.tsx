@@ -3,6 +3,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 
+import { useQuestionChat } from "@/components/app/question-chat";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { api, keys } from "@/lib/api";
@@ -23,12 +24,9 @@ const APPLY_AS_IS = "Consider this conversation in the debrief.";
 
 export function AskAboutQuestion({ mistake }: { mistake: Mistake }) {
   const queryClient = useQueryClient();
-  const [thread, setThread] = useState<Turn[]>([]);
-  // How much of the thread is already in the debrief's kept conversation. A
-  // second command sends only what came after the first, so nothing is kept twice.
-  const [appliedUpTo, setAppliedUpTo] = useState(0);
-  // Which assistant turns were a rewrite of the debrief, to label them.
-  const [updates, setUpdates] = useState<number[]>([]);
+  // Shared with "Talk to the debrief" - see question-chat.tsx.
+  const { thread, setThread, keptUpTo, setKeptUpTo, updates, setUpdates } =
+    useQuestionChat();
   const [question, setQuestion] = useState("");
   const foot = useRef<HTMLDivElement>(null);
 
@@ -37,11 +35,13 @@ export function AskAboutQuestion({ mistake }: { mistake: Mistake }) {
       asked,
       history,
       apply,
+      kept,
     }: {
       asked: string;
       history: Turn[];
       apply: boolean;
-    }) => api.askAboutMistake(mistake.id, asked, history, apply),
+      kept: number;
+    }) => api.askAboutMistake(mistake.id, asked, history, apply, kept),
   });
 
   const send = (asked: string, apply = false) => {
@@ -51,20 +51,22 @@ export function AskAboutQuestion({ mistake }: { mistake: Mistake }) {
     // The history sent is what was on screen *before* this question: the API
     // appends the new one itself, and sending it twice makes the model answer
     // a question it has already been asked.
-    const history = thread.slice(appliedUpTo);
+    // The whole thread goes, so the tutor never forgets the start of its own
+    // conversation; `kept` tells the API which turns the debrief already holds.
+    const history = thread;
     const asking = [...thread, { role: "student" as const, text: trimmed }];
     setThread(asking);
     setQuestion("");
 
     ask.mutate(
-      { asked: trimmed, history, apply },
+      { asked: trimmed, history, apply, kept: keptUpTo },
       {
         onSuccess: (reply) => {
           setThread((current) => [...current, { role: "assistant", text: reply.answer }]);
           if (reply.mistake) {
             // It was taken as a command. Whether or not the rewrite worked, what
             // was said is now kept with the debrief.
-            setAppliedUpTo(asking.length + 1);
+            setKeptUpTo(asking.length + 1);
             queryClient.invalidateQueries({ queryKey: keys.debrief(mistake.id) });
           }
           if (reply.debrief_updated && reply.mistake) {
@@ -159,7 +161,7 @@ export function AskAboutQuestion({ mistake }: { mistake: Mistake }) {
           <Button type="submit" size="sm" disabled={ask.isPending || !question.trim()}>
             {ask.isPending ? "Asking…" : "Ask"}
           </Button>
-          {(thread.length > appliedUpTo || question.trim()) && (
+          {(thread.length > keptUpTo || question.trim()) && (
             <Button
               type="button"
               size="sm"
@@ -178,7 +180,7 @@ export function AskAboutQuestion({ mistake }: { mistake: Mistake }) {
               className="text-muted-foreground"
               onClick={() => {
                 setThread([]);
-                setAppliedUpTo(0);
+                setKeptUpTo(0);
                 setUpdates([]);
               }}
             >

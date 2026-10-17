@@ -48,7 +48,7 @@ describe("DebriefChat", () => {
     await user.type(screen.getByLabelText("Tell the debrief"), "I misread it.");
     await user.click(screen.getByRole("button", { name: "Send to the debrief" }));
 
-    expect(talk).toHaveBeenCalledWith("q1", "I misread it.");
+    expect(talk).toHaveBeenCalledWith("q1", "I misread it.", []);
     expect(await screen.findByText("Understood.")).toBeInTheDocument();
     // The page's question query now holds the new debrief, so the panel above
     // re-renders with it rather than showing the old one until a refetch.

@@ -15,6 +15,7 @@ import { MistakeLabels } from "@/components/app/mistake-labels";
 import { Empty } from "@/components/app/empty";
 import { Ladder } from "@/components/app/ladder";
 import { QuestionCard } from "@/components/app/question-card";
+import { QuestionChatProvider } from "@/components/app/question-chat";
 import { Panel, SPINE } from "@/components/app/panel";
 import { Section } from "@/components/app/section";
 import { Badge } from "@/components/ui/badge";
@@ -28,7 +29,11 @@ export default function MistakePage() {
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  const { data: mistake, isPending, isError } = useQuery({
+  const {
+    data: mistake,
+    isPending,
+    isError,
+  } = useQuery({
     queryKey: keys.mistake(id),
     queryFn: () => api.getMistake(id),
     // The analysis arrives moments after logging; stop polling once it lands.
@@ -62,7 +67,10 @@ export default function MistakePage() {
   return (
     <article className="mx-auto max-w-2xl space-y-6">
       <div className="flex flex-wrap items-center gap-2">
-        <Link href="/bank" className="text-sm text-muted-foreground hover:text-foreground">
+        <Link
+          href="/bank"
+          className="text-sm text-muted-foreground hover:text-foreground"
+        >
           ← The bank
         </Link>
         {/* No urgency badge here: the debrief already carries one, and the same
@@ -80,28 +88,33 @@ export default function MistakePage() {
         <QuestionCard mistake={mistake} />
       </Panel>
 
-      <Section title="The debrief">
-        <Panel className="px-6 py-5">
-          <AnalysisPanel mistake={mistake} editable />
-          <DebriefChat mistake={mistake} />
-        </Panel>
-      </Section>
+      {/* One shared thread for the two chats below; keyed so another question
+          starts a fresh one. */}
+      <QuestionChatProvider key={mistake.id}>
+        <Section title="The debrief">
+          <Panel className="px-6 py-5">
+            <AnalysisPanel mistake={mistake} editable />
+            <DebriefChat mistake={mistake} />
+          </Panel>
+        </Section>
 
-      {/* Straight under the debrief, because that is what the follow-up is
+        {/* Straight under the debrief, because that is what the follow-up is
           usually about — a word in it, or the step it skipped. */}
-      <Section
-        title="Ask about this question"
-        description={
-          <>
-            The AI has this question, your answer and the debrief in front of it. Say
-            &ldquo;consider this in the debrief&rdquo; and the conversation goes into it.
-          </>
-        }
-      >
-        <Panel className="px-6 py-5">
-          <AskAboutQuestion mistake={mistake} />
-        </Panel>
-      </Section>
+        <Section
+          title="Ask about this question"
+          description={
+            <>
+              The AI has this question, your answer and the debrief in front of
+              it. Say &ldquo;consider this in the debrief&rdquo; and the
+              conversation goes into it.
+            </>
+          }
+        >
+          <Panel className="px-6 py-5">
+            <AskAboutQuestion mistake={mistake} />
+          </Panel>
+        </Section>
+      </QuestionChatProvider>
 
       <Panel className="px-6 py-5">
         <MistakeImages mistake={mistake} editable />

@@ -58,11 +58,11 @@ describe("AskAboutQuestion", () => {
     await user.click(screen.getByRole("button", { name: "Ask" }));
 
     await waitFor(() => expect(ask).toHaveBeenCalledTimes(2));
-    expect(ask).toHaveBeenNthCalledWith(1, "q1", "Why is my answer wrong?", [], false);
+    expect(ask).toHaveBeenNthCalledWith(1, "q1", "Why is my answer wrong?", [], false, 0);
     expect(ask).toHaveBeenNthCalledWith(2, "q1", "And next time?", [
       { role: "student", text: "Why is my answer wrong?" },
       { role: "assistant", text: "Because you stopped a step early." },
-    ], false);
+    ], false, 0);
   });
 
   it("says so in the thread when the request fails, rather than losing the question", async () => {
@@ -133,6 +133,7 @@ describe("AskAboutQuestion", () => {
         { role: "assistant", text: "You read 3x as x." },
       ],
       false,
+      0,
     );
     expect(client.getQueryData<Mistake>(keys.mistake("q1"))?.error_type).toBe(
       "misread_question",
@@ -159,7 +160,18 @@ describe("AskAboutQuestion", () => {
     await user.click(screen.getByRole("button", { name: "Ask" }));
 
     await waitFor(() => expect(ask).toHaveBeenCalledTimes(2));
-    expect(ask).toHaveBeenLastCalledWith("q1", "Why 7?", [], false);
+    // The tutor still reads the whole thread; the 2 says the debrief already
+    // holds those turns, so a later command does not keep them again.
+    expect(ask).toHaveBeenLastCalledWith(
+      "q1",
+      "Why 7?",
+      [
+        { role: "student", text: "Add that to my debrief" },
+        { role: "assistant", text: "Added." },
+      ],
+      false,
+      2,
+    );
   });
 
   it("the apply button sends the chat to the debrief whatever it says", async () => {
@@ -187,6 +199,7 @@ describe("AskAboutQuestion", () => {
         { role: "assistant", text: "Because you stopped a step early." },
       ],
       true,
+      0,
     );
     // Everything is applied, so there is nothing left to apply.
     expect(screen.queryByRole("button", { name: "Apply to the debrief" })).not.toBeInTheDocument();
