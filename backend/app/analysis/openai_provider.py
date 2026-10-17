@@ -68,11 +68,20 @@ UNSUPPORTED = (
 def strict_schema(model: type[BaseModel]) -> dict[str, Any]:
     """A JSON Schema OpenAI will accept, from one of our Pydantic models.
 
-    Strict mode also requires every property to be listed as required and every
-    object to forbid extra properties. A field our model gives a default is still
-    required here; the model always emits it, and Pydantic applies the default if
-    it somehow does not.
+    Three things have to happen, and each one is a 400 from the API if it does
+    not:
+
+    * the keywords in `UNSUPPORTED` have to go;
+    * every object must forbid extra properties and list every property as
+      required - a field with a default is still required here, and Pydantic
+      applies the default if the model somehow omits it;
+    * a `$ref` must stand alone. Pydantic writes `{"$ref": …, "description": …}`
+      for every enum field, which the API rejects by name. Rather than drop the
+      description - it is prompt text, and the enums are where it matters most -
+      the definition is inlined and the description kept beside it.
     """
+    source = model.model_json_schema()
+    definitions = source.get("$defs", {})
 
     def walk(node: Any) -> Any:
         if isinstance(node, list):
@@ -80,14 +89,25 @@ def strict_schema(model: type[BaseModel]) -> dict[str, Any]:
         if not isinstance(node, dict):
             return node
 
+        if "$ref" in node:
+            name = node["$ref"].rsplit("/", 1)[-1]
+            resolved = walk(dict(definitions.get(name, {})))
+            # Anything written next to the $ref wins; that is where Pydantic puts
+            # the field's own description.
+            siblings = {k: walk(v) for k, v in node.items() if k != "$ref"}
+            resolved.update(siblings)
+            node = resolved
+            return {k: v for k, v in node.items() if k not in UNSUPPORTED}
+
         cleaned = {key: walk(value) for key, value in node.items() if key not in UNSUPPORTED}
+        cleaned.pop("$defs", None)
         if cleaned.get("type") == "object" or "properties" in cleaned:
             properties = cleaned.get("properties", {})
             cleaned["additionalProperties"] = False
             cleaned["required"] = list(properties)
         return cleaned
 
-    return walk(model.model_json_schema())
+    return walk(source)
 
 
 class OpenAIAnalyzer:

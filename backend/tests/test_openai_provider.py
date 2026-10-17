@@ -196,3 +196,23 @@ async def test_a_pdf_says_so_rather_than_failing_deep_in_the_sdk():
             ScanInput(kind="pdf", media_type="application/pdf", data=b"%PDF")
         )
     assert "Screenshot" in str(caught.value)
+
+
+@pytest.mark.parametrize(
+    "model", [MistakeAnalysis, VideoSummary, BankQuery, ScannedQuestion]
+)
+def test_no_ref_survives_the_conversion(model):
+    """OpenAI rejects a $ref that has anything written beside it, and Pydantic
+    writes `{"$ref": …, "description": …}` for every enum field. The live API
+    said so by name; the first version of these tests did not catch it."""
+    rendered = json.dumps(strict_schema(model))
+    assert '"$ref"' not in rendered
+    assert '"$defs"' not in rendered
+
+
+def test_inlining_keeps_both_the_enum_and_its_description():
+    """Dropping the siblings instead would have been the easy fix, and would have
+    thrown away prompt text — the enums are where the guidance matters most."""
+    error_type = strict_schema(MistakeAnalysis)["properties"]["error_type"]
+    assert len(error_type["enum"]) == 12
+    assert error_type["description"]
