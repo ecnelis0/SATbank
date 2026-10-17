@@ -8,7 +8,14 @@ from types import SimpleNamespace
 
 import pytest
 
-from app.analysis.base import AnalysisFailed, MistakeAnalysis, MistakeInput, Turn, VideoSummary
+from app.analysis.base import (
+    AnalysisFailed,
+    CoachReport,
+    MistakeAnalysis,
+    MistakeInput,
+    Turn,
+    VideoSummary,
+)
 from app.analysis.openai_provider import UNSUPPORTED, OpenAIAnalyzer, OpenAIScanner, strict_schema
 from app.analysis.scan import ScanInput, ScannedQuestion
 from app.query import BankQuery, Vocabulary

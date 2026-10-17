@@ -27,6 +27,7 @@ from pydantic import BaseModel, ValidationError
 from ..query import BankQuery, Vocabulary
 from .base import (
     AnalysisFailed,
+    CoachReport,
     ConceptBrief,
     ConceptProposal,
     Filing,
@@ -37,6 +38,7 @@ from .base import (
     VideoSummary,
 )
 from .claude import (
+    COACH_PROMPT,
     DISCUSS_PROMPT,
     FILING_PROMPT,
     INTERPRET_PROMPT,
@@ -45,6 +47,7 @@ from .claude import (
     SYSTEM_PROMPT,
     VIDEO_PROMPT,
     _render,
+    render_coach,
     render_video,
 )
 from .scan import SCAN_PROMPT, ScanInput, ScannedQuestion
@@ -220,6 +223,16 @@ class AgentAnalyzer:
             system=PROPOSE_PROMPT,
             model=self._model,
             schema=ConceptProposal,
+        )
+
+    async def coach(self, focus: str | None, digest: str) -> CoachReport:
+        return await _run(
+            prompt=render_coach(focus, digest),
+            system=COACH_PROMPT,
+            model=self._model,
+            schema=CoachReport,
+            # A whole bank is the longest prompt this app sends.
+            max_turns=12,
         )
 
     async def discuss(self, context: str, conversation: list[Turn]) -> str:

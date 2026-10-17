@@ -23,6 +23,7 @@ from pydantic import BaseModel
 from ..query import BankQuery, Vocabulary
 from .base import (
     AnalysisFailed,
+    CoachReport,
     ConceptBrief,
     ConceptProposal,
     Filing,
@@ -33,6 +34,7 @@ from .base import (
     VideoSummary,
 )
 from .claude import (
+    COACH_PROMPT,
     DISCUSS_PROMPT,
     FILING_PROMPT,
     INTERPRET_PROMPT,
@@ -41,6 +43,7 @@ from .claude import (
     SYSTEM_PROMPT,
     VIDEO_PROMPT,
     _render,
+    render_coach,
     render_video,
 )
 from .scan import SCAN_PROMPT, ScanInput, ScannedQuestion
@@ -176,6 +179,9 @@ class OpenAIAnalyzer:
     async def summarise(self, question: str, digest: str) -> str:
         asked = f"The student asked: {question}\n\nMatching rows:\n{digest}"
         return await self._text(SUMMARISE_PROMPT, [{"role": "user", "content": asked}])
+
+    async def coach(self, focus: str | None, digest: str) -> CoachReport:
+        return await self._structured(COACH_PROMPT, render_coach(focus, digest), CoachReport)
 
     async def discuss(self, context: str, conversation: list[Turn]) -> str:
         messages: list[dict[str, str]] = [

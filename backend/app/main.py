@@ -20,6 +20,7 @@ from .routers import (
     ask,
     concepts,
     images,
+    insights,
     mistakes,
     patterns,
     reports,
@@ -70,6 +71,7 @@ app.include_router(reports.router)
 app.include_router(patterns.router)
 app.include_router(videos.router)
 app.include_router(ai.router)
+app.include_router(insights.router)
 
 
 @app.get("/health", tags=["meta"])

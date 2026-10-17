@@ -13,6 +13,8 @@ from datetime import date, timedelta
 from ..models import Difficulty, ErrorType, Section, Urgency
 from ..query import BankQuery, Vocabulary
 from .base import (
+    CoachPoint,
+    CoachReport,
     ConceptBrief,
     ConceptMatch,
     ConceptProposal,
@@ -278,6 +280,38 @@ class StubAnalyzer:
                 "rather than a reading of the questions - set AI_PROVIDER to get the "
                 "real one."
             ),
+        )
+
+    async def coach(self, focus: str | None, digest: str) -> CoachReport:
+        """Points at the counts and says what it is. It cannot read the bank.
+
+        A made-up reading of someone's own study habits is worse than none, so the
+        offline version only hands back the database's numbers and the most
+        recent questions, and names itself.
+        """
+        ids = re.findall(r"^id=(\w+)", digest, flags=re.MULTILINE)[:3]
+        return CoachReport(
+            answer=(
+                "The offline reader cannot answer that - switch the AI on to ask."
+                if focus
+                else ""
+            ),
+            overview=(
+                "This was written offline, with no model behind it, so it is the "
+                "database's counts and nothing more. Switch the AI on for a real "
+                "reading of what you have been doing right and wrong."
+            ),
+            going_wrong=[
+                CoachPoint(
+                    title="Start with your most recent misses",
+                    detail="The counts above are exact. Without a model, nothing "
+                    "here says why.",
+                    question_ids=ids,
+                )
+            ]
+            if ids
+            else [],
+            next_steps=["Switch the AI on and run this analysis again."],
         )
 
     async def discuss(self, context: str, conversation: list[Turn]) -> str:

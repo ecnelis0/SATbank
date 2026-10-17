@@ -272,6 +272,66 @@ class VideoSummary(BaseModel):
     )
 
 
+class CoachPoint(BaseModel):
+    """One thing going right or wrong across the bank, and the questions behind it."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    title: str = Field(
+        max_length=160,
+        description="The point in a few words - the habit or the strength itself, "
+        "not a topic. 'You stop one step before the question's quantity', not "
+        "'Algebra'.",
+    )
+    detail: str = Field(
+        max_length=900,
+        description="Two to four sentences in the second person: what the questions "
+        "show, and why it matters. Quote the counts you were given; never work out "
+        "a number of your own.",
+    )
+    question_ids: list[str] = Field(
+        default_factory=list,
+        max_length=6,
+        description="The ids of the questions this rests on, copied exactly from "
+        "the rows. The ones that show it best, not every one.",
+    )
+
+
+class CoachReport(BaseModel):
+    """A whole-bank reading: what the student has been doing right and wrong."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    answer: str = Field(
+        default="",
+        max_length=2000,
+        description="If the student asked something specific, the direct answer to "
+        "it, first. An empty string if they did not.",
+    )
+    overview: str = Field(
+        max_length=1500,
+        description="Three to five sentences on where they stand: the shape of "
+        "their mistakes and how it has moved. Plain, honest, second person.",
+    )
+    doing_well: list[CoachPoint] = Field(
+        default_factory=list,
+        max_length=5,
+        description="What is genuinely going right, best evidenced first. Fewer "
+        "points, or none, is better than flattery the rows do not support.",
+    )
+    going_wrong: list[CoachPoint] = Field(
+        default_factory=list,
+        max_length=5,
+        description="The recurring habits costing them the most, most costly first.",
+    )
+    next_steps: list[str] = Field(
+        default_factory=list,
+        max_length=5,
+        description="Concrete things to do this week, one sentence each, each tied "
+        "to something in going_wrong.",
+    )
+
+
 class AnalysisFailed(RuntimeError):
     """The analyzer could not produce an analysis. The mistake is still saved."""
 
@@ -303,6 +363,12 @@ class Analyzer(Protocol):
 
     async def propose_concept(self, pattern: str, summary: str, digest: str) -> ConceptProposal:
         """Make the case for promoting a pattern into a concept, from its questions."""
+        ...
+
+    async def coach(self, focus: str | None, digest: str) -> CoachReport:
+        """Read the whole bank - debriefs, notes, what was said, reviews - and say
+        what the student has been doing right and wrong. `digest` carries the
+        counts already made by the database; the model is not asked to count."""
         ...
 
     async def discuss(self, context: str, conversation: list[Turn]) -> str:

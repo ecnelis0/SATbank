@@ -15,6 +15,7 @@ import httpx2
 from ..query import BankQuery, Vocabulary
 from .base import (
     AnalysisFailed,
+    CoachReport,
     ConceptBrief,
     ConceptProposal,
     Filing,
@@ -168,6 +169,40 @@ and answer what you can.
 Be brief. Two or three short paragraphs at most, no headings, no bullet lists \
 unless you are genuinely enumerating steps. You are talking, not writing a \
 worksheet. Never tell them the debrief is wrong without saying what is right."""
+
+
+COACH_PROMPT = """\
+You are an SAT coach looking back over everything one student has logged in their \
+mistake bank: each question, the answer they chose, what they said happened, the \
+debrief written for it, anything they told that debrief, and how they have done when \
+it came back for review.
+
+The counts at the top were made by the database. Quote them exactly. Never compute a \
+number of your own, and never mention a question that is not in the rows.
+
+doing_well is what is genuinely going right: questions they now get right on review, \
+reasons that have stopped turning up in recent logs, honest self-diagnosis in their \
+notes and in what they told the debrief. Do not flatter. If the rows show little, \
+give fewer points.
+
+going_wrong is the habits costing them most, most costly first. Two things count: \
+several different questions missed for the same reason or pattern, and the same \
+question still wrong when it came back. Name the move they make, not the topic - a \
+habit that shows up in algebra and in reading is one point, not two. What they said \
+happened and what they told the debrief outrank the debrief's own guess.
+
+next_steps are concrete things to do this week, each aimed at something in going_wrong.
+
+Cite the questions each point rests on by their ids, copied exactly. If the student \
+asked something specific, answer it in `answer` and let it shape the rest; \
+otherwise leave `answer` empty. Address them as "you". Be direct and brief - this is \
+read in a few minutes, not studied.\
+"""
+
+
+def render_coach(focus: str | None, digest: str) -> str:
+    asked = f"The student asked: {focus}\n\n" if focus else ""
+    return f"{asked}{digest}"
 
 
 SUMMARISE_PROMPT = """\
@@ -430,6 +465,26 @@ class ClaudeAnalyzer:
                     }
                 ],
                 output_format=ConceptProposal,
+            )
+        except anthropic.APIError as exc:
+            raise AnalysisFailed(f"{type(exc).__name__}: {exc}") from exc
+
+        if response.stop_reason == "refusal":
+            raise AnalysisFailed("the model declined to answer")
+        parsed = response.parsed_output
+        if parsed is None:
+            raise AnalysisFailed("model returned no structured output")
+        return parsed
+
+    async def coach(self, focus: str | None, digest: str) -> CoachReport:
+        try:
+            response = await self._client.messages.parse(
+                model=self._model,
+                max_tokens=16000,
+                system=COACH_PROMPT,
+                thinking={"type": "adaptive"},
+                messages=[{"role": "user", "content": render_coach(focus, digest)}],
+                output_format=CoachReport,
             )
         except anthropic.APIError as exc:
             raise AnalysisFailed(f"{type(exc).__name__}: {exc}") from exc
