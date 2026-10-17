@@ -78,6 +78,16 @@ export function formatChoices(choices: string[]): string {
     .join("\n\n");
 }
 
+/** Is the cursor in a field the student is typing into? File inputs and buttons
+ *  do not count: that is where focus sits after choosing the screenshot itself. */
+function typingSomewhere(): boolean {
+  const active = document.activeElement;
+  return (
+    active instanceof HTMLElement &&
+    (active.matches("textarea, select, input:not([type=file])") || active.isContentEditable)
+  );
+}
+
 function FieldError({ message }: { message?: string }) {
   if (!message) return null;
   return <p className="mt-1 text-sm text-destructive">{message}</p>;
@@ -166,7 +176,12 @@ export function MistakeForm() {
       Only fields the reader actually returned are written, so a null in the
       scan never wipes something typed first. `your_answer` is never among them
       - a picture cannot know it - so the cursor goes there, which is both the
-      next thing to do and the whole point of the bank. */
+      next thing to do and the whole point of the bank.
+
+      Unless the student is already typing somewhere. A scan takes seconds and
+      the natural thing to do meanwhile is write "What happened?"; yanking the
+      cursor out of that field mid-sentence sends the rest of it into the wrong
+      box. */
   const fillFromPicture = (scanned: ScannedQuestion, file: File) => {
     setValue("question_text", scanned.question_text, { shouldValidate: true });
     if (scanned.choices?.length) setValue("choicesText", formatChoices(scanned.choices));
@@ -177,7 +192,7 @@ export function MistakeForm() {
     // Attached to the question too, so the original sits beside the AI's reading
     // of it rather than being thrown away once the fields are filled.
     pictures.add([file]);
-    setFocus("your_answer");
+    if (!typingSomewhere()) setFocus("your_answer");
   };
 
   const log = useMutation({

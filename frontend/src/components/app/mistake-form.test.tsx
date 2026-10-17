@@ -183,6 +183,42 @@ describe("MistakeForm scanning a question", () => {
     );
   });
 
+  it("leaves the cursor where you are typing while the scan finishes", async () => {
+    const user = userEvent.setup();
+    let finish!: (value: typeof scanned) => void;
+    vi.spyOn(api, "scanQuestion").mockReturnValue(
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+    );
+    renderWithQuery(<MistakeForm />);
+
+    await user.upload(dropzoneInput("Scan a screenshot"), png("q.png"));
+    const note = screen.getByLabelText("What happened?");
+    await user.click(note);
+    await user.type(note, "I rushed the last");
+
+    finish(scanned);
+    await screen.findByDisplayValue(scanned.question_text);
+    await user.keyboard(" step.");
+
+    // Still in the note, and the rest of the sentence landed there too.
+    expect(note).toHaveFocus();
+    expect(note).toHaveValue("I rushed the last step.");
+    expect(screen.getByLabelText("You put")).toHaveValue("");
+  });
+
+  it("moves to 'You put' after a scan when you were not typing anywhere", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(api, "scanQuestion").mockResolvedValue(scanned);
+    renderWithQuery(<MistakeForm />);
+
+    await user.upload(dropzoneInput("Scan a screenshot"), png("q.png"));
+    await screen.findByDisplayValue(scanned.question_text);
+
+    await waitFor(() => expect(screen.getByLabelText("You put")).toHaveFocus());
+  });
+
   it("warns when the answer was worked out rather than printed on the page", async () => {
     const user = userEvent.setup();
     const { toast } = await import("sonner");
