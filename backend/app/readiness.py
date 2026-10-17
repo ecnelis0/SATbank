@@ -11,8 +11,8 @@ from __future__ import annotations
 from .config import Settings
 
 
-def analyzer_ready(settings: Settings) -> bool:
-    provider = settings.ai_provider.lower()
+def provider_ready(provider: str, settings: Settings) -> bool:
+    provider = provider.lower()
     if provider in ("stub", "agent"):
         # The stub needs nothing. The agent needs `claude auth login`, which is
         # not something this process can see - a failure surfaces as a clear
@@ -23,3 +23,10 @@ def analyzer_ready(settings: Settings) -> bool:
     if provider == "openai":
         return bool(settings.openai_api_key)
     return False
+
+
+def analyzer_ready(settings: Settings) -> bool:
+    """Whether the provider in charge right now - switched or from .env - can run."""
+    from .ai_choice import current_provider
+
+    return provider_ready(current_provider(settings), settings)

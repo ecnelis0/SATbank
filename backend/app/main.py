@@ -9,12 +9,14 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
+from .ai_choice import current_provider
 from .config import get_settings
 from .images import upload_dir
 from .migrate import upgrade
 from .readiness import analyzer_ready
 from .review import LADDER_LABELS
 from .routers import (
+    ai,
     ask,
     concepts,
     images,
@@ -67,6 +69,7 @@ app.include_router(ask.router)
 app.include_router(reports.router)
 app.include_router(patterns.router)
 app.include_router(videos.router)
+app.include_router(ai.router)
 
 
 @app.get("/health", tags=["meta"])
@@ -78,12 +81,12 @@ async def health() -> dict:
     otherwise only discoverable by watching an analysis fail.
     """
     settings = get_settings()
-    provider = settings.ai_provider.lower()
+    provider = current_provider(settings)
     ready = analyzer_ready(settings)
 
     return {
         "status": "ok",
-        "analyzer": settings.ai_provider,
+        "analyzer": provider,
         "analyzer_ready": ready,
         "model": settings.anthropic_model if provider in ("claude", "agent") else None,
         "ladder": list(LADDER_LABELS),

@@ -9,6 +9,12 @@ from httpx import ASGITransport, AsyncClient
 # test suite at a live database or a paid analyzer.
 os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./__test__.db"
 os.environ["AI_PROVIDER"] = "stub"
+# The switch the student flips lives in a file next to the real database. Point the
+# suite somewhere that does not exist, or whatever they last chose decides which
+# provider the tests run against.
+os.environ["AI_CHOICE_FILE"] = os.path.join(
+    os.path.dirname(__file__), "__no_ai_choice__", "ai-provider.txt"
+)
 
 
 @pytest.fixture
@@ -19,6 +25,7 @@ async def app_env(tmp_path, monkeypatch):
 
     monkeypatch.setenv("DATABASE_URL", f"sqlite+aiosqlite:///{tmp_path / 'test.db'}")
     monkeypatch.setenv("AI_PROVIDER", "stub")
+    monkeypatch.setenv("AI_CHOICE_FILE", str(tmp_path / "ai-provider.txt"))
     config.get_settings.cache_clear()
     get_analyzer.cache_clear()
     db._engine = None

@@ -16,8 +16,14 @@ class Settings(BaseSettings):
     # SQLAlchemy async URL. sqlite+aiosqlite for local dev, postgresql+asyncpg for Neon.
     database_url: str = "sqlite+aiosqlite:///./sat_bank.db"
 
-    # Which analyzer backs the AI error analysis: "stub" or "claude".
+    # Which analyzer backs the AI error analysis: "stub", "claude", "openai" or
+    # "agent". The starting point only - `ai_choice.py` lets the student switch
+    # while the app runs, and that choice wins over this one.
     ai_provider: str = "stub"
+    # Where that switched choice is kept. A file rather than a table so the
+    # terminal command can flip it with the server down, and so it never rides
+    # along in a database backup restored onto another machine.
+    ai_choice_file: str = "./ai-provider.txt"
     anthropic_api_key: str | None = None
     anthropic_model: str = "claude-opus-5"
     openai_api_key: str | None = None

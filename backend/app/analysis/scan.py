@@ -141,8 +141,10 @@ class StubScanner:
 
 def get_scanner() -> Scanner:
     """Mirrors `get_analyzer`: the provider decides, and stub always works."""
+    from ..ai_choice import current_provider
+
     settings = get_settings()
-    provider = settings.ai_provider.lower()
+    provider = current_provider(settings)
 
     if provider == "claude":
         from .claude import ClaudeScanner

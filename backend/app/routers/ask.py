@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
+from ..ai_choice import current_provider
 from ..analysis import get_analyzer
 from ..config import get_settings
 from ..deps import SessionDep, UserDep
@@ -46,7 +47,7 @@ async def ask(body: Ask, session: SessionDep, user_id: UserDep) -> Answer:
     rows that exist. It never answers from a recollection of the bank.
     """
     settings = get_settings()
-    provider = settings.ai_provider.lower()
+    provider = current_provider(settings)
     ready = analyzer_ready(settings)
 
     today = datetime.now(UTC).date()

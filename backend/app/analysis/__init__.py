@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 
+from ..ai_choice import current_provider
 from ..config import get_settings
 from .base import AnalysisFailed, Analyzer, MistakeAnalysis, MistakeInput, Turn
 from .guard import Guarded
@@ -20,16 +21,23 @@ __all__ = [
 ]
 
 
-@lru_cache
 def get_analyzer() -> Analyzer:
-    """The configured analyzer, with a time limit around it.
+    """The analyzer in charge right now, with a time limit around it.
 
-    The limit is not applied to the stub: it does no I/O, so it cannot hang, and
-    wrapping it would only put a proxy between the tests and the thing they are
-    asserting on.
+    Resolved on every call, because the student can switch providers while the
+    app runs (`ai_choice.py`). Building one is cached per provider, so flipping
+    back and forth does not open a new client each time.
+    """
+    return _build(current_provider())
+
+
+@lru_cache
+def _build(provider: str) -> Analyzer:
+    """The limit is not applied to the stub: it does no I/O, so it cannot hang,
+    and wrapping it would only put a proxy between the tests and the thing they
+    are asserting on.
     """
     settings = get_settings()
-    provider = settings.ai_provider.lower()
 
     if provider == "stub":
         return StubAnalyzer()
@@ -59,6 +67,10 @@ def get_analyzer() -> Analyzer:
         return Guarded(AgentAnalyzer(settings.anthropic_model), settings.ai_timeout_seconds)
 
     raise ValueError(
-        f"Unknown AI_PROVIDER {settings.ai_provider!r}; "
+        f"Unknown AI_PROVIDER {provider!r}; "
         "expected 'stub', 'claude', 'openai' or 'agent'"
     )
+
+
+# The tests reset the cache between runs by this name; it predates the switch.
+get_analyzer.cache_clear = _build.cache_clear  # type: ignore[attr-defined]

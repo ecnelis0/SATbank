@@ -10,6 +10,7 @@ from PIL import Image, UnidentifiedImageError
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
+from ..ai_choice import current_provider
 from ..analysis import Turn, get_analyzer
 from ..analysis.base import AnalysisFailed
 from ..analysis.scan import ScanInput, ScanKind, ScannedQuestion, get_scanner
@@ -200,7 +201,7 @@ async def ask_about_mistake(
 
     return Reply(
         answer=answer,
-        analyzer=settings.ai_provider.lower(),
+        analyzer=current_provider(settings),
         analyzer_ready=analyzer_ready(settings),
         error=error,
     )
