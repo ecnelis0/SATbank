@@ -1,14 +1,19 @@
 import type {
+  AiChoice,
   Answer,
   BankQuery,
   Concept,
   ConceptDetail,
   ConceptDraft,
+  DebriefExchange,
+  DebriefTurn,
   DueReview,
   ErrorType,
+  Insight,
   Mistake,
   MistakeDraft,
   MistakeEdit,
+  ProviderId,
   Reply,
   ReviewCompleteResult,
   ScannedQuestion,
@@ -245,11 +250,40 @@ export const api = {
 
   /** A follow-up about one question, with everything said about it so far. The
    *  thread travels with the request; the API keeps no conversation of its own. */
-  askAboutMistake: (id: string, question: string, history: Turn[]) =>
+  askAboutMistake: (id: string, question: string, history: Turn[], applyToDebrief = false) =>
     request<Reply>(`/mistakes/${id}/ask`, {
       method: "POST",
-      body: JSON.stringify({ question, history }),
+      body: JSON.stringify({ question, history, apply_to_debrief: applyToDebrief }),
     }),
+
+  // --- talking to the debrief -------------------------------------------------
+
+  debriefConversation: (id: string) => request<DebriefTurn[]>(`/mistakes/${id}/debrief`),
+
+  /** Tell the debrief what happened or what you want; it is rewritten and re-tagged. */
+  talkToDebrief: (id: string, message: string) =>
+    request<DebriefExchange>(`/mistakes/${id}/debrief`, {
+      method: "POST",
+      body: JSON.stringify({ message }),
+    }),
+
+  // --- which AI ---------------------------------------------------------------
+
+  ai: () => request<AiChoice>("/ai"),
+
+  switchAi: (provider: ProviderId) =>
+    request<AiChoice>("/ai", { method: "PUT", body: JSON.stringify({ provider }) }),
+
+  // --- whole-bank analysis ----------------------------------------------------
+
+  listInsights: () => request<Insight[]>("/insights"),
+
+  getInsight: (id: string) => request<Insight>(`/insights/${id}`),
+
+  newInsight: (focus: string | null) =>
+    request<Insight>("/insights", { method: "POST", body: JSON.stringify({ focus }) }),
+
+  deleteInsight: (id: string) => request<void>(`/insights/${id}`, { method: "DELETE" }),
 };
 
 /** Query keys, in one place so mutations can invalidate precisely. */
@@ -266,4 +300,7 @@ export const keys = {
   concepts: () => ["concepts"] as const,
   tags: () => ["tags"] as const,
   concept: (id: string) => ["concept", id] as const,
+  debrief: (id: string) => ["debrief", id] as const,
+  ai: () => ["ai"] as const,
+  insights: () => ["insights"] as const,
 };

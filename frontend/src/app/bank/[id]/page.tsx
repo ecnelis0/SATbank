@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { AnalysisPanel } from "@/components/app/analysis";
 import { AskAboutQuestion } from "@/components/app/ask-about-question";
 import { ConceptTags } from "@/components/app/concept-tags";
+import { DebriefChat } from "@/components/app/debrief-chat";
 import { MistakeImages } from "@/components/app/images";
 import { MistakeLabels } from "@/components/app/mistake-labels";
 import { Empty } from "@/components/app/empty";
@@ -82,6 +83,7 @@ export default function MistakePage() {
       <Section title="The debrief">
         <Panel className="px-6 py-5">
           <AnalysisPanel mistake={mistake} editable />
+          <DebriefChat mistake={mistake} />
         </Panel>
       </Section>
 
@@ -89,7 +91,12 @@ export default function MistakePage() {
           usually about — a word in it, or the step it skipped. */}
       <Section
         title="Ask about this question"
-        description="The AI has this question, your answer and the debrief in front of it."
+        description={
+          <>
+            The AI has this question, your answer and the debrief in front of it. Say
+            &ldquo;consider this in the debrief&rdquo; and the conversation goes into it.
+          </>
+        }
       >
         <Panel className="px-6 py-5">
           <AskAboutQuestion mistake={mistake} />

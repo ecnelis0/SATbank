@@ -1,11 +1,11 @@
 "use client";
 
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { api } from "@/lib/api";
+import { api, keys } from "@/lib/api";
 import type { Mistake, Turn } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -18,32 +18,61 @@ const OPENERS = [
   "How do I do this next time?",
 ];
 
+/** Sent by the button when the box is empty: apply the chat as it stands. */
+const APPLY_AS_IS = "Consider this conversation in the debrief.";
+
 export function AskAboutQuestion({ mistake }: { mistake: Mistake }) {
+  const queryClient = useQueryClient();
   const [thread, setThread] = useState<Turn[]>([]);
+  // How much of the thread is already in the debrief's kept conversation. A
+  // second command sends only what came after the first, so nothing is kept twice.
+  const [appliedUpTo, setAppliedUpTo] = useState(0);
+  // Which assistant turns were a rewrite of the debrief, to label them.
+  const [updates, setUpdates] = useState<number[]>([]);
   const [question, setQuestion] = useState("");
   const foot = useRef<HTMLDivElement>(null);
 
   const ask = useMutation({
-    mutationFn: ({ asked, history }: { asked: string; history: Turn[] }) =>
-      api.askAboutMistake(mistake.id, asked, history),
+    mutationFn: ({
+      asked,
+      history,
+      apply,
+    }: {
+      asked: string;
+      history: Turn[];
+      apply: boolean;
+    }) => api.askAboutMistake(mistake.id, asked, history, apply),
   });
 
-  const send = (asked: string) => {
+  const send = (asked: string, apply = false) => {
     const trimmed = asked.trim();
     if (!trimmed || ask.isPending) return;
 
     // The history sent is what was on screen *before* this question: the API
     // appends the new one itself, and sending it twice makes the model answer
     // a question it has already been asked.
-    const history = thread;
-    setThread([...history, { role: "student", text: trimmed }]);
+    const history = thread.slice(appliedUpTo);
+    const asking = [...thread, { role: "student" as const, text: trimmed }];
+    setThread(asking);
     setQuestion("");
 
     ask.mutate(
-      { asked: trimmed, history },
+      { asked: trimmed, history, apply },
       {
         onSuccess: (reply) => {
           setThread((current) => [...current, { role: "assistant", text: reply.answer }]);
+          if (reply.mistake) {
+            // It was taken as a command. Whether or not the rewrite worked, what
+            // was said is now kept with the debrief.
+            setAppliedUpTo(asking.length + 1);
+            queryClient.invalidateQueries({ queryKey: keys.debrief(mistake.id) });
+          }
+          if (reply.debrief_updated && reply.mistake) {
+            setUpdates((current) => [...current, asking.length]);
+            queryClient.setQueryData(keys.mistake(mistake.id), reply.mistake);
+            queryClient.invalidateQueries({ queryKey: ["mistakes"] });
+            queryClient.invalidateQueries({ queryKey: keys.stats() });
+          }
           // Optional call: scrolling is a nicety, and it is not worth throwing
           // out of the success path in an environment that has no implementation
           // of it (jsdom has none).
@@ -73,6 +102,11 @@ export function AskAboutQuestion({ mistake }: { mistake: Mistake }) {
                   : "border border-malachite-deep/20 bg-accent text-accent-foreground",
               )}
             >
+              {updates.includes(index) && (
+                <span className="mb-1 block text-[11px] font-medium tracking-wide uppercase opacity-70">
+                  Debrief updated
+                </span>
+              )}
               {turn.text}
             </div>
           ))}
@@ -118,20 +152,35 @@ export function AskAboutQuestion({ mistake }: { mistake: Mistake }) {
               send(question);
             }
           }}
-          placeholder="Ask about this question…"
+          placeholder="Ask about this question — or say “consider this in the debrief”…"
           aria-label="Ask about this question"
         />
         <div className="flex items-center gap-3">
           <Button type="submit" size="sm" disabled={ask.isPending || !question.trim()}>
             {ask.isPending ? "Asking…" : "Ask"}
           </Button>
+          {(thread.length > appliedUpTo || question.trim()) && (
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              disabled={ask.isPending}
+              onClick={() => send(question.trim() || APPLY_AS_IS, true)}
+            >
+              Apply to the debrief
+            </Button>
+          )}
           {thread.length > 0 && (
             <Button
               type="button"
               size="sm"
               variant="ghost"
               className="text-muted-foreground"
-              onClick={() => setThread([])}
+              onClick={() => {
+                setThread([]);
+                setAppliedUpTo(0);
+                setUpdates([]);
+              }}
             >
               Start again
             </Button>

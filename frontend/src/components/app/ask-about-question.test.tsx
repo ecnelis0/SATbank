@@ -3,7 +3,8 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import { AskAboutQuestion } from "@/components/app/ask-about-question";
-import { api } from "@/lib/api";
+import { api, keys } from "@/lib/api";
+import type { Mistake } from "@/lib/types";
 import { makeMistake } from "@/test/fixtures";
 import { renderWithQuery } from "@/test/render";
 
@@ -57,11 +58,11 @@ describe("AskAboutQuestion", () => {
     await user.click(screen.getByRole("button", { name: "Ask" }));
 
     await waitFor(() => expect(ask).toHaveBeenCalledTimes(2));
-    expect(ask).toHaveBeenNthCalledWith(1, "q1", "Why is my answer wrong?", []);
+    expect(ask).toHaveBeenNthCalledWith(1, "q1", "Why is my answer wrong?", [], false);
     expect(ask).toHaveBeenNthCalledWith(2, "q1", "And next time?", [
       { role: "student", text: "Why is my answer wrong?" },
       { role: "assistant", text: "Because you stopped a step early." },
-    ]);
+    ], false);
   });
 
   it("says so in the thread when the request fails, rather than losing the question", async () => {
@@ -98,5 +99,96 @@ describe("AskAboutQuestion", () => {
     expect(
       screen.getByRole("button", { name: "What does this debrief mean?" }),
     ).toBeInTheDocument();
+  });
+
+  it("a command rewrites the debrief, and the page gets the new one", async () => {
+    const user = userEvent.setup();
+    const rewritten = makeMistake({ id: "q1", error_type: "misread_question" });
+    const ask = vi
+      .spyOn(api, "askAboutMistake")
+      .mockResolvedValueOnce(reply("You read 3x as x."))
+      .mockResolvedValueOnce({
+        ...reply("Done - filed as a misread."),
+        debrief_updated: true,
+        mistake: rewritten,
+      });
+    const { client } = renderWithQuery(<AskAboutQuestion mistake={makeMistake({ id: "q1" })} />);
+
+    await user.click(screen.getByRole("button", { name: "Why is my answer wrong?" }));
+    await screen.findByText("You read 3x as x.");
+    await user.type(
+      screen.getByLabelText("Ask about this question"),
+      "Consider this in the debrief",
+    );
+    await user.click(screen.getByRole("button", { name: "Ask" }));
+
+    expect(await screen.findByText("Done - filed as a misread.")).toBeInTheDocument();
+    expect(screen.getByText("Debrief updated")).toBeInTheDocument();
+    // The chat so far went with the command, so "this" means something.
+    expect(ask).toHaveBeenLastCalledWith(
+      "q1",
+      "Consider this in the debrief",
+      [
+        { role: "student", text: "Why is my answer wrong?" },
+        { role: "assistant", text: "You read 3x as x." },
+      ],
+      false,
+    );
+    expect(client.getQueryData<Mistake>(keys.mistake("q1"))?.error_type).toBe(
+      "misread_question",
+    );
+  });
+
+  it("does not send what is already in the debrief a second time", async () => {
+    const user = userEvent.setup();
+    const ask = vi
+      .spyOn(api, "askAboutMistake")
+      .mockResolvedValueOnce({
+        ...reply("Added."),
+        debrief_updated: true,
+        mistake: makeMistake({ id: "q1" }),
+      })
+      .mockResolvedValueOnce(reply("Because 7 is the constant."));
+    renderWithQuery(<AskAboutQuestion mistake={makeMistake({ id: "q1" })} />);
+
+    await user.type(screen.getByLabelText("Ask about this question"), "Add that to my debrief");
+    await user.click(screen.getByRole("button", { name: "Ask" }));
+    await screen.findByText("Added.");
+
+    await user.type(screen.getByLabelText("Ask about this question"), "Why 7?");
+    await user.click(screen.getByRole("button", { name: "Ask" }));
+
+    await waitFor(() => expect(ask).toHaveBeenCalledTimes(2));
+    expect(ask).toHaveBeenLastCalledWith("q1", "Why 7?", [], false);
+  });
+
+  it("the apply button sends the chat to the debrief whatever it says", async () => {
+    const user = userEvent.setup();
+    const ask = vi
+      .spyOn(api, "askAboutMistake")
+      .mockResolvedValueOnce(reply("Because you stopped a step early."))
+      .mockResolvedValueOnce({
+        ...reply("Added to the debrief."),
+        debrief_updated: true,
+        mistake: makeMistake({ id: "q1" }),
+      });
+    renderWithQuery(<AskAboutQuestion mistake={makeMistake({ id: "q1" })} />);
+
+    await user.click(screen.getByRole("button", { name: "Why is my answer wrong?" }));
+    await screen.findByText("Because you stopped a step early.");
+    await user.click(screen.getByRole("button", { name: "Apply to the debrief" }));
+
+    await screen.findByText("Added to the debrief.");
+    expect(ask).toHaveBeenLastCalledWith(
+      "q1",
+      "Consider this conversation in the debrief.",
+      [
+        { role: "student", text: "Why is my answer wrong?" },
+        { role: "assistant", text: "Because you stopped a step early." },
+      ],
+      true,
+    );
+    // Everything is applied, so there is nothing left to apply.
+    expect(screen.queryByRole("button", { name: "Apply to the debrief" })).not.toBeInTheDocument();
   });
 });

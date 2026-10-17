@@ -240,6 +240,88 @@ export interface Reply {
   analyzer: string;
   analyzer_ready: boolean;
   error: string | null;
+  /** True when the message was a command that rewrote the debrief. */
+  debrief_updated?: boolean;
+  /** The rewritten question, when `debrief_updated`. */
+  mistake?: Mistake | null;
+}
+
+// --- talking to the debrief ---------------------------------------------------
+
+export interface DebriefTurn {
+  id: string;
+  created_at: string;
+  role: "student" | "assistant";
+  text: string;
+  analyzer: string | null;
+}
+
+export interface DebriefExchange {
+  turns: DebriefTurn[];
+  mistake: Mistake;
+  /** Set when the model could not be reached: the message is saved, the debrief unchanged. */
+  error: string | null;
+}
+
+// --- which AI -----------------------------------------------------------------
+
+export type ProviderId = "agent" | "openai" | "claude" | "stub";
+
+export interface ProviderOption {
+  id: ProviderId;
+  label: string;
+  description: string;
+  ready: boolean;
+}
+
+export interface AiChoice {
+  provider: ProviderId;
+  label: string;
+  ready: boolean;
+  source: "switch" | ".env";
+  options: ProviderOption[];
+}
+
+// --- whole-bank analysis --------------------------------------------------------
+
+export interface CoachPoint {
+  title: string;
+  detail: string;
+  question_ids: string[];
+}
+
+export interface CoachReport {
+  answer: string;
+  overview: string;
+  doing_well: CoachPoint[];
+  going_wrong: CoachPoint[];
+  next_steps: string[];
+}
+
+export interface Count {
+  label: string;
+  count: number;
+}
+
+export interface InsightStats {
+  questions: number;
+  debriefed: number;
+  talked_to: number;
+  reviews_right: number;
+  reviews_wrong: number;
+  by_reason: Count[];
+  by_section: Count[];
+  top_patterns: Count[];
+}
+
+export interface Insight {
+  id: string;
+  created_at: string;
+  focus: string | null;
+  analyzer: string;
+  question_count: number;
+  stats: InsightStats;
+  report: CoachReport;
 }
 
 // --- videos -------------------------------------------------------------------

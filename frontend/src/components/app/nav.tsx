@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { AiSwitch } from "@/components/app/ai-switch";
 import { SidePanelToggle } from "@/components/app/side-panel";
 import { api, keys } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -15,6 +16,7 @@ const LINKS = [
   { href: "/concepts", label: "Concepts" },
   { href: "/videos", label: "Videos" },
   { href: "/review", label: "Review" },
+  { href: "/insights", label: "Insights" },
 ];
 
 export function Nav() {
@@ -64,7 +66,8 @@ export function Nav() {
           );
         })}
 
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-2">
+          <AiSwitch />
           <SidePanelToggle />
         </div>
       </nav>
