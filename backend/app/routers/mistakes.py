@@ -8,7 +8,7 @@ from typing import Annotated
 from fastapi import APIRouter, BackgroundTasks, File, HTTPException, Query, UploadFile
 from PIL import Image, UnidentifiedImageError
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import delete, select
 
 from ..ai_choice import current_provider
 from ..analysis import Turn, get_analyzer
@@ -21,6 +21,7 @@ from ..images import delete as delete_file
 from ..models import (
     AnalysisStatus,
     Concept,
+    DebriefTurn,
     ErrorType,
     Mistake,
     Section,
@@ -32,8 +33,15 @@ from ..models import (
 from ..query import BankQuery, run_query, text_filter
 from ..readiness import analyzer_ready
 from ..review import build_ladder
-from ..schemas import MistakeCreate, MistakeRead, MistakeUpdate
-from ..services import analyze_in_background, analyze_mistake
+from ..schemas import (
+    DebriefExchange,
+    DebriefMessage,
+    DebriefTurnRead,
+    MistakeCreate,
+    MistakeRead,
+    MistakeUpdate,
+)
+from ..services import analyze_in_background, analyze_mistake, run_debrief
 
 router = APIRouter(prefix="/mistakes", tags=["mistakes"])
 
@@ -353,6 +361,82 @@ async def analyze(
     return await analyze_mistake(session, mistake)
 
 
+# How much of the conversation goes back to the model with each message. Enough
+# for any real back-and-forth about one question; a bound so it cannot grow for ever.
+DEBRIEF_MEMORY = 40
+
+
+async def _turns(session: SessionDep, mistake_id: str) -> list[DebriefTurn]:
+    return list(
+        await session.scalars(
+            select(DebriefTurn)
+            .where(DebriefTurn.mistake_id == mistake_id)
+            .order_by(DebriefTurn.created_at, DebriefTurn.id)
+        )
+    )
+
+
+@router.get("/{mistake_id}/debrief", response_model=list[DebriefTurnRead])
+async def debrief_conversation(
+    mistake_id: str, session: SessionDep, user_id: UserDep
+) -> list[DebriefTurn]:
+    """Everything said to this question's debrief, oldest first."""
+    await _load(session, user_id, mistake_id)
+    return await _turns(session, mistake_id)
+
+
+@router.post("/{mistake_id}/debrief", response_model=DebriefExchange)
+async def talk_to_debrief(
+    mistake_id: str, body: DebriefMessage, session: SessionDep, user_id: UserDep
+) -> DebriefExchange:
+    """Tell the debrief what happened or what you want, and have it rewritten.
+
+    The model is given the question, the answer chosen, the "what happened"
+    note, the debrief on file and the whole conversation, and writes one debrief
+    from all of it - re-picking the reason and the patterns as it goes.
+
+    Not guarded like `/analyze` is against overwriting hand edits: speaking to it
+    is the request to change it, and the edits travel to the model as part of the
+    debrief it is told to revise.
+    """
+    mistake = await _load(session, user_id, mistake_id)
+    earlier = await _turns(session, mistake_id)
+
+    # Committed before the model is asked, so the student's words survive a
+    # model that is down, slow or out of credit.
+    said = DebriefTurn(mistake_id=mistake.id, role="student", text=body.message.strip())
+    session.add(said)
+    await session.commit()
+
+    conversation = [
+        Turn(role=turn.role, text=turn.text[:4000])  # type: ignore[arg-type]
+        for turn in [*earlier, said][-DEBRIEF_MEMORY:]
+    ]
+    error = None
+    try:
+        result = await run_debrief(session, mistake, conversation)
+    except Exception as exc:  # AnalysisFailed, or anything a provider SDK throws
+        await session.rollback()
+        error = f"{type(exc).__name__}: {exc}"[:500]
+    else:
+        reply = result.reply.strip() or result.headline.strip() or "Debrief rewritten."
+        session.add(
+            DebriefTurn(
+                mistake_id=mistake.id,
+                role="assistant",
+                text=reply,
+                analyzer=mistake.analyzed_by,
+            )
+        )
+        await session.commit()
+
+    return DebriefExchange(
+        turns=[DebriefTurnRead.model_validate(t) for t in await _turns(session, mistake_id)],
+        mistake=MistakeRead.model_validate(await _load(session, user_id, mistake_id)),
+        error=error,
+    )
+
+
 @router.delete("/{mistake_id}", status_code=204)
 async def delete_mistake(mistake_id: str, session: SessionDep, user_id: UserDep) -> None:
     """Deletes the question, its ladder, and the bytes of its pictures.
@@ -363,6 +447,8 @@ async def delete_mistake(mistake_id: str, session: SessionDep, user_id: UserDep)
     mistake = await _load(session, user_id, mistake_id)
     filenames = [image.filename for image in mistake.images]
 
+    # Not cascaded by the ORM - see `DebriefTurn` for why there is no relationship.
+    await session.execute(delete(DebriefTurn).where(DebriefTurn.mistake_id == mistake.id))
     await session.delete(mistake)
     await session.commit()
 

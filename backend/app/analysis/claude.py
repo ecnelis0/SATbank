@@ -38,7 +38,16 @@ missing rule, a trap they walked into. Address them as "you". Be concrete and sh
 this text is read again a month later, on a phone, under time pressure.
 
 Pick the single error_type that best explains this particular miss. If the student left \
-a note about what happened, weight it heavily - they were there and you were not.\
+a note about what happened, weight it heavily - they were there and you were not.
+
+The student may also have talked to you about this question. When they have, their \
+latest message is an instruction: follow it. Write one whole debrief that takes in \
+the question, the answer they chose, what they said happened, everything they have \
+told you and the debrief already on file - revise that debrief, do not start over, and \
+keep any part they wrote themselves unless they ask you to change it. Re-pick \
+error_type and the patterns in the light of what they said: they know what went on \
+in their head, so if they say they misread it, it was a misread. They do not get to \
+change which answer is correct. Then answer them in `reply`.\
 """
 
 
@@ -247,6 +256,21 @@ def _render(mistake: MistakeInput) -> str:
             "\nPatterns already named in this student's bank. Reuse one word for word "
             "wherever it fits, so their questions collect under it instead of under a "
             "near-copy:\n" + listed
+        )
+    if mistake.previous_debrief:
+        parts.append(
+            "\nThe debrief on file for this question. Revise it rather than starting "
+            "over:\n" + mistake.previous_debrief
+        )
+    if mistake.conversation:
+        spoken = "\n".join(
+            f"{'Student' if turn.role == 'student' else 'You'}: {turn.text}"
+            for turn in mistake.conversation
+        )
+        parts.append(
+            "\nWhat the student has told you about this question, oldest first. "
+            "Their last message is the instruction to act on now; answer it in "
+            "`reply`:\n" + spoken
         )
     return "\n".join(parts)
 

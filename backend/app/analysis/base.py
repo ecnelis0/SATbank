@@ -35,6 +35,13 @@ class MistakeInput(BaseModel):
     # pattern, or read out of a video. The debrief checks the question against
     # these so it is filed as it is logged rather than months later by hand.
     known_concepts: list[ConceptBrief] = Field(default_factory=list)
+    # What the student has said to the debrief about this question, oldest first,
+    # and what it answered. Empty on a first debrief. When it is not, the latest
+    # student turn is an instruction and the analysis is rewritten around it.
+    conversation: list[Turn] = Field(default_factory=list)
+    # The debrief on file when the student spoke, so it is revised rather than
+    # started over - parts of it may be the student's own hand edits.
+    previous_debrief: str | None = None
 
 
 class PatternTag(BaseModel):
@@ -111,6 +118,15 @@ class MistakeAnalysis(BaseModel):
         "for it. Leave empty when none really apply - a question filed under a "
         "concept it only loosely touches makes that concept useless, and an empty "
         "list is a perfectly good answer. Never invent a title that is not listed.",
+    )
+    reply: str = Field(
+        default="",
+        max_length=1500,
+        description="Only when the student has talked to you about this question: "
+        "answer their latest message directly, in two to four sentences, in the "
+        "second person - what you took from it, and what you changed in this "
+        "debrief and its tags because of it. If you kept something they disputed, "
+        "say why. An empty string when they have said nothing.",
     )
     patterns: list[PatternTag] = Field(
         default_factory=list,
@@ -298,3 +314,7 @@ class Analyzer(Protocol):
         report the rows it was handed.
         """
         ...
+
+
+# MistakeInput names ConceptBrief and Turn, both defined below it.
+MistakeInput.model_rebuild()

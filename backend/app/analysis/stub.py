@@ -121,6 +121,17 @@ def _match_concepts(mistake: MistakeInput, topic: str) -> list[str]:
     return matched[:4]
 
 
+def _reply(mistake: MistakeInput) -> str:
+    """Says it heard, and that it cannot act on it. Never pretends to have."""
+    said = [turn.text for turn in mistake.conversation if turn.role == "student"]
+    if not said:
+        return ""
+    return (
+        f"Noted: \"{said[-1][:200]}\". The offline reader cannot rewrite a debrief "
+        "around what you tell it - switch the AI on and send this again."
+    )
+
+
 class StubAnalyzer:
     name = "stub"
 
@@ -148,6 +159,7 @@ class StubAnalyzer:
             ),
             takeaway=f"Re-read the stem before committing on {topic} questions.",
             trap=f"{mistake.your_answer!r} is the answer you reach if you stop one step early.",
+            reply=_reply(mistake),
             # Offline, but still deterministic and still *reusing*: the title is
             # derived from the topic, so two questions in one topic land under one
             # pattern and the clustering path is exercised by the tests.

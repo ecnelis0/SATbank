@@ -345,6 +345,36 @@ class MistakeRead(BaseModel):
     images: list[ImageRead] = []
 
 
+class DebriefTurnRead(BaseModel):
+    """One message in the conversation with the debrief."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    created_at: datetime
+    role: str
+    text: str
+    analyzer: str | None
+
+
+class DebriefMessage(BaseModel):
+    """What the student tells the debrief: what happened, or what they want from it."""
+
+    message: str = Field(min_length=1, max_length=4000)
+
+
+class DebriefExchange(BaseModel):
+    """The whole conversation after a message, and the debrief it produced.
+
+    `error` is set when the model could not be reached: the student's message is
+    still saved, and the debrief on file is unchanged.
+    """
+
+    turns: list[DebriefTurnRead]
+    mistake: MistakeRead
+    error: str | None = None
+
+
 class DueReview(BaseModel):
     """A rung that is ready to be reviewed, with the question it belongs to."""
 

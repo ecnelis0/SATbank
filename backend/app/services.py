@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from .analysis import MistakeInput, get_analyzer
-from .analysis.base import ConceptBrief, PatternTag, VideoInput
+from .analysis.base import ConceptBrief, MistakeAnalysis, PatternTag, Turn, VideoInput
 from .db import get_sessionmaker
 from .models import (
     AnalysisStatus,
@@ -28,8 +28,13 @@ def to_input(
     mistake: Mistake,
     known_patterns: list[str] | None = None,
     known_concepts: list[ConceptBrief] | None = None,
+    conversation: list[Turn] | None = None,
 ) -> MistakeInput:
     return MistakeInput(
+        conversation=conversation or [],
+        # Only worth sending when there is a conversation to revise it by; a first
+        # debrief, or a plain re-run, should read the question fresh.
+        previous_debrief=current_debrief(mistake) if conversation else None,
         section=mistake.section,
         question_text=mistake.question_text,
         choices=mistake.choices,
@@ -40,6 +45,27 @@ def to_input(
         known_patterns=known_patterns or [],
         known_concepts=known_concepts or [],
     )
+
+
+def current_debrief(mistake: Mistake) -> str | None:
+    """The analysis on file, as text, or None if there is not one yet."""
+    if mistake.analysis_status != AnalysisStatus.ready:
+        return None
+    fields = [
+        ("Reason (error_type)", mistake.error_type),
+        ("Topic", mistake.topic),
+        ("Urgency", mistake.urgency),
+        ("Headline", mistake.headline),
+        ("Why it was wrong", mistake.why_wrong),
+        ("Correct reasoning", mistake.correct_reasoning),
+        ("The trap", mistake.trap),
+        ("Takeaway", mistake.takeaway),
+        ("Patterns", ", ".join(p.title for p in mistake.patterns) or None),
+    ]
+    lines = [f"{label}: {value}" for label, value in fields if value]
+    if mistake.analysis_edited_at is not None:
+        lines.append("(The student has edited parts of this by hand.)")
+    return "\n".join(lines) or None
 
 
 async def concept_briefs(session: AsyncSession, user_id: str) -> list[ConceptBrief]:
@@ -168,19 +194,31 @@ async def analyze_mistake(session: AsyncSession, mistake: Mistake) -> Mistake:
     Never raises for an analyzer failure: a mistake with no analysis is still a
     logged mistake, still on the ladder, and can be re-analyzed later.
     """
-    known = await known_pattern_titles(session, mistake.user_id)
-    concepts = await concept_briefs(session, mistake.user_id)
     # Inside the try: `get_analyzer` raises on a provider name it does not know,
     # and a typo in .env must leave the question marked failed with a readable
     # reason rather than stuck on "pending" for ever.
     try:
-        analyzer = get_analyzer()
-        result = await analyzer.analyze(to_input(mistake, known, concepts))
+        await run_debrief(session, mistake)
     except Exception as exc:  # AnalysisFailed, plus anything a provider SDK throws
         mistake.analysis_status = AnalysisStatus.failed
         mistake.analysis_error = f"{type(exc).__name__}: {exc}"[:1000]
         await session.commit()
-        return mistake
+    return mistake
+
+
+async def run_debrief(
+    session: AsyncSession, mistake: Mistake, conversation: list[Turn] | None = None
+) -> MistakeAnalysis:
+    """Ask for a debrief, write it onto the mistake and commit. Raises on failure.
+
+    Raising is the point: `analyze_mistake` turns a failure into a failed status,
+    but a conversation turn that fails must leave the debrief already on file
+    exactly as it was, so the two callers handle it differently.
+    """
+    known = await known_pattern_titles(session, mistake.user_id)
+    concepts = await concept_briefs(session, mistake.user_id)
+    analyzer = get_analyzer()
+    result = await analyzer.analyze(to_input(mistake, known, concepts, conversation))
 
     mistake.error_type = result.error_type
     mistake.topic = result.topic
@@ -201,9 +239,9 @@ async def analyze_mistake(session: AsyncSession, mistake: Mistake) -> Mistake:
     # the guard it drives - goes with it.
     mistake.analysis_edited_at = None
     mistake.analyzed_at = utcnow()
-    mistake.analyzed_by = get_analyzer().name
+    mistake.analyzed_by = analyzer.name
     await session.commit()
-    return mistake
+    return result
 
 
 async def retag_patterns(session: AsyncSession, mistake: Mistake) -> list[Pattern]:

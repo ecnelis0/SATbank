@@ -441,6 +441,53 @@ class MistakeImage(Base):
         return f"/uploads/{self.filename}"
 
 
+class DebriefTurn(Base):
+    """One thing said to the debrief, or one thing it said back.
+
+    Kept, unlike the ask-about-this-question chat: these are instructions that
+    shaped the analysis on file, and a debrief whose reasons have been forgotten
+    cannot be re-run without quietly losing them. They are also the student's own
+    account of their thinking, which is what the whole-bank analysis reads.
+
+    No relationship on `Mistake` on purpose. SQLite here runs without foreign-key
+    enforcement, so an ORM cascade would have to lazy-load the collection on
+    delete - a MissingGreenlet under async. `delete_mistake` removes these itself.
+    """
+
+    __tablename__ = "debrief_turns"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=new_id)
+    mistake_id: Mapped[str] = mapped_column(
+        ForeignKey("mistakes.id", ondelete="CASCADE"), index=True
+    )
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime(), default=utcnow)
+    role: Mapped[str] = mapped_column(String(16))
+    text: Mapped[str] = mapped_column(Text)
+    # Which provider wrote an assistant turn. None on the student's own.
+    analyzer: Mapped[str | None] = mapped_column(String(64))
+
+
+class Insight(Base):
+    """A whole-bank analysis: what the student has been doing right and wrong.
+
+    Stored, so last month's reading can be set beside this month's. The numbers
+    in `stats` are counted from rows when it is written; the prose in `report` is
+    the model's, and it is handed those numbers rather than asked to count.
+    """
+
+    __tablename__ = "insights"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=new_id)
+    user_id: Mapped[str] = mapped_column(String(64), index=True)
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime(), default=utcnow, index=True)
+    # What the student asked it to look at, if anything.
+    focus: Mapped[str | None] = mapped_column(Text)
+    analyzer: Mapped[str] = mapped_column(String(64))
+    question_count: Mapped[int] = mapped_column(Integer, default=0)
+    stats: Mapped[dict] = mapped_column(JSON)
+    report: Mapped[dict] = mapped_column(JSON)
+
+
 class ReviewEvent(Base):
     """One rung of the ladder: this mistake comes back at this time."""
 
