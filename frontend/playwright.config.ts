@@ -29,6 +29,10 @@ export default defineConfig({
         // e2e run wrote into the real bank, and cleaning up before a run deleted
         // the real bank's pictures.
         UPLOAD_ROOT: "./e2e-uploads",
+        // And its own AI switch. The default file is the one the student flips
+        // from the nav or ./ai.sh; sharing it would let a test change which AI
+        // their real bank uses - or run the suite against a paid model.
+        AI_CHOICE_FILE: "./e2e-ai-provider.txt",
       },
       reuseExistingServer: !process.env.CI,
       timeout: 60_000,

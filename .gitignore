@@ -22,3 +22,5 @@ coverage/
 sat_bank.db.backup-*
 # Which AI the student switched to. Theirs, per machine - see backend/app/ai_choice.py.
 ai-provider.txt
+e2e-ai-provider.txt
+*.db.old-*
