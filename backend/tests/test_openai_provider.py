@@ -223,3 +223,34 @@ def test_inlining_keeps_both_the_enum_and_its_description():
     error_type = strict_schema(MistakeAnalysis)["properties"]["error_type"]
     assert len(error_type["enum"]) == 12
     assert error_type["description"]
+
+
+def test_a_list_over_its_limit_is_trimmed_rather_than_failing_the_whole_answer():
+    """Strict mode cannot carry maxItems, so OpenAI is never told the limit. The
+    live API cited seven questions where six are allowed, and the whole-bank
+    analysis was thrown away for it."""
+    from app.analysis.base import CoachPoint
+
+    point = CoachPoint(title="t", detail="d", question_ids=[str(i) for i in range(9)])
+    assert point.question_ids == [str(i) for i in range(6)]
+    report = CoachReport(overview="o", next_steps=["s"] * 8)
+    assert len(report.next_steps) == 5
+
+
+def test_an_over_long_reply_is_trimmed_rather_than_losing_the_debrief():
+    analysis = MistakeAnalysis.model_validate(
+        {
+            "error_type": "other",
+            "topic": "t",
+            "difficulty": "easy",
+            "urgency": "important",
+            "why_wrong": "w",
+            "correct_reasoning": "1. c",
+            "takeaway": "k",
+            "trap": "p",
+            "reply": "x" * 3000,
+            "headline": "h" * 500,
+        }
+    )
+    assert len(analysis.reply) == 1500
+    assert len(analysis.headline) == 200

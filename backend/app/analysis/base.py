@@ -9,12 +9,27 @@ from __future__ import annotations
 from datetime import date
 from typing import TYPE_CHECKING, Literal, Protocol
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from ..models import Difficulty, ErrorType, Urgency
 
 if TYPE_CHECKING:
     from ..query import BankQuery
+
+
+def trim_to_limits(model: type[BaseModel], field: str, value: object) -> object:
+    """Cut an over-long list or string down to the field's own limit.
+
+    OpenAI's strict mode cannot carry `maxItems` or `maxLength` (see
+    `strict_schema`), so a model there is never told the limits - and one
+    question too many cited, or a reply a sentence too long, used to fail the
+    whole response. Trimming keeps the rest, which is almost all of it.
+    """
+    info = model.model_fields[field]
+    limit = next((m.max_length for m in info.metadata if hasattr(m, "max_length")), None)
+    if limit is not None and isinstance(value, (list, str)) and len(value) > limit:
+        return value[:limit]
+    return value
 
 
 class MistakeInput(BaseModel):
@@ -68,6 +83,11 @@ class MistakeAnalysis(BaseModel):
     """What an analyzer must return. Doubles as the model's output schema."""
 
     model_config = ConfigDict(extra="forbid")
+
+    @field_validator("headline", "reply", "concepts", "patterns", mode="before")
+    @classmethod
+    def _trim(cls, value: object, info) -> object:
+        return trim_to_limits(cls, info.field_name, value)
 
     error_type: ErrorType = Field(
         description="The single best-fitting reason this student got the question wrong."
@@ -277,6 +297,11 @@ class CoachPoint(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+    @field_validator("title", "detail", "question_ids", mode="before")
+    @classmethod
+    def _trim(cls, value: object, info) -> object:
+        return trim_to_limits(cls, info.field_name, value)
+
     title: str = Field(
         max_length=160,
         description="The point in a few words - the habit or the strength itself, "
@@ -301,6 +326,11 @@ class CoachReport(BaseModel):
     """A whole-bank reading: what the student has been doing right and wrong."""
 
     model_config = ConfigDict(extra="forbid")
+
+    @field_validator("answer", "overview", "doing_well", "going_wrong", "next_steps", mode="before")
+    @classmethod
+    def _trim(cls, value: object, info) -> object:
+        return trim_to_limits(cls, info.field_name, value)
 
     answer: str = Field(
         default="",
