@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+from datetime import timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, BackgroundTasks, File, HTTPException, Query, UploadFile
@@ -14,6 +15,7 @@ from ..ai_choice import current_provider
 from ..analysis import Turn, get_analyzer
 from ..analysis.base import AnalysisFailed
 from ..analysis.scan import ScanInput, ScanKind, ScannedQuestion, get_scanner
+from ..commands import is_debrief_command
 from ..config import get_settings
 from ..deps import SessionDep, UserDep
 from ..images import ALLOWED_FORMATS, MAX_BYTES
@@ -139,7 +141,13 @@ class Discussion(BaseModel):
     """A follow-up about one question, with everything said about it so far."""
 
     question: str = Field(min_length=1, max_length=1000)
+    # What was said since the chat last changed the debrief. When this message
+    # is applied, these turns go into the debrief's kept conversation, so the
+    # "this" in "consider this in the debrief" travels with it.
     history: list[Turn] = Field(default_factory=list, max_length=40)
+    # The button: apply this to the debrief whatever the wording. A message that
+    # reads as a command (`is_debrief_command`) is applied without it.
+    apply_to_debrief: bool = False
 
 
 class Reply(BaseModel):
@@ -147,6 +155,10 @@ class Reply(BaseModel):
     analyzer: str
     analyzer_ready: bool
     error: str | None = None
+    # Set when the message changed the debrief; `mistake` is then the rewritten
+    # question, so the page can show the new debrief without another round trip.
+    debrief_updated: bool = False
+    mistake: MistakeRead | None = None
 
 
 def render_for_discussion(mistake: Mistake) -> str:
@@ -199,6 +211,20 @@ async def ask_about_mistake(
     settings = get_settings()
 
     conversation = [*body.history, Turn(role="student", text=body.question)]
+    if body.apply_to_debrief or is_debrief_command(body.question):
+        reply, error = await _rewrite_debrief(session, mistake, conversation)
+        return Reply(
+            answer=reply
+            if error is None
+            else "That could not be applied to the debrief just now. What you said is "
+            "saved with it, and the debrief above is unchanged.",
+            analyzer=current_provider(settings),
+            analyzer_ready=analyzer_ready(settings),
+            error=error,
+            debrief_updated=error is None,
+            mistake=MistakeRead.model_validate(await _load(session, user_id, mistake_id)),
+        )
+
     try:
         answer = await get_analyzer().discuss(render_for_discussion(mistake), conversation)
         error = None
@@ -376,6 +402,58 @@ async def _turns(session: SessionDep, mistake_id: str) -> list[DebriefTurn]:
     )
 
 
+async def _rewrite_debrief(
+    session: SessionDep, mistake: Mistake, said: list[Turn]
+) -> tuple[str, str | None]:
+    """Keep what was said, then rewrite the debrief around the whole conversation.
+
+    Returns the debrief's reply and None, or an empty reply and the error. Shared
+    by the debrief's own box and by commands typed into the ask chat, so the two
+    cannot drift into keeping different records of what the student said.
+    """
+    earlier = await _turns(session, mistake.id)
+
+    # Committed before the model is asked, so the student's words survive a
+    # model that is down, slow or out of credit. Stamped a microsecond apart:
+    # rows written in one loop can share a timestamp, and the random ids that
+    # would break the tie would scramble the conversation's order.
+    start = utcnow()
+    kept = [
+        DebriefTurn(
+            mistake_id=mistake.id,
+            role=turn.role,
+            text=turn.text,
+            created_at=start + timedelta(microseconds=index),
+        )
+        for index, turn in enumerate(said)
+    ]
+    session.add_all(kept)
+    await session.commit()
+
+    conversation = [
+        Turn(role=turn.role, text=turn.text[:4000])  # type: ignore[arg-type]
+        for turn in [*earlier, *kept][-DEBRIEF_MEMORY:]
+    ]
+    try:
+        result = await run_debrief(session, mistake, conversation)
+    except Exception as exc:  # AnalysisFailed, or anything a provider SDK throws
+        await session.rollback()
+        return "", f"{type(exc).__name__}: {exc}"[:500]
+
+    reply = result.reply.strip() or result.headline.strip() or "Debrief rewritten."
+    session.add(
+        DebriefTurn(
+            mistake_id=mistake.id,
+            role="assistant",
+            text=reply,
+            analyzer=mistake.analyzed_by,
+            created_at=utcnow() + timedelta(microseconds=len(said)),
+        )
+    )
+    await session.commit()
+    return reply, None
+
+
 @router.get("/{mistake_id}/debrief", response_model=list[DebriefTurnRead])
 async def debrief_conversation(
     mistake_id: str, session: SessionDep, user_id: UserDep
@@ -400,36 +478,9 @@ async def talk_to_debrief(
     debrief it is told to revise.
     """
     mistake = await _load(session, user_id, mistake_id)
-    earlier = await _turns(session, mistake_id)
-
-    # Committed before the model is asked, so the student's words survive a
-    # model that is down, slow or out of credit.
-    said = DebriefTurn(mistake_id=mistake.id, role="student", text=body.message.strip())
-    session.add(said)
-    await session.commit()
-
-    conversation = [
-        Turn(role=turn.role, text=turn.text[:4000])  # type: ignore[arg-type]
-        for turn in [*earlier, said][-DEBRIEF_MEMORY:]
-    ]
-    error = None
-    try:
-        result = await run_debrief(session, mistake, conversation)
-    except Exception as exc:  # AnalysisFailed, or anything a provider SDK throws
-        await session.rollback()
-        error = f"{type(exc).__name__}: {exc}"[:500]
-    else:
-        reply = result.reply.strip() or result.headline.strip() or "Debrief rewritten."
-        session.add(
-            DebriefTurn(
-                mistake_id=mistake.id,
-                role="assistant",
-                text=reply,
-                analyzer=mistake.analyzed_by,
-            )
-        )
-        await session.commit()
-
+    _, error = await _rewrite_debrief(
+        session, mistake, [Turn(role="student", text=body.message.strip())]
+    )
     return DebriefExchange(
         turns=[DebriefTurnRead.model_validate(t) for t in await _turns(session, mistake_id)],
         mistake=MistakeRead.model_validate(await _load(session, user_id, mistake_id)),
