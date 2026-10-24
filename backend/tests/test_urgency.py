@@ -100,8 +100,8 @@ async def test_the_review_queue_puts_the_most_urgent_question_first(client, sess
     # disagree - which is the only case that can tell the two apart.
     await _set_urgency(client, older, "important")
     await _set_urgency(client, newer, "fundamental")
-    await _backdate(session_factory, older, timedelta(hours=4))
-    await _backdate(session_factory, newer, timedelta(hours=2))
+    await _backdate(session_factory, older, timedelta(hours=28))
+    await _backdate(session_factory, newer, timedelta(hours=26))
 
     due = (await client.get("/reviews/due")).json()
 
@@ -117,8 +117,8 @@ async def test_a_question_with_no_urgency_yet_sorts_last_not_in_the_middle(clien
 
     await _set_urgency(client, rated, "important")
     # The unrated one is older, so date order alone would put it first.
-    await _backdate(session_factory, unrated, timedelta(hours=4))
-    await _backdate(session_factory, rated, timedelta(hours=2))
+    await _backdate(session_factory, unrated, timedelta(hours=28))
+    await _backdate(session_factory, rated, timedelta(hours=26))
 
     due = (await client.get("/reviews/due")).json()
 
@@ -135,10 +135,4 @@ async def test_upcoming_reviews_stay_in_date_order(client):
     dues = [u["review"]["due_at"] for u in upcoming]
 
     assert dues == sorted(dues)
-    assert [u["review"]["interval_label"] for u in upcoming][:5] == [
-        "1h",
-        "24h",
-        "72h",
-        "1w",
-        "1mo",
-    ]
+    assert [u["review"]["interval_label"] for u in upcoming] == ["24h"]

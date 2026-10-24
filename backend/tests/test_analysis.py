@@ -49,7 +49,7 @@ async def test_a_failing_analyzer_still_leaves_a_logged_mistake_on_the_ladder(cl
     assert "provider is down" in stored["analysis_error"]
     assert stored["why_wrong"] is None
     # The point: the review schedule does not depend on the AI succeeding.
-    assert len(stored["reviews"]) == 5
+    assert len(stored["reviews"]) == 1
 
 
 async def test_reanalyze_recovers_a_failed_analysis(client, monkeypatch):
@@ -77,4 +77,4 @@ async def test_health_reports_the_ladder_and_the_active_analyzer(client):
     body = (await client.get("/health")).json()
 
     assert body["analyzer"] == "stub"
-    assert body["ladder"] == ["1h", "24h", "72h", "1w", "1mo"]
+    assert body["ladder"] == ["24h", "1w", "1mo", "3mo"]

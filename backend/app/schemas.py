@@ -399,8 +399,12 @@ class ReviewComplete(BaseModel):
 
 class ReviewCompleteResult(BaseModel):
     review: ReviewEventRead
-    ladder_restarted: bool
+    # Missed: the same rung is coming back after the same wait.
+    repeated: bool
+    # The last rung was passed; nothing more is scheduled.
+    finished: bool
     next_due_at: datetime | None
+    next_interval_label: str | None
 
 
 class SlotCount(BaseModel):

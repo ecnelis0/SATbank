@@ -27,7 +27,8 @@ async def test_logging_a_mistake_arms_the_ladder_and_runs_the_analyzer(client):
     assert response.status_code == 201, response.text
     body = response.json()
 
-    assert [r["interval_label"] for r in body["reviews"]] == ["1h", "24h", "72h", "1w", "1mo"]
+    # One rung at a time: only the 24-hour review exists yet.
+    assert [r["interval_label"] for r in body["reviews"]] == ["24h"]
     assert all(r["completed_at"] is None for r in body["reviews"])
 
     # The background analysis has run by the time the response cycle completes.
@@ -39,75 +40,98 @@ async def test_logging_a_mistake_arms_the_ladder_and_runs_the_analyzer(client):
     assert stored["takeaway"]
 
 
-async def test_nothing_is_due_in_the_first_hour(client):
+async def test_nothing_is_due_in_the_first_day(client):
     await client.post("/mistakes", json=MATH_MISTAKE)
 
     assert (await client.get("/reviews/due")).json() == []
     upcoming = (await client.get("/reviews/upcoming")).json()
-    assert [u["review"]["interval_label"] for u in upcoming] == ["1h", "24h", "72h", "1w", "1mo"]
+    assert [u["review"]["interval_label"] for u in upcoming] == ["24h"]
 
 
-async def test_the_one_hour_rung_comes_due_and_only_that_rung(client, session_factory):
+async def test_the_24_hour_rung_comes_due(client, session_factory):
     mistake_id = (await client.post("/mistakes", json=MATH_MISTAKE)).json()["id"]
-    await _backdate(session_factory, mistake_id, timedelta(hours=2))
+    await _backdate(session_factory, mistake_id, timedelta(hours=25))
 
     due = (await client.get("/reviews/due")).json()
-    assert [d["review"]["interval_label"] for d in due] == ["1h"]
+    assert [d["review"]["interval_label"] for d in due] == ["24h"]
     # The question travels with the review, so a session needs one request.
     assert due[0]["mistake"]["question_text"] == MATH_MISTAKE["question_text"]
 
 
-async def test_getting_it_right_leaves_the_rest_of_the_ladder_alone(client, session_factory):
+async def _answer_due(client, session_factory, outcome: str) -> tuple[str, dict]:
     mistake_id = (await client.post("/mistakes", json=MATH_MISTAKE)).json()["id"]
-    await _backdate(session_factory, mistake_id, timedelta(hours=2))
+    await _backdate(session_factory, mistake_id, timedelta(hours=25))
     review_id = (await client.get("/reviews/due")).json()[0]["review"]["id"]
-
     result = (
-        await client.post(f"/reviews/{review_id}/complete", json={"outcome": "correct"})
+        await client.post(f"/reviews/{review_id}/complete", json={"outcome": outcome})
     ).json()
+    return mistake_id, result
 
-    assert result["ladder_restarted"] is False
+
+def _due_in(result: dict) -> timedelta:
+    return datetime.fromisoformat(result["next_due_at"]) - datetime.now(UTC)
+
+
+async def test_getting_it_right_schedules_the_1_week_review(client, session_factory):
+    mistake_id, result = await _answer_due(client, session_factory, "correct")
+
+    assert result["repeated"] is False
+    assert result["finished"] is False
     assert result["review"]["outcome"] == "correct"
+    assert result["next_interval_label"] == "1w"
+    assert timedelta(days=6, hours=23) < _due_in(result) < timedelta(days=7, hours=1)
 
     mistake = (await client.get(f"/mistakes/{mistake_id}")).json()
     open_labels = [r["interval_label"] for r in mistake["reviews"] if r["completed_at"] is None]
-    assert open_labels == ["24h", "72h", "1w", "1mo"]
-    assert len(mistake["reviews"]) == 5
+    assert open_labels == ["1w"]
+    assert len(mistake["reviews"]) == 2
 
 
-async def test_getting_it_wrong_restarts_the_ladder_from_one_hour(client, session_factory):
-    mistake_id = (await client.post("/mistakes", json=MATH_MISTAKE)).json()["id"]
-    await _backdate(session_factory, mistake_id, timedelta(hours=2))
-    review_id = (await client.get("/reviews/due")).json()[0]["review"]["id"]
+async def test_getting_it_wrong_repeats_the_24_hour_review(client, session_factory):
+    mistake_id, result = await _answer_due(client, session_factory, "wrong")
 
-    result = (await client.post(f"/reviews/{review_id}/complete", json={"outcome": "wrong"})).json()
-
-    assert result["ladder_restarted"] is True
-    next_due = datetime.fromisoformat(result["next_due_at"])
-    assert timedelta(minutes=55) < next_due - datetime.now(UTC) < timedelta(minutes=65)
+    assert result["repeated"] is True
+    assert result["next_interval_label"] == "24h"
+    assert timedelta(hours=23) < _due_in(result) < timedelta(hours=25)
 
     mistake = (await client.get(f"/mistakes/{mistake_id}")).json()
     open_rungs = [r for r in mistake["reviews"] if r["completed_at"] is None]
-    assert [r["interval_label"] for r in open_rungs] == ["1h", "24h", "72h", "1w", "1mo"]
-    assert all(r["cycle"] == 1 for r in open_rungs)
-    # Nothing is due right now: the restarted ladder starts an hour out.
+    assert [(r["interval_label"], r["cycle"]) for r in open_rungs] == [("24h", 1)]
+    # Nothing is due right now: the repeat is a day out.
     assert (await client.get("/reviews/due")).json() == []
 
 
-async def test_skipping_does_not_restart_the_ladder(client, session_factory):
-    mistake_id = (await client.post("/mistakes", json=MATH_MISTAKE)).json()["id"]
-    await _backdate(session_factory, mistake_id, timedelta(hours=2))
-    review_id = (await client.get("/reviews/due")).json()[0]["review"]["id"]
+async def test_skipping_brings_the_same_rung_back_tomorrow(client, session_factory):
+    _, result = await _answer_due(client, session_factory, "skipped")
+    assert result["repeated"] is False
+    assert result["next_interval_label"] == "24h"
+    assert timedelta(hours=23) < _due_in(result) < timedelta(hours=25)
 
-    result = (
-        await client.post(f"/reviews/{review_id}/complete", json={"outcome": "skipped"})
-    ).json()
-    assert result["ladder_restarted"] is False
+
+async def test_the_whole_ladder_end_to_end(client, session_factory):
+    """Right, wrong at 1 week, wrong again, right, right, right: finished."""
+    mistake_id = (await client.post("/mistakes", json=MATH_MISTAKE)).json()["id"]
+    seen = []
+    for outcome in ["correct", "wrong", "wrong", "correct", "correct", "correct"]:
+        await _backdate(session_factory, mistake_id, timedelta(days=91))
+        due = (await client.get("/reviews/due")).json()
+        assert len(due) == 1
+        seen.append(due[0]["review"]["interval_label"])
+        result = (
+            await client.post(
+                f"/reviews/{due[0]['review']['id']}/complete", json={"outcome": outcome}
+            )
+        ).json()
+    assert seen == ["24h", "1w", "1w", "1w", "1mo", "3mo"]
+    assert result["finished"] is True
+    assert result["next_due_at"] is None
+    await _backdate(session_factory, mistake_id, timedelta(days=365))
+    assert (await client.get("/reviews/due")).json() == []
 
 
 async def test_a_review_cannot_be_completed_twice(client, session_factory):
     mistake_id = (await client.post("/mistakes", json=MATH_MISTAKE)).json()["id"]
-    await _backdate(session_factory, mistake_id, timedelta(hours=2))
+    await _backdate(session_factory, mistake_id, timedelta(hours=26))
     review_id = (await client.get("/reviews/due")).json()[0]["review"]["id"]
 
     first = await client.post(f"/reviews/{review_id}/complete", json={"outcome": "correct"})
@@ -119,7 +143,7 @@ async def test_a_review_cannot_be_completed_twice(client, session_factory):
 
 async def test_superseded_is_not_a_student_outcome(client, session_factory):
     mistake_id = (await client.post("/mistakes", json=MATH_MISTAKE)).json()["id"]
-    await _backdate(session_factory, mistake_id, timedelta(hours=2))
+    await _backdate(session_factory, mistake_id, timedelta(hours=26))
     review_id = (await client.get("/reviews/due")).json()[0]["review"]["id"]
 
     response = await client.post(
@@ -139,7 +163,7 @@ async def test_one_students_bank_is_invisible_to_another(client):
 
 async def test_another_student_cannot_complete_your_review(client, session_factory):
     mistake_id = (await client.post("/mistakes", json=MATH_MISTAKE)).json()["id"]
-    await _backdate(session_factory, mistake_id, timedelta(hours=2))
+    await _backdate(session_factory, mistake_id, timedelta(hours=26))
     review_id = (await client.get("/reviews/due")).json()[0]["review"]["id"]
 
     response = await client.post(
@@ -171,7 +195,7 @@ async def test_the_bank_filters_by_the_slots_the_ai_assigned(client):
 async def test_stats_counts_the_slots(client, session_factory):
     mistake_id = (await client.post("/mistakes", json=MATH_MISTAKE)).json()["id"]
     await client.post("/mistakes", json=VERBAL_MISTAKE)
-    await _backdate(session_factory, mistake_id, timedelta(hours=2))
+    await _backdate(session_factory, mistake_id, timedelta(hours=26))
 
     stats = (await client.get("/stats")).json()
 
@@ -184,12 +208,12 @@ async def test_stats_counts_the_slots(client, session_factory):
 
 async def test_superseded_rungs_are_not_counted_as_reviews_the_student_did(client, session_factory):
     mistake_id = (await client.post("/mistakes", json=MATH_MISTAKE)).json()["id"]
-    await _backdate(session_factory, mistake_id, timedelta(hours=2))
+    await _backdate(session_factory, mistake_id, timedelta(hours=26))
     review_id = (await client.get("/reviews/due")).json()[0]["review"]["id"]
     await client.post(f"/reviews/{review_id}/complete", json={"outcome": "wrong"})
 
     stats = (await client.get("/stats")).json()
-    # One answered review, plus four rungs the restart retired.
+    # One answered review. The repeat it scheduled is not a review done.
     assert stats["reviews_completed"] == 1
 
 
@@ -238,7 +262,7 @@ async def test_completing_correctly_reports_the_next_rung_as_an_aware_timestamp(
     client, session_factory
 ):
     mistake_id = (await client.post("/mistakes", json=MATH_MISTAKE)).json()["id"]
-    await _backdate(session_factory, mistake_id, timedelta(hours=2))
+    await _backdate(session_factory, mistake_id, timedelta(hours=26))
     review_id = (await client.get("/reviews/due")).json()[0]["review"]["id"]
 
     result = (
@@ -247,5 +271,5 @@ async def test_completing_correctly_reports_the_next_rung_as_an_aware_timestamp(
 
     next_due = datetime.fromisoformat(result["next_due_at"])
     assert next_due.tzinfo is not None
-    # The 24-hour rung, measured from a mistake logged two hours ago.
-    assert timedelta(hours=21) < next_due - datetime.now(UTC) < timedelta(hours=23)
+    # Passing the 24-hour rung arms the 1-week one, measured from now.
+    assert timedelta(days=6, hours=23) < next_due - datetime.now(UTC) < timedelta(days=7, hours=1)

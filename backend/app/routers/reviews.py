@@ -8,7 +8,7 @@ from sqlalchemy.orm import selectinload
 
 from ..deps import SessionDep, UserDep
 from ..models import Mistake, ReviewEvent, ReviewOutcome, mistake_options, utcnow
-from ..review import URGENCY_RANK, restart_ladder
+from ..review import URGENCY_RANK, answer
 from ..schemas import DueReview, ReviewComplete, ReviewCompleteResult
 
 router = APIRouter(prefix="/reviews", tags=["reviews"])
@@ -97,8 +97,8 @@ async def complete(
 ) -> ReviewCompleteResult:
     """Record how the review went.
 
-    Getting it right or skipping leaves the rest of the ladder alone. Getting it wrong
-    again restarts the ladder from now - see `app/review.py`.
+    Right moves the question up a rung; wrong repeats the same rung with the same
+    wait; skipped brings it back tomorrow. See `app/review.py`.
     """
     event = await session.scalar(
         select(ReviewEvent)
@@ -111,18 +111,13 @@ async def complete(
     if event.completed_at is not None:
         raise HTTPException(status_code=409, detail="That review is already completed")
 
-    event.completed_at = utcnow()
-    event.outcome = body.outcome
-
-    restarted = body.outcome is ReviewOutcome.wrong
-    if restarted:
-        restart_ladder(event.mistake)
-
+    following = answer(event.mistake, event, body.outcome)
     await session.commit()
 
-    remaining = [e.due_at for e in event.mistake.reviews if e.completed_at is None]
     return ReviewCompleteResult(
         review=event,
-        ladder_restarted=restarted,
-        next_due_at=min(remaining, default=None),
+        repeated=body.outcome is ReviewOutcome.wrong,
+        finished=following is None,
+        next_due_at=following.due_at if following else None,
+        next_interval_label=following.interval_label if following else None,
     )

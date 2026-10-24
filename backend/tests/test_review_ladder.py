@@ -5,88 +5,86 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 from app.models import Mistake, ReviewOutcome
-from app.review import LADDER_LABELS, build_ladder, open_events, restart_ladder
+from app.review import LADDER_LABELS, SKIP_DELAY, answer, first_rung, next_rung, open_events
 from tests.conftest import MATH_MISTAKE
 
 ANCHOR = datetime(2026, 3, 1, 9, 0, tzinfo=UTC)
+LATER = datetime(2026, 3, 9, 18, 30, tzinfo=UTC)
 
 
-def test_ladder_is_the_five_intervals_the_product_promises():
-    assert LADDER_LABELS == ("1h", "24h", "72h", "1w", "1mo")
+def test_ladder_is_the_four_intervals_the_product_promises():
+    assert LADDER_LABELS == ("24h", "1w", "1mo", "3mo")
 
 
-def test_build_ladder_offsets_are_absolute_from_the_anchor():
-    events = build_ladder("m1", ANCHOR)
-
-    assert [e.due_at - ANCHOR for e in events] == [
-        timedelta(hours=1),
-        timedelta(hours=24),
-        timedelta(hours=72),
-        timedelta(days=7),
-        timedelta(days=30),
-    ]
-    assert [e.step_index for e in events] == [0, 1, 2, 3, 4]
-    assert all(e.cycle == 0 for e in events)
-    assert all(e.mistake_id == "m1" for e in events)
+def test_a_new_question_has_only_its_24_hour_review():
+    rung = first_rung("m1", ANCHOR)
+    assert (rung.interval_label, rung.step_index, rung.cycle) == ("24h", 0, 0)
+    assert rung.due_at == ANCHOR + timedelta(hours=24)
 
 
-def test_two_mistakes_logged_at_the_same_moment_get_identical_schedules():
-    """No per-card ease factor: the gaps never differ between cards."""
-    a = build_ladder("a", ANCHOR)
-    b = build_ladder("b", ANCHOR)
-
-    assert [e.due_at for e in a] == [e.due_at for e in b]
+def _rung(label: str, step: int, cycle: int = 0):
+    rung = first_rung("m1", ANCHOR)
+    rung.interval_label, rung.step_index, rung.cycle = label, step, cycle
+    return rung
 
 
-def _mistake_with_ladder() -> Mistake:
+def test_right_moves_up_a_rung_measured_from_when_it_was_answered():
+    following = next_rung(_rung("24h", 0), ReviewOutcome.correct, LATER)
+    assert (following.interval_label, following.step_index, following.cycle) == ("1w", 1, 0)
+    assert following.due_at == LATER + timedelta(weeks=1)
+
+
+def test_wrong_repeats_the_same_rung_with_the_same_wait():
+    """Missed the 1-week review: another 1-week review, not back to the start."""
+    following = next_rung(_rung("1w", 1), ReviewOutcome.wrong, LATER)
+    assert (following.interval_label, following.step_index) == ("1w", 1)
+    assert following.due_at == LATER + timedelta(weeks=1)
+    assert following.cycle == 1
+
+
+def test_every_miss_repeats_until_it_is_right_and_only_then_moves_on():
+    rung = _rung("1mo", 2)
+    for attempt in range(1, 4):
+        rung = next_rung(rung, ReviewOutcome.wrong, LATER)
+        assert (rung.interval_label, rung.cycle) == ("1mo", attempt)
+        assert rung.due_at == LATER + timedelta(days=30)
+    rung = next_rung(rung, ReviewOutcome.correct, LATER)
+    assert (rung.interval_label, rung.cycle) == ("3mo", 0)
+    assert rung.due_at == LATER + timedelta(days=90)
+
+
+def test_passing_the_3_month_review_finishes_the_question():
+    assert next_rung(_rung("3mo", 3), ReviewOutcome.correct, LATER) is None
+
+
+def test_missing_the_3_month_review_repeats_it():
+    following = next_rung(_rung("3mo", 3), ReviewOutcome.wrong, LATER)
+    assert following.interval_label == "3mo"
+    assert following.due_at == LATER + timedelta(days=90)
+
+
+def test_a_skip_keeps_the_rung_and_comes_back_tomorrow():
+    """Not the rung's whole wait: one skip at 3 months must not mean 3 months' silence."""
+    following = next_rung(_rung("3mo", 3, cycle=2), ReviewOutcome.skipped, LATER)
+    assert (following.interval_label, following.cycle) == ("3mo", 2)
+    assert following.due_at == LATER + SKIP_DELAY
+
+
+def test_answering_keeps_one_open_rung_and_the_history():
     mistake = Mistake(
-        id="m1",
-        user_id="local",
-        section="math",
-        question_text="q",
-        your_answer="7",
-        correct_answer="5",
+        id="m1", user_id="local", section="math", question_text="q",
+        your_answer="7", correct_answer="5",
     )
-    mistake.reviews.extend(build_ladder("m1", ANCHOR))
-    return mistake
-
-
-def test_restart_supersedes_open_rungs_and_arms_a_new_cycle():
-    mistake = _mistake_with_ladder()
-    # The student sat the 1-hour review and got it wrong.
+    mistake.reviews.append(first_rung("m1", ANCHOR))
     first = mistake.reviews[0]
-    first.completed_at = datetime(2026, 3, 1, 10, 5, tzinfo=UTC)
-    first.outcome = ReviewOutcome.wrong
+    answer(mistake, first, ReviewOutcome.wrong)
+    second = open_events(mistake)[0]
+    answer(mistake, second, ReviewOutcome.correct)
 
-    restart_at = datetime(2026, 3, 1, 10, 5, tzinfo=UTC)
-    fresh = restart_ladder(mistake, anchor=restart_at)
-
-    # The four rungs it never reached are retired, not deleted.
-    retired = [e for e in mistake.reviews if e.cycle == 0 and e is not first]
-    assert len(retired) == 4
-    assert all(e.outcome == ReviewOutcome.superseded for e in retired)
-    assert all(e.completed_at is not None for e in retired)
-
-    # The student's own answer is untouched.
-    assert first.outcome == ReviewOutcome.wrong
-
-    # And the ladder starts again, from the top, from the restart moment.
-    assert len(fresh) == 5
-    assert all(e.cycle == 1 for e in fresh)
-    assert [e.interval_label for e in fresh] == list(LADDER_LABELS)
-    assert fresh[0].due_at == restart_at + timedelta(hours=1)
-    assert open_events(mistake) == fresh
-
-
-def test_repeated_misses_keep_incrementing_the_cycle():
-    mistake = _mistake_with_ladder()
-    restart_ladder(mistake, anchor=ANCHOR)
-    restart_ladder(mistake, anchor=ANCHOR)
-
-    assert max(e.cycle for e in mistake.reviews) == 2
-    assert len(open_events(mistake)) == 5
-    # Nothing is lost: three cycles of five rungs are all still on the record.
-    assert len(mistake.reviews) == 15
+    assert [e.outcome for e in mistake.reviews] == [
+        ReviewOutcome.wrong, ReviewOutcome.correct, None,
+    ]
+    assert [e.interval_label for e in open_events(mistake)] == ["1w"]
 
 
 # --- one question is one thing to review --------------------------------------
@@ -109,6 +107,15 @@ async def _all_rungs_overdue(session_factory, mistake_id: str) -> int:
                 select(ReviewEvent).where(ReviewEvent.mistake_id == mistake_id)
             )
         )
+        # The ladder keeps one open rung now, but a bank migrated from the old
+        # five-rung ladder can hold several - the queue must still deal once.
+        for step, label in ((1, "1w"), (2, "1mo")):
+            extra = ReviewEvent(
+                mistake_id=mistake_id, cycle=0, step_index=step,
+                interval_label=label, due_at=utcnow(),
+            )
+            session.add(extra)
+            rungs.append(extra)
         for index, rung in enumerate(rungs):
             rung.due_at = utcnow() - timedelta(days=40 + index)
         await session.commit()

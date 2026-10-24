@@ -1,13 +1,21 @@
 """The review ladder.
 
-Every mistake is re-surfaced on the same fixed schedule, measured from the moment
-it was logged: 1 hour, 24 hours, 72 hours, 1 week, 1 month. The intervals are
-absolute and identical for every card - this is deliberately not SM-2/Anki, where
-an ease factor stretches the gaps per card.
+Four rungs: 24 hours, 1 week, 1 month, 3 months. Identical for every card - this
+is deliberately not SM-2/Anki, where an ease factor stretches the gaps per card.
 
-Missing a review restarts the ladder from the current time, so a card you are still
-getting wrong keeps coming back from the 1-hour rung. The rungs it had not reached
-yet are retired as `superseded` rather than deleted, so the history stays readable.
+One rung is scheduled at a time, measured from the moment the last one was
+answered:
+
+* **Right** - the next rung is scheduled. Passing the 3-month rung finishes the
+  question.
+* **Wrong** - the *same* rung again, with the same wait. Missing the 1-week review
+  means another 1-week review, and so on until it is right; only then does the
+  question move up. A miss does not send it back to the start.
+* **Skipped** - the same rung, back tomorrow. Waiting the rung's whole interval
+  again would turn one skip into three months' silence at the top of the ladder.
+
+Each answered rung stays on the record. `cycle` counts attempts at a rung: 0 for
+the first, 1 after one miss, and so on.
 """
 
 from __future__ import annotations
@@ -19,14 +27,16 @@ from sqlalchemy import case
 from .models import Mistake, ReviewEvent, ReviewOutcome, Urgency, utcnow
 
 LADDER: tuple[tuple[str, timedelta], ...] = (
-    ("1h", timedelta(hours=1)),
     ("24h", timedelta(hours=24)),
-    ("72h", timedelta(hours=72)),
     ("1w", timedelta(weeks=1)),
     ("1mo", timedelta(days=30)),
+    ("3mo", timedelta(days=90)),
 )
 
 LADDER_LABELS: tuple[str, ...] = tuple(label for label, _ in LADDER)
+
+# A skipped review comes back after this, whatever its rung.
+SKIP_DELAY = timedelta(hours=24)
 
 # Two questions can come due in the same minute. When they do, the more urgent one
 # is the one to spend the attention on, so it comes first in the queue. Anything
@@ -39,33 +49,49 @@ URGENCY_RANK = case(
 )
 
 
-def build_ladder(mistake_id: str, anchor: datetime, cycle: int = 0) -> list[ReviewEvent]:
-    """The five review events for one pass over the ladder, anchored at `anchor`."""
-    return [
-        ReviewEvent(
-            mistake_id=mistake_id,
-            cycle=cycle,
-            step_index=step,
-            interval_label=label,
-            due_at=anchor + offset,
-        )
-        for step, (label, offset) in enumerate(LADDER)
-    ]
+def first_rung(mistake_id: str, anchor: datetime) -> ReviewEvent:
+    """The 24-hour review, armed the moment a question is logged."""
+    label, wait = LADDER[0]
+    return ReviewEvent(
+        mistake_id=mistake_id, cycle=0, step_index=0, interval_label=label, due_at=anchor + wait
+    )
+
+
+def next_rung(event: ReviewEvent, outcome: ReviewOutcome, now: datetime) -> ReviewEvent | None:
+    """What to schedule after `event` was answered with `outcome`, or None when
+    that was the last rung passed."""
+    step = event.step_index
+    if outcome is ReviewOutcome.correct:
+        step += 1
+        if step >= len(LADDER):
+            return None
+        label, wait = LADDER[step]
+        cycle = 0
+    elif outcome is ReviewOutcome.wrong:
+        label, wait = LADDER[step]
+        cycle = event.cycle + 1
+    else:  # skipped
+        label, _ = LADDER[step]
+        wait, cycle = SKIP_DELAY, event.cycle
+    return ReviewEvent(
+        mistake_id=event.mistake_id,
+        cycle=cycle,
+        step_index=step,
+        interval_label=label,
+        due_at=now + wait,
+    )
 
 
 def open_events(mistake: Mistake) -> list[ReviewEvent]:
     return [e for e in mistake.reviews if e.completed_at is None]
 
 
-def restart_ladder(mistake: Mistake, anchor: datetime | None = None) -> list[ReviewEvent]:
-    """Retire the mistake's remaining rungs and arm a fresh pass from `anchor`."""
-    anchor = anchor or utcnow()
+def answer(mistake: Mistake, event: ReviewEvent, outcome: ReviewOutcome) -> ReviewEvent | None:
+    """Record the answer and schedule what comes next. Returns the new rung."""
     now = utcnow()
-    for event in open_events(mistake):
-        event.completed_at = now
-        event.outcome = ReviewOutcome.superseded
-
-    next_cycle = max((e.cycle for e in mistake.reviews), default=0) + 1
-    fresh = build_ladder(mistake.id, anchor, cycle=next_cycle)
-    mistake.reviews.extend(fresh)
-    return fresh
+    event.completed_at = now
+    event.outcome = outcome
+    following = next_rung(event, outcome, now)
+    if following is not None:
+        mistake.reviews.append(following)
+    return following

@@ -113,7 +113,7 @@ async def test_untagging_leaves_the_question_alone(client):
     # The question itself, and its ladder, survive being untagged.
     mistake = (await client.get(f"/mistakes/{mistake_id}")).json()
     assert mistake["concepts"] == []
-    assert len(mistake["reviews"]) == 5
+    assert len(mistake["reviews"]) == 1
 
 
 async def test_deleting_a_concept_does_not_delete_its_questions(client):

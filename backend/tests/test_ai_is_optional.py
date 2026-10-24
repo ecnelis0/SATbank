@@ -119,7 +119,7 @@ async def test_a_failed_debrief_keeps_the_question_and_the_ladder(client, monkey
     assert "out of usage" in fetched["analysis_error"]
     # The question is still logged, and still on the ladder.
     assert fetched["question_text"] == MATH_MISTAKE["question_text"]
-    assert len(fetched["reviews"]) == 5
+    assert len(fetched["reviews"]) == 1
 
 
 async def test_a_failed_scan_is_a_message_not_a_crash(client, monkeypatch):

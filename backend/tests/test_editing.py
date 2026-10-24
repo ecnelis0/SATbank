@@ -13,7 +13,7 @@ async def test_a_question_can_be_logged_without_asking_the_ai(client):
     assert body["analysis_status"] == "not_requested"
     assert body["why_wrong"] is None
     # Not asking the AI must not cost the student the review schedule.
-    assert len(body["reviews"]) == 5
+    assert len(body["reviews"]) == 1
 
     # And nothing runs in the background behind their back.
     later = (await client.get(f"/mistakes/{body['id']}")).json()

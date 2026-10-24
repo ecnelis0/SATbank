@@ -34,7 +34,7 @@ from ..models import (
 )
 from ..query import BankQuery, run_query, text_filter
 from ..readiness import analyzer_ready
-from ..review import build_ladder
+from ..review import first_rung
 from ..schemas import (
     DebriefExchange,
     DebriefMessage,
@@ -104,8 +104,8 @@ async def log_mistake(
 ) -> Mistake:
     """Log a question you got wrong.
 
-    The ladder is armed immediately, anchored to now - a slow, failed, or unasked-for
-    analysis must never cost the student their 1-hour review.
+    The first rung is armed immediately, anchored to now - a slow, failed, or
+    unasked-for analysis must never cost the student their 24-hour review.
     """
     logged_at = utcnow()
     fields = body.model_dump()
@@ -119,7 +119,7 @@ async def log_mistake(
         urgency_is_yours=fields.get("urgency") is not None,
         **fields,
     )
-    mistake.reviews.extend(build_ladder(mistake.id, logged_at))
+    mistake.reviews.append(first_rung(mistake.id, logged_at))
     blank_collections(mistake)
 
     if concept_ids:
